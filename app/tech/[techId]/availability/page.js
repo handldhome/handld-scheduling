@@ -39,52 +39,79 @@ export default async function AvailabilityPage({ params }) {
   return (
     <div style={{
       minHeight: '100vh',
-      backgroundColor: '#f5f5f5',
+      background: 'radial-gradient(1200px 600px at 70% -10%, #ffffff 0%, #FFF5E1 100%)',
       padding: '20px'
     }}>
       <div style={{
         maxWidth: '600px',
         margin: '0 auto',
         backgroundColor: 'white',
-        borderRadius: '8px',
+        borderRadius: '16px',
         padding: '30px',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
       }}>
+        {/* Logo */}
+        <div style={{
+          textAlign: 'center',
+          marginBottom: '24px'
+        }}>
+          <img
+            src="/logo-dark.png"
+            alt="Handld Home Services"
+            style={{
+              width: '60px',
+              height: '60px',
+              margin: '0 auto'
+            }}
+          />
+          <div style={{
+            fontSize: '14px',
+            fontWeight: '600',
+            color: '#2A54A1',
+            marginTop: '8px',
+            letterSpacing: '0.5px'
+          }}>
+            HANDLD HOME SERVICES
+          </div>
+        </div>
+
         <h1 style={{
-          color: '#333',
+          color: '#2A54A1',
           marginBottom: '10px',
-          fontSize: '24px'
+          fontSize: '28px',
+          fontWeight: '800',
+          textAlign: 'center'
         }}>
           Hey {technician.firstName}! 👋
         </h1>
         <p style={{
-          color: '#666',
-          marginBottom: '20px',
-          fontSize: '16px',
-          fontWeight: '600'
+          color: '#4B5563',
+          marginBottom: '24px',
+          fontSize: '17px',
+          textAlign: 'center'
         }}>
           Mark your availability for the next 2 weeks
         </p>
 
         {/* Explainer Box */}
         <div style={{
-          backgroundColor: '#e8f4f8',
-          border: '1px solid #b3d9e6',
-          borderRadius: '8px',
+          backgroundColor: '#EFF6FF',
+          border: '2px solid #2A54A1',
+          borderRadius: '12px',
           padding: '20px',
           marginBottom: '30px'
         }}>
           <h2 style={{
             fontSize: '16px',
             fontWeight: '700',
-            color: '#2c5f7a',
+            color: '#2A54A1',
             marginBottom: '12px'
           }}>
             📋 How This Works
           </h2>
           <ul style={{
             fontSize: '14px',
-            color: '#2c5f7a',
+            color: '#1E40AF',
             lineHeight: '1.8',
             margin: 0,
             paddingLeft: '20px'

@@ -148,7 +148,7 @@ export default function AvailabilityForm({ techId, techName }) {
               onClick={() => toggleNoteBox(day.date)}
               style={{
                 fontSize: '12px',
-                color: '#3498db',
+                color: '#2A54A1',
                 background: 'none',
                 border: 'none',
                 padding: '4px 0',
@@ -191,14 +191,15 @@ export default function AvailabilityForm({ techId, techName }) {
         style={{
           width: '100%',
           padding: '15px',
-          backgroundColor: success ? '#27ae60' : '#3498db',
+          backgroundColor: success ? '#10b981' : '#2A54A1',
           color: 'white',
           border: 'none',
-          borderRadius: '4px',
+          borderRadius: '16px',
           fontSize: '16px',
-          fontWeight: '600',
+          fontWeight: '700',
           cursor: loading || success ? 'not-allowed' : 'pointer',
-          opacity: loading ? 0.7 : 1
+          opacity: loading ? 0.7 : 1,
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
         }}
       >
         {loading ? 'Saving...' : success ? '✓ Saved!' : 'Save Availability'}
@@ -207,9 +208,10 @@ export default function AvailabilityForm({ techId, techName }) {
       {success && (
         <p style={{
           textAlign: 'center',
-          color: '#27ae60',
+          color: '#10b981',
           marginTop: '15px',
-          fontSize: '14px'
+          fontSize: '15px',
+          fontWeight: '600'
         }}>
           Thanks {techName}! Your availability has been updated.
         </p>
