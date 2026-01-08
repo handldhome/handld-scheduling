@@ -91,9 +91,9 @@ export default async function AvailabilityPage({ params }) {
           }}>
             <li><strong>Check the boxes</strong> for days/times you're available to work</li>
             <li><strong>Morning</strong> = 8am-12pm • <strong>Afternoon</strong> = 1pm-5pm</li>
+            <li><strong>Click "+ Add note"</strong> on any day to add notes (appointments, etc.)</li>
             <li><strong>You'll get this link every Thursday</strong> by text</li>
             <li><strong>You can update anytime</strong> during the week if plans change</li>
-            <li><strong>Use the notes box</strong> if you have appointments or time-off requests</li>
           </ul>
         </div>
 

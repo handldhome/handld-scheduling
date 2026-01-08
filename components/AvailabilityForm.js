@@ -5,7 +5,8 @@ import { addDays, startOfWeek, format, addWeeks } from 'date-fns'
 
 export default function AvailabilityForm({ techId, techName }) {
   const [availability, setAvailability] = useState({})
-  const [notes, setNotes] = useState('')
+  const [dayNotes, setDayNotes] = useState({}) // Per-day notes
+  const [expandedNotes, setExpandedNotes] = useState({}) // Track which note boxes are open
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
 
@@ -35,6 +36,20 @@ export default function AvailabilityForm({ techId, techName }) {
     }))
   }
 
+  const toggleNoteBox = (date) => {
+    setExpandedNotes(prev => ({
+      ...prev,
+      [date]: !prev[date]
+    }))
+  }
+
+  const handleDayNote = (date, value) => {
+    setDayNotes(prev => ({
+      ...prev,
+      [date]: value
+    }))
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
@@ -46,7 +61,7 @@ export default function AvailabilityForm({ techId, techName }) {
         body: JSON.stringify({
           techId,
           availability,
-          notes
+          dayNotes
         })
       })
 
@@ -80,10 +95,11 @@ export default function AvailabilityForm({ techId, techName }) {
             }}>
               {day.display}
             </div>
-            
+
             <div style={{
               display: 'flex',
-              gap: '20px'
+              gap: '20px',
+              marginBottom: '8px'
             }}>
               <label style={{
                 display: 'flex',
@@ -125,35 +141,48 @@ export default function AvailabilityForm({ techId, techName }) {
                 Afternoon (1-5)
               </label>
             </div>
+
+            {/* Add note button */}
+            <button
+              type="button"
+              onClick={() => toggleNoteBox(day.date)}
+              style={{
+                fontSize: '12px',
+                color: '#3498db',
+                background: 'none',
+                border: 'none',
+                padding: '4px 0',
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+            >
+              {expandedNotes[day.date] ? '− Hide note' : '+ Add note'}
+            </button>
+
+            {/* Collapsible note input */}
+            {expandedNotes[day.date] && (
+              <div style={{ marginTop: '8px' }}>
+                <input
+                  type="text"
+                  value={dayNotes[day.date] || ''}
+                  onChange={(e) => handleDayNote(day.date, e.target.value)}
+                  placeholder="e.g., Doctor appt at 2pm"
+                  style={{
+                    width: '100%',
+                    padding: '8px',
+                    border: '1px solid #ddd',
+                    borderRadius: '4px',
+                    fontSize: '13px',
+                    fontFamily: 'inherit'
+                  }}
+                />
+              </div>
+            )}
           </div>
         ))}
-      </div>
-
-      <div style={{ marginBottom: '20px' }}>
-        <label style={{
-          display: 'block',
-          fontWeight: '600',
-          marginBottom: '8px',
-          color: '#333',
-          fontSize: '14px'
-        }}>
-          Notes or time-off requests (optional)
-        </label>
-        <textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="e.g., Doctor appointment Thursday at 2pm"
-          style={{
-            width: '100%',
-            padding: '10px',
-            border: '1px solid #ddd',
-            borderRadius: '4px',
-            fontSize: '14px',
-            fontFamily: 'inherit',
-            minHeight: '80px',
-            resize: 'vertical'
-          }}
-        />
       </div>
 
       <button

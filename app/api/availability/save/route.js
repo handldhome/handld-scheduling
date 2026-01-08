@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 export async function POST(request) {
   try {
     const body = await request.json()
-    const { techId, availability, notes } = body
+    const { techId, availability, dayNotes } = body
 
     if (!techId || !availability) {
       return NextResponse.json(
@@ -13,8 +13,8 @@ export async function POST(request) {
       )
     }
 
-    const result = await saveAvailability(techId, availability, notes)
-    
+    const result = await saveAvailability(techId, availability, dayNotes)
+
     return NextResponse.json(result)
   } catch (error) {
     console.error('Error in save endpoint:', error)
