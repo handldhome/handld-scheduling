@@ -9,14 +9,13 @@ export default function AvailabilityForm({ techId, techName }) {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
 
-  // Generate next 2 weeks starting from next Monday
+  // Generate next 14 days starting from today
   const getNextTwoWeeks = () => {
     const today = new Date()
-    const nextMonday = startOfWeek(addWeeks(today, 1), { weekStartsOn: 1 })
     const days = []
-    
+
     for (let i = 0; i < 14; i++) {
-      const date = addDays(nextMonday, i)
+      const date = addDays(today, i)
       days.push({
         date: format(date, 'yyyy-MM-dd'),
         display: format(date, 'EEE, MMM d'),

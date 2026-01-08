@@ -59,13 +59,45 @@ export default async function AvailabilityPage({ params }) {
         </h1>
         <p style={{
           color: '#666',
-          marginBottom: '30px',
-          fontSize: '16px'
+          marginBottom: '20px',
+          fontSize: '16px',
+          fontWeight: '600'
         }}>
           Mark your availability for the next 2 weeks
         </p>
-        
-        <AvailabilityForm 
+
+        {/* Explainer Box */}
+        <div style={{
+          backgroundColor: '#e8f4f8',
+          border: '1px solid #b3d9e6',
+          borderRadius: '8px',
+          padding: '20px',
+          marginBottom: '30px'
+        }}>
+          <h2 style={{
+            fontSize: '16px',
+            fontWeight: '700',
+            color: '#2c5f7a',
+            marginBottom: '12px'
+          }}>
+            📋 How This Works
+          </h2>
+          <ul style={{
+            fontSize: '14px',
+            color: '#2c5f7a',
+            lineHeight: '1.8',
+            margin: 0,
+            paddingLeft: '20px'
+          }}>
+            <li><strong>Check the boxes</strong> for days/times you're available to work</li>
+            <li><strong>Morning</strong> = 8am-12pm • <strong>Afternoon</strong> = 1pm-5pm</li>
+            <li><strong>You'll get this link every Thursday</strong> by text</li>
+            <li><strong>You can update anytime</strong> during the week if plans change</li>
+            <li><strong>Use the notes box</strong> if you have appointments or time-off requests</li>
+          </ul>
+        </div>
+
+        <AvailabilityForm
           techId={techId}
           techName={technician.firstName}
         />
