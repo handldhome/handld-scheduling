@@ -1,28 +1,25 @@
 import AvailabilityForm from '@/components/AvailabilityForm'
-
-async function getTechnician(techId) {
-  const baseUrl = process.env.VERCEL_URL 
-    ? `https://${process.env.VERCEL_URL}` 
-    : 'http://localhost:3000'
-  
-  const res = await fetch(`${baseUrl}/api/technicians/${techId}`, {
-    cache: 'no-store'
-  })
-  
-  if (!res.ok) {
-    throw new Error('Failed to fetch technician')
-  }
-  
-  return res.json()
-}
+import { getTechnician } from '@/lib/airtable'
 
 export default async function AvailabilityPage({ params }) {
   const { techId } = params
   
   let technician
+  let errorMessage = null
+  
   try {
+    // Call Airtable directly instead of through API route
     technician = await getTechnician(techId)
+    
+    if (!technician.active) {
+      errorMessage = 'This technician account is not active.'
+    }
   } catch (error) {
+    console.error('Error fetching technician:', error)
+    errorMessage = `Unable to find technician. Error: ${error.message}`
+  }
+
+  if (errorMessage) {
     return (
       <div style={{
         maxWidth: '600px',
@@ -31,7 +28,10 @@ export default async function AvailabilityPage({ params }) {
         textAlign: 'center'
       }}>
         <h1 style={{ color: '#e74c3c' }}>Error</h1>
-        <p>Unable to find technician. Please check your link.</p>
+        <p>{errorMessage}</p>
+        <p style={{ fontSize: '12px', color: '#999', marginTop: '20px' }}>
+          Tech ID: {techId}
+        </p>
       </div>
     )
   }
