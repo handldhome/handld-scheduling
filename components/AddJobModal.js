@@ -482,8 +482,7 @@ export default function AddJobModal({ onClose, onJobAdded }) {
                 }}>
                   Square Footage
                 </label>
-                <input
-                  type="number"
+                <select
                   value={formData.squareFootage}
                   onChange={(e) => handleChange('squareFootage', e.target.value)}
                   style={{
@@ -494,9 +493,13 @@ export default function AddJobModal({ onClose, onJobAdded }) {
                     borderRadius: '8px',
                     boxSizing: 'border-box'
                   }}
-                  placeholder="e.g., 2000"
-                  min="0"
-                />
+                >
+                  <option value="">Select...</option>
+                  <option value="Less than 1,600 sq. feet">Less than 1,600 sq. feet</option>
+                  <option value="1,600-2,500 sq. feet">1,600-2,500 sq. feet</option>
+                  <option value="2,500-4,500 sq. feet">2,500-4,500 sq. feet</option>
+                  <option value="4,500+ sq. feet">4,500+ sq. feet</option>
+                </select>
               </div>
               <div>
                 <label style={{
@@ -506,10 +509,9 @@ export default function AddJobModal({ onClose, onJobAdded }) {
                   color: '#374151',
                   marginBottom: '6px'
                 }}>
-                  Lot Size (sq ft)
+                  Lot Size
                 </label>
-                <input
-                  type="number"
+                <select
                   value={formData.lotSize}
                   onChange={(e) => handleChange('lotSize', e.target.value)}
                   style={{
@@ -520,9 +522,13 @@ export default function AddJobModal({ onClose, onJobAdded }) {
                     borderRadius: '8px',
                     boxSizing: 'border-box'
                   }}
-                  placeholder="e.g., 5000"
-                  min="0"
-                />
+                >
+                  <option value="">Select...</option>
+                  <option value="Less than 5,000 sq. feet">Less than 5,000 sq. feet</option>
+                  <option value="5,000-10,000 sq. feet">5,000-10,000 sq. feet</option>
+                  <option value="10,000-20,000 sq. feet">10,000-20,000 sq. feet</option>
+                  <option value="Greater than 20,000 sq. feet">Greater than 20,000 sq. feet</option>
+                </select>
               </div>
               <div>
                 <label style={{
@@ -547,10 +553,9 @@ export default function AddJobModal({ onClose, onJobAdded }) {
                   }}
                 >
                   <option value="">Select...</option>
-                  <option value="1">1</option>
-                  <option value="2">2</option>
-                  <option value="3">3</option>
-                  <option value="4+">4+</option>
+                  <option value="One">One</option>
+                  <option value="Two">Two</option>
+                  <option value="Three">Three</option>
                 </select>
               </div>
             </div>

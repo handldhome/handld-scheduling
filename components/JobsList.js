@@ -293,7 +293,7 @@ export default function JobsList({ jobs, technicians }) {
                             Square Footage
                           </div>
                           <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>
-                            {job.squareFootage.toLocaleString()} sq ft
+                            {job.squareFootage}
                           </div>
                         </div>
                       )}
@@ -303,7 +303,7 @@ export default function JobsList({ jobs, technicians }) {
                             Lot Size
                           </div>
                           <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>
-                            {job.lotSize.toLocaleString()} sq ft
+                            {job.lotSize}
                           </div>
                         </div>
                       )}
