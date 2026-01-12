@@ -1,6 +1,9 @@
 import AvailabilityCalendar from '@/components/AvailabilityCalendar'
 import { getAllTechnicians, getAllAvailability } from '@/lib/airtable'
 
+// Disable caching - always fetch fresh data
+export const revalidate = 0
+
 export default async function AdminDashboard() {
   let technicians = []
   let availability = []
