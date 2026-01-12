@@ -15,7 +15,11 @@ export default function AddJobModal({ onClose, onJobAdded }) {
     phone: '',
     price: '',
     notes: '',
-    status: 'Planned'
+    status: 'Planned',
+    squareFootage: '',
+    lotSize: '',
+    stories: '',
+    quoteId: ''
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState(null)
@@ -395,32 +399,160 @@ export default function AddJobModal({ onClose, onJobAdded }) {
               </div>
             </div>
 
-            {/* Price */}
-            <div>
-              <label style={{
-                display: 'block',
-                fontSize: '14px',
-                fontWeight: '600',
-                color: '#374151',
-                marginBottom: '6px'
-              }}>
-                Price ($)
-              </label>
-              <input
-                type="number"
-                value={formData.price}
-                onChange={(e) => handleChange('price', e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
+            {/* Price and Quote ID */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div>
+                <label style={{
+                  display: 'block',
                   fontSize: '14px',
-                  border: '1px solid #D1D5DB',
-                  borderRadius: '8px',
-                  boxSizing: 'border-box'
-                }}
-                placeholder="0"
-                min="0"
-              />
+                  fontWeight: '600',
+                  color: '#374151',
+                  marginBottom: '6px'
+                }}>
+                  Price ($)
+                </label>
+                <input
+                  type="number"
+                  value={formData.price}
+                  onChange={(e) => handleChange('price', e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    fontSize: '14px',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '8px',
+                    boxSizing: 'border-box'
+                  }}
+                  placeholder="0"
+                  min="0"
+                />
+              </div>
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#374151',
+                  marginBottom: '6px'
+                }}>
+                  Quote ID
+                </label>
+                <input
+                  type="text"
+                  value={formData.quoteId}
+                  onChange={(e) => handleChange('quoteId', e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    fontSize: '14px',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '8px',
+                    boxSizing: 'border-box'
+                  }}
+                  placeholder="Optional"
+                />
+              </div>
+            </div>
+
+            {/* Property Details Header */}
+            <div style={{
+              marginTop: '8px',
+              paddingTop: '16px',
+              borderTop: '1px solid #E5E7EB'
+            }}>
+              <h3 style={{
+                fontSize: '16px',
+                fontWeight: '700',
+                color: '#2A54A1',
+                margin: '0 0 12px 0'
+              }}>
+                Property Details (for pricing & scheduling)
+              </h3>
+            </div>
+
+            {/* Square Footage, Lot Size, Stories */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#374151',
+                  marginBottom: '6px'
+                }}>
+                  Square Footage
+                </label>
+                <input
+                  type="number"
+                  value={formData.squareFootage}
+                  onChange={(e) => handleChange('squareFootage', e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    fontSize: '14px',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '8px',
+                    boxSizing: 'border-box'
+                  }}
+                  placeholder="e.g., 2000"
+                  min="0"
+                />
+              </div>
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#374151',
+                  marginBottom: '6px'
+                }}>
+                  Lot Size (sq ft)
+                </label>
+                <input
+                  type="number"
+                  value={formData.lotSize}
+                  onChange={(e) => handleChange('lotSize', e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    fontSize: '14px',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '8px',
+                    boxSizing: 'border-box'
+                  }}
+                  placeholder="e.g., 5000"
+                  min="0"
+                />
+              </div>
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#374151',
+                  marginBottom: '6px'
+                }}>
+                  Stories
+                </label>
+                <select
+                  value={formData.stories}
+                  onChange={(e) => handleChange('stories', e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    fontSize: '14px',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '8px',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  <option value="">Select...</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4+">4+</option>
+                </select>
+              </div>
             </div>
 
             {/* Notes */}

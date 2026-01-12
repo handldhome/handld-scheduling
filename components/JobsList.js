@@ -287,6 +287,36 @@ export default function JobsList({ jobs, technicians }) {
                           </div>
                         </div>
                       )}
+                      {job.squareFootage && (
+                        <div>
+                          <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '4px' }}>
+                            Square Footage
+                          </div>
+                          <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>
+                            {job.squareFootage.toLocaleString()} sq ft
+                          </div>
+                        </div>
+                      )}
+                      {job.lotSize && (
+                        <div>
+                          <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '4px' }}>
+                            Lot Size
+                          </div>
+                          <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>
+                            {job.lotSize.toLocaleString()} sq ft
+                          </div>
+                        </div>
+                      )}
+                      {job.stories && (
+                        <div>
+                          <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '4px' }}>
+                            Stories
+                          </div>
+                          <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>
+                            {job.stories}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Notes */}
