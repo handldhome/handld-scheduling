@@ -108,9 +108,37 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
     handleUpdate({ date: formData.date })
   }
 
-  const handleConfirmToggle = () => {
+  const handleConfirmToggle = async () => {
     const newConfirmed = !formData.confirmed
     setFormData(prev => ({ ...prev, confirmed: newConfirmed }))
+
+    // If confirming the job, send confirmation text to customer
+    if (newConfirmed && job.phone) {
+      try {
+        const smsResponse = await fetch('/api/send-confirmation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            job: {
+              ...job,
+              date: formData.date || job.date,
+              time: formData.time || job.time
+            }
+          })
+        })
+
+        if (!smsResponse.ok) {
+          const smsError = await smsResponse.json()
+          console.error('SMS error:', smsError)
+          // Don't block confirmation if SMS fails, but alert user
+          alert('Job confirmed, but confirmation text failed to send. You may need to contact the customer manually.')
+        }
+      } catch (smsErr) {
+        console.error('SMS send error:', smsErr)
+        alert('Job confirmed, but confirmation text failed to send. You may need to contact the customer manually.')
+      }
+    }
+
     handleUpdate({ confirmed: newConfirmed })
   }
 
