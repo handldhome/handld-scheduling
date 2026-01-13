@@ -6,12 +6,18 @@ import JobEditModal from './JobEditModal'
 
 // Color mapping for service types
 const SERVICE_COLORS = {
-  'Dryer Vent Cleaning': { bg: '#DBEAFE', border: '#3B82F6', text: '#1E40AF' },
-  'Gutter Cleaning': { bg: '#D1FAE5', border: '#10B981', text: '#065F46' },
-  'Pressure Washing': { bg: '#E0E7FF', border: '#6366F1', text: '#3730A3' },
-  'Window Cleaning': { bg: '#FEF3C7', border: '#F59E0B', text: '#92400E' },
-  'AC TuneUp': { bg: '#FECACA', border: '#EF4444', text: '#991B1B' },
-  'Default': { bg: '#F3F4F6', border: '#9CA3AF', text: '#374151' }
+  'Window Washing - Interior & Exterior': { bg: '#DBEAFE', border: '#3B82F6', text: '#1E40AF', label: 'Window (Int & Ext)' },
+  'Window Washing - Exterior': { bg: '#BAE6FD', border: '#0EA5E9', text: '#0369A1', label: 'Window (Ext)' },
+  'Handyman': { bg: '#FFEDD5', border: '#F97316', text: '#9A3412', label: 'Handyman' },
+  'Gutter Cleaning': { bg: '#D1FAE5', border: '#10B981', text: '#065F46', label: 'Gutter Cleaning' },
+  'Pressure Washing - Home Exterior': { bg: '#E0E7FF', border: '#6366F1', text: '#3730A3', label: 'Pressure (Home)' },
+  'Pressure Washing - Driveway & Patio': { bg: '#C7D2FE', border: '#818CF8', text: '#4338CA', label: 'Pressure (Driveway)' },
+  'Pest Control': { bg: '#FECACA', border: '#EF4444', text: '#991B1B', label: 'Pest Control' },
+  'Trash Bin Cleaning': { bg: '#CCFBF1', border: '#14B8A6', text: '#0F766E', label: 'Trash Bin' },
+  'Outdoor Furniture Cleaning': { bg: '#FEF3C7', border: '#F59E0B', text: '#92400E', label: 'Outdoor Furniture' },
+  'Holiday Lights Install & Take Down': { bg: '#FCE7F3', border: '#EC4899', text: '#9D174D', label: 'Holiday Lights' },
+  'Home TuneUp': { bg: '#E0F2FE', border: '#0284C7', text: '#075985', label: 'Home TuneUp' },
+  'Default': { bg: '#F3F4F6', border: '#9CA3AF', text: '#374151', label: 'Other' }
 }
 
 const getServiceColor = (serviceName) => {
@@ -574,7 +580,7 @@ export default function WeeklyCalendarView({ jobs, technicians }) {
               backgroundColor: colors.bg,
               border: `2px solid ${colors.border}`
             }} />
-            <span style={{ color: '#6B7280' }}>{name}</span>
+            <span style={{ color: '#6B7280' }}>{colors.label || name}</span>
           </div>
         ))}
       </div>

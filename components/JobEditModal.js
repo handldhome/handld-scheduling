@@ -5,11 +5,17 @@ import { format, parseISO } from 'date-fns'
 
 // Color mapping for service types
 const SERVICE_COLORS = {
-  'Dryer Vent Cleaning': { bg: '#DBEAFE', border: '#3B82F6', text: '#1E40AF' },
+  'Window Washing - Interior & Exterior': { bg: '#DBEAFE', border: '#3B82F6', text: '#1E40AF' },
+  'Window Washing - Exterior': { bg: '#BAE6FD', border: '#0EA5E9', text: '#0369A1' },
+  'Handyman': { bg: '#FFEDD5', border: '#F97316', text: '#9A3412' },
   'Gutter Cleaning': { bg: '#D1FAE5', border: '#10B981', text: '#065F46' },
-  'Pressure Washing': { bg: '#E0E7FF', border: '#6366F1', text: '#3730A3' },
-  'Window Cleaning': { bg: '#FEF3C7', border: '#F59E0B', text: '#92400E' },
-  'AC TuneUp': { bg: '#FECACA', border: '#EF4444', text: '#991B1B' },
+  'Pressure Washing - Home Exterior': { bg: '#E0E7FF', border: '#6366F1', text: '#3730A3' },
+  'Pressure Washing - Driveway & Patio': { bg: '#C7D2FE', border: '#818CF8', text: '#4338CA' },
+  'Pest Control': { bg: '#FECACA', border: '#EF4444', text: '#991B1B' },
+  'Trash Bin Cleaning': { bg: '#CCFBF1', border: '#14B8A6', text: '#0F766E' },
+  'Outdoor Furniture Cleaning': { bg: '#FEF3C7', border: '#F59E0B', text: '#92400E' },
+  'Holiday Lights Install & Take Down': { bg: '#FCE7F3', border: '#EC4899', text: '#9D174D' },
+  'Home TuneUp': { bg: '#E0F2FE', border: '#0284C7', text: '#075985' },
   'Default': { bg: '#F3F4F6', border: '#9CA3AF', text: '#374151' }
 }
 
