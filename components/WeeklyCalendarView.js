@@ -27,9 +27,9 @@ const getServiceColor = (serviceName) => {
   return SERVICE_COLORS['Default']
 }
 
-// Time slots from 6AM to 8PM
+// Time slots from 7AM to 8PM
 const TIME_SLOTS = [
-  '06:00', '07:00', '08:00', '09:00', '10:00', '11:00',
+  '07:00', '08:00', '09:00', '10:00', '11:00',
   '12:00', '13:00', '14:00', '15:00', '16:00', '17:00',
   '18:00', '19:00', '20:00'
 ]
@@ -51,6 +51,32 @@ export default function WeeklyCalendarView({ jobs, technicians }) {
   )
   const [selectedJob, setSelectedJob] = useState(null)
   const [showUnscheduledPanel, setShowUnscheduledPanel] = useState(true)
+  const [draggedJob, setDraggedJob] = useState(null)
+  const [dropTarget, setDropTarget] = useState(null)
+
+  // Handle dropping a job onto a calendar slot
+  const handleDrop = async (date, time) => {
+    if (!draggedJob) return
+
+    try {
+      const response = await fetch(`/api/jobs/${draggedJob.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date, time })
+      })
+
+      if (!response.ok) throw new Error('Failed to update job')
+
+      // Refresh to show updated schedule
+      window.location.reload()
+    } catch (error) {
+      console.error('Error scheduling job:', error)
+      alert('Failed to schedule job. Please try again.')
+    }
+
+    setDraggedJob(null)
+    setDropTarget(null)
+  }
 
   // Generate 7 days for current week
   const weekDays = useMemo(() => {
@@ -286,15 +312,26 @@ export default function WeeklyCalendarView({ jobs, technicians }) {
                 {/* Day Cells */}
                 {weekDays.map(day => {
                   const slotJobs = getJobsForSlot(day.date, time)
+                  const isDropTarget = dropTarget?.date === day.date && dropTarget?.time === time
                   return (
                     <div
                       key={`${day.date}-${time}`}
+                      onDragOver={(e) => {
+                        e.preventDefault()
+                        setDropTarget({ date: day.date, time })
+                      }}
+                      onDragLeave={() => setDropTarget(null)}
+                      onDrop={(e) => {
+                        e.preventDefault()
+                        handleDrop(day.date, time)
+                      }}
                       style={{
                         position: 'relative',
                         borderRight: '1px solid #E5E7EB',
-                        backgroundColor: day.isToday ? '#FAFBFF' : 'transparent',
+                        backgroundColor: isDropTarget ? '#DBEAFE' : day.isToday ? '#FAFBFF' : 'transparent',
                         minHeight: `${SLOT_HEIGHT}px`,
-                        padding: '2px'
+                        padding: '2px',
+                        transition: 'background-color 0.15s'
                       }}
                     >
                       {slotJobs.map((job, idx) => {
@@ -402,13 +439,31 @@ export default function WeeklyCalendarView({ jobs, technicians }) {
               overflowY: 'auto',
               padding: '8px'
             }}>
+              <div style={{
+                padding: '8px',
+                marginBottom: '8px',
+                backgroundColor: '#F3F4F6',
+                borderRadius: '4px',
+                fontSize: '11px',
+                color: '#6B7280',
+                textAlign: 'center'
+              }}>
+                Drag jobs to schedule them
+              </div>
               {unscheduledJobs.map(job => {
                 const colors = getServiceColor(job.serviceName)
                 const techName = getTechName(job.assignedTech)
+                const isDragging = draggedJob?.id === job.id
 
                 return (
                   <div
                     key={job.id}
+                    draggable
+                    onDragStart={() => setDraggedJob(job)}
+                    onDragEnd={() => {
+                      setDraggedJob(null)
+                      setDropTarget(null)
+                    }}
                     onClick={() => setSelectedJob(job)}
                     style={{
                       padding: '10px',
@@ -416,11 +471,13 @@ export default function WeeklyCalendarView({ jobs, technicians }) {
                       borderRadius: '6px',
                       backgroundColor: colors.bg,
                       borderLeft: `4px solid ${colors.border}`,
-                      cursor: 'pointer',
-                      transition: 'all 0.2s'
+                      cursor: 'grab',
+                      transition: 'all 0.2s',
+                      opacity: isDragging ? 0.5 : 1,
+                      transform: isDragging ? 'scale(0.98)' : 'scale(1)'
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)'
+                      if (!isDragging) e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)'
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.boxShadow = 'none'
