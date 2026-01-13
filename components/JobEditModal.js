@@ -3,33 +3,40 @@
 import { useState } from 'react'
 import { format, parseISO } from 'date-fns'
 
-// Color mapping for service types
-const SERVICE_COLORS = {
-  'Window Washing - Interior & Exterior': { bg: '#DBEAFE', border: '#3B82F6', text: '#1E40AF' },
-  'Window Washing - Exterior': { bg: '#BAE6FD', border: '#0EA5E9', text: '#0369A1' },
-  'Handyman': { bg: '#FFEDD5', border: '#F97316', text: '#9A3412' },
-  'Gutter Cleaning': { bg: '#D1FAE5', border: '#10B981', text: '#065F46' },
-  'Pressure Washing - Home Exterior': { bg: '#E0E7FF', border: '#6366F1', text: '#3730A3' },
-  'Pressure Washing - Driveway & Patio': { bg: '#C7D2FE', border: '#818CF8', text: '#4338CA' },
-  'Pest Control': { bg: '#FECACA', border: '#EF4444', text: '#991B1B' },
-  'Trash Bin Cleaning': { bg: '#CCFBF1', border: '#14B8A6', text: '#0F766E' },
-  'Outdoor Furniture Cleaning': { bg: '#FEF3C7', border: '#F59E0B', text: '#92400E' },
-  'Holiday Lights Install & Take Down': { bg: '#FCE7F3', border: '#EC4899', text: '#9D174D' },
-  'Home TuneUp': { bg: '#E0F2FE', border: '#0284C7', text: '#075985' },
-  'Default': { bg: '#F3F4F6', border: '#9CA3AF', text: '#374151' }
+// Color palette for dynamic service assignment
+const COLOR_PALETTE = [
+  { bg: '#DBEAFE', border: '#3B82F6', text: '#1E40AF' }, // Blue
+  { bg: '#D1FAE5', border: '#10B981', text: '#065F46' }, // Green
+  { bg: '#E0E7FF', border: '#6366F1', text: '#3730A3' }, // Purple
+  { bg: '#FFEDD5', border: '#F97316', text: '#9A3412' }, // Orange
+  { bg: '#FECACA', border: '#EF4444', text: '#991B1B' }, // Red
+  { bg: '#CCFBF1', border: '#14B8A6', text: '#0F766E' }, // Teal
+  { bg: '#FEF3C7', border: '#F59E0B', text: '#92400E' }, // Amber
+  { bg: '#FCE7F3', border: '#EC4899', text: '#9D174D' }, // Pink
+  { bg: '#E0F2FE', border: '#0284C7', text: '#075985' }, // Sky
+  { bg: '#C7D2FE', border: '#818CF8', text: '#4338CA' }, // Indigo
+  { bg: '#BAE6FD', border: '#0EA5E9', text: '#0369A1' }, // Light Blue
+  { bg: '#FED7AA', border: '#EA580C', text: '#7C2D12' }, // Light Orange
+]
+
+const DEFAULT_COLOR = { bg: '#F3F4F6', border: '#9CA3AF', text: '#374151' }
+
+// Generate a consistent hash for a string to get same color each time
+const hashString = (str) => {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash
+  }
+  return Math.abs(hash)
 }
 
+// Get color for a service - uses hash to ensure same service always gets same color
 const getServiceColor = (serviceName) => {
-  if (!serviceName) return SERVICE_COLORS['Default']
-  if (SERVICE_COLORS[serviceName]) return SERVICE_COLORS[serviceName]
-
-  for (const [key, value] of Object.entries(SERVICE_COLORS)) {
-    if (serviceName.toLowerCase().includes(key.toLowerCase()) ||
-        key.toLowerCase().includes(serviceName.toLowerCase())) {
-      return value
-    }
-  }
-  return SERVICE_COLORS['Default']
+  if (!serviceName) return DEFAULT_COLOR
+  const index = hashString(serviceName) % COLOR_PALETTE.length
+  return COLOR_PALETTE[index]
 }
 
 // Time slots from 7AM to 8PM

@@ -4,33 +4,62 @@ import { useState, useMemo } from 'react'
 import { format, addDays, startOfWeek, addWeeks, subWeeks, parseISO, isToday } from 'date-fns'
 import JobEditModal from './JobEditModal'
 
-// Color mapping for service types
-const SERVICE_COLORS = {
-  'Window Washing - Interior & Exterior': { bg: '#DBEAFE', border: '#3B82F6', text: '#1E40AF', label: 'Window (Int & Ext)' },
-  'Window Washing - Exterior': { bg: '#BAE6FD', border: '#0EA5E9', text: '#0369A1', label: 'Window (Ext)' },
-  'Handyman': { bg: '#FFEDD5', border: '#F97316', text: '#9A3412', label: 'Handyman' },
-  'Gutter Cleaning': { bg: '#D1FAE5', border: '#10B981', text: '#065F46', label: 'Gutter Cleaning' },
-  'Pressure Washing - Home Exterior': { bg: '#E0E7FF', border: '#6366F1', text: '#3730A3', label: 'Pressure (Home)' },
-  'Pressure Washing - Driveway & Patio': { bg: '#C7D2FE', border: '#818CF8', text: '#4338CA', label: 'Pressure (Driveway)' },
-  'Pest Control': { bg: '#FECACA', border: '#EF4444', text: '#991B1B', label: 'Pest Control' },
-  'Trash Bin Cleaning': { bg: '#CCFBF1', border: '#14B8A6', text: '#0F766E', label: 'Trash Bin' },
-  'Outdoor Furniture Cleaning': { bg: '#FEF3C7', border: '#F59E0B', text: '#92400E', label: 'Outdoor Furniture' },
-  'Holiday Lights Install & Take Down': { bg: '#FCE7F3', border: '#EC4899', text: '#9D174D', label: 'Holiday Lights' },
-  'Home TuneUp': { bg: '#E0F2FE', border: '#0284C7', text: '#075985', label: 'Home TuneUp' },
-  'Default': { bg: '#F3F4F6', border: '#9CA3AF', text: '#374151', label: 'Other' }
+// Color palette for dynamic service assignment
+const COLOR_PALETTE = [
+  { bg: '#DBEAFE', border: '#3B82F6', text: '#1E40AF' }, // Blue
+  { bg: '#D1FAE5', border: '#10B981', text: '#065F46' }, // Green
+  { bg: '#E0E7FF', border: '#6366F1', text: '#3730A3' }, // Purple
+  { bg: '#FFEDD5', border: '#F97316', text: '#9A3412' }, // Orange
+  { bg: '#FECACA', border: '#EF4444', text: '#991B1B' }, // Red
+  { bg: '#CCFBF1', border: '#14B8A6', text: '#0F766E' }, // Teal
+  { bg: '#FEF3C7', border: '#F59E0B', text: '#92400E' }, // Amber
+  { bg: '#FCE7F3', border: '#EC4899', text: '#9D174D' }, // Pink
+  { bg: '#E0F2FE', border: '#0284C7', text: '#075985' }, // Sky
+  { bg: '#C7D2FE', border: '#818CF8', text: '#4338CA' }, // Indigo
+  { bg: '#BAE6FD', border: '#0EA5E9', text: '#0369A1' }, // Light Blue
+  { bg: '#FED7AA', border: '#EA580C', text: '#7C2D12' }, // Light Orange
+]
+
+const DEFAULT_COLOR = { bg: '#F3F4F6', border: '#9CA3AF', text: '#374151' }
+
+// Generate a consistent hash for a string to get same color each time
+const hashString = (str) => {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash
+  }
+  return Math.abs(hash)
 }
 
+// Get color for a service - uses hash to ensure same service always gets same color
 const getServiceColor = (serviceName) => {
-  if (!serviceName) return SERVICE_COLORS['Default']
-  if (SERVICE_COLORS[serviceName]) return SERVICE_COLORS[serviceName]
+  if (!serviceName) return DEFAULT_COLOR
+  const index = hashString(serviceName) % COLOR_PALETTE.length
+  return COLOR_PALETTE[index]
+}
 
-  for (const [key, value] of Object.entries(SERVICE_COLORS)) {
-    if (serviceName.toLowerCase().includes(key.toLowerCase()) ||
-        key.toLowerCase().includes(serviceName.toLowerCase())) {
-      return value
-    }
+// Abbreviate long service names for legend
+const abbreviateServiceName = (name) => {
+  if (!name) return 'Other'
+  if (name.length <= 20) return name
+
+  // Common abbreviations
+  const abbrevs = {
+    'Interior & Exterior': 'Int & Ext',
+    'Exterior': 'Ext',
+    'Home Exterior': 'Home',
+    'Driveway & Patio': 'Driveway',
+    'Install & Take Down': '',
   }
-  return SERVICE_COLORS['Default']
+
+  let abbreviated = name
+  for (const [full, short] of Object.entries(abbrevs)) {
+    abbreviated = abbreviated.replace(full, short)
+  }
+
+  return abbreviated.trim().replace(/\s+-\s*$/, '')
 }
 
 // Time slots from 7AM to 8PM
@@ -125,6 +154,15 @@ export default function WeeklyCalendarView({ jobs, technicians }) {
 
     return { scheduledJobsByDay: byDay, unscheduledJobs: unscheduled }
   }, [jobs, weekDays])
+
+  // Extract unique service names from all jobs for the legend
+  const uniqueServices = useMemo(() => {
+    const services = new Set()
+    jobs.forEach(job => {
+      if (job.serviceName) services.add(job.serviceName)
+    })
+    return Array.from(services).sort()
+  }, [jobs])
 
   // Get jobs for a specific time slot
   const getJobsForSlot = (date, slotTime) => {
@@ -571,18 +609,21 @@ export default function WeeklyCalendarView({ jobs, technicians }) {
           }} />
           <span style={{ color: '#6B7280' }}>Confirmed</span>
         </div>
-        {Object.entries(SERVICE_COLORS).filter(([key]) => key !== 'Default').map(([name, colors]) => (
-          <div key={name} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{
-              width: '12px',
-              height: '12px',
-              borderRadius: '2px',
-              backgroundColor: colors.bg,
-              border: `2px solid ${colors.border}`
-            }} />
-            <span style={{ color: '#6B7280' }}>{colors.label || name}</span>
-          </div>
-        ))}
+        {uniqueServices.map(serviceName => {
+          const colors = getServiceColor(serviceName)
+          return (
+            <div key={serviceName} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{
+                width: '12px',
+                height: '12px',
+                borderRadius: '2px',
+                backgroundColor: colors.bg,
+                border: `2px solid ${colors.border}`
+              }} />
+              <span style={{ color: '#6B7280' }}>{abbreviateServiceName(serviceName)}</span>
+            </div>
+          )
+        })}
       </div>
 
       {/* Job Edit Modal */}
