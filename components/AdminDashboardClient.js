@@ -4,9 +4,10 @@ import { useState } from 'react'
 import AvailabilityCalendar from './AvailabilityCalendar'
 import JobsList from './JobsList'
 import AddJobModal from './AddJobModal'
+import WeeklyCalendarView from './WeeklyCalendarView'
 
 export default function AdminDashboardClient({ technicians, availability, jobs }) {
-  const [activeTab, setActiveTab] = useState('jobs') // Default to jobs tab
+  const [activeTab, setActiveTab] = useState('schedule') // Default to schedule view
   const [showAddJobModal, setShowAddJobModal] = useState(false)
 
   const tabButtonStyle = (isActive) => ({
@@ -35,43 +36,29 @@ export default function AdminDashboardClient({ technicians, availability, jobs }
         <div style={{
           backgroundColor: 'white',
           borderRadius: '16px',
-          padding: '30px',
+          padding: '16px 24px',
           boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
           marginBottom: '20px',
-          textAlign: 'center'
+          display: 'flex',
+          alignItems: 'center',
+          gap: '16px'
         }}>
           <img
             src="/logo-dark.png"
-            alt="Handld Home Services"
+            alt="Handld"
             style={{
-              width: '60px',
-              height: '60px',
-              margin: '0 auto 16px'
+              width: '40px',
+              height: '40px'
             }}
           />
-          <div style={{
-            fontSize: '14px',
-            fontWeight: '600',
-            color: '#2A54A1',
-            marginBottom: '20px',
-            letterSpacing: '0.5px'
-          }}>
-            HANDLD HOME SERVICES
-          </div>
           <h1 style={{
             color: '#2A54A1',
-            marginBottom: '10px',
-            fontSize: '32px',
+            margin: 0,
+            fontSize: '24px',
             fontWeight: '800'
           }}>
-            Admin Dashboard
+            Scheduling Dashboard
           </h1>
-          <p style={{
-            color: '#4B5563',
-            fontSize: '17px'
-          }}>
-            Manage jobs, technicians, and scheduling
-          </p>
         </div>
 
         {/* Tabs */}
@@ -87,16 +74,22 @@ export default function AdminDashboardClient({ technicians, availability, jobs }
         }}>
           <div style={{ display: 'flex' }}>
             <button
+              onClick={() => setActiveTab('schedule')}
+              style={tabButtonStyle(activeTab === 'schedule')}
+            >
+              Schedule
+            </button>
+            <button
               onClick={() => setActiveTab('jobs')}
               style={tabButtonStyle(activeTab === 'jobs')}
             >
-              📋 Jobs
+              Jobs List
             </button>
             <button
               onClick={() => setActiveTab('availability')}
               style={tabButtonStyle(activeTab === 'availability')}
             >
-              📅 Tech Availability
+              Tech Availability
             </button>
           </div>
 
@@ -127,6 +120,10 @@ export default function AdminDashboardClient({ technicians, availability, jobs }
           padding: '20px',
           boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
         }}>
+          {activeTab === 'schedule' && (
+            <WeeklyCalendarView jobs={jobs} technicians={technicians} />
+          )}
+
           {activeTab === 'jobs' && (
             <JobsList jobs={jobs} technicians={technicians} />
           )}
