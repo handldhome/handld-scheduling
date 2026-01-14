@@ -20,12 +20,18 @@ export async function POST(request) {
   try {
     const jobData = await request.json()
 
-    // Validate required fields
-    if (!jobData.serviceName || !jobData.date || !jobData.customerName) {
+    // Validate required fields (date is optional - defaults to today)
+    if (!jobData.serviceName || !jobData.customerName) {
       return Response.json(
-        { error: 'Missing required fields: serviceName, date, customerName' },
+        { error: 'Missing required fields: serviceName, customerName' },
         { status: 400 }
       )
+    }
+
+    // Default date to today if not provided
+    if (!jobData.date) {
+      const today = new Date()
+      jobData.date = today.toISOString().split('T')[0] // Format: YYYY-MM-DD
     }
 
     const result = await createJob(jobData)
