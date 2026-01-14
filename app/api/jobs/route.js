@@ -43,7 +43,12 @@ export async function POST(request) {
   } catch (error) {
     console.error('Error creating job:', error)
     return Response.json(
-      { error: 'Failed to create job', details: error.message },
+      {
+        error: 'Failed to create job',
+        details: error.message,
+        airtableError: error.error || null,
+        statusCode: error.statusCode || null
+      },
       { status: 500 }
     )
   }
