@@ -2,24 +2,45 @@
 
 import { useState } from 'react'
 
+// Available services matching Typeform
+const SERVICES = [
+  'Window Washing - Interior & Exterior',
+  'Window Washing - Exterior',
+  'Handyman',
+  'Gutter Cleaning',
+  'Pressure Washing - Home Exterior',
+  'Pressure Washing - Driveway & Patio',
+  'Pest Control',
+  'Trash Bin Cleaning',
+  'Outdoor Furniture Cleaning',
+  'Holiday Lights Install & Take Down',
+  'Home TuneUp'
+]
+
+// Service area cities
+const CITIES = [
+  'Pasadena',
+  'Glendale',
+  'La Cañada',
+  'San Marino',
+  'South Pasadena',
+  'Other'
+]
+
 export default function AddJobModal({ onClose, onJobAdded }) {
   const [formData, setFormData] = useState({
     serviceName: '',
-    date: '',
-    customerName: '',
-    firstName: '',
-    address: '',
-    city: 'Pasadena',
-    zipCode: '',
-    email: '',
-    phone: '',
-    price: '',
-    notes: '',
-    status: 'Planned',
+    stories: '',
     squareFootage: '',
     lotSize: '',
-    stories: '',
-    quoteId: ''
+    firstName: '',
+    lastName: '',
+    phone: '',
+    email: '',
+    city: '',
+    address: '',
+    zipCode: '',
+    notes: ''
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState(null)
@@ -34,10 +55,28 @@ export default function AddJobModal({ onClose, onJobAdded }) {
     setIsSubmitting(true)
 
     try {
+      // Build customer name from first + last
+      const customerName = `${formData.firstName} ${formData.lastName}`.trim()
+
       const response = await fetch('/api/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          serviceName: formData.serviceName,
+          customerName,
+          firstName: formData.firstName,
+          phone: formData.phone,
+          email: formData.email,
+          city: formData.city,
+          address: formData.address,
+          zipCode: formData.zipCode,
+          squareFootage: formData.squareFootage,
+          lotSize: formData.lotSize,
+          stories: formData.stories,
+          notes: formData.notes,
+          status: 'Planned',
+          quoteApproved: true // Auto-approve since submitted through admin
+        })
       })
 
       const data = await response.json()
@@ -52,6 +91,28 @@ export default function AddJobModal({ onClose, onJobAdded }) {
       setError(err.message)
       setIsSubmitting(false)
     }
+  }
+
+  const labelStyle = {
+    display: 'block',
+    fontSize: '14px',
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: '6px'
+  }
+
+  const inputStyle = {
+    width: '100%',
+    padding: '10px 12px',
+    fontSize: '14px',
+    border: '1px solid #D1D5DB',
+    borderRadius: '8px',
+    boxSizing: 'border-box'
+  }
+
+  const selectStyle = {
+    ...inputStyle,
+    backgroundColor: 'white'
   }
 
   return (
@@ -85,14 +146,23 @@ export default function AddJobModal({ onClose, onJobAdded }) {
           alignItems: 'center',
           marginBottom: '24px'
         }}>
-          <h2 style={{
-            fontSize: '24px',
-            fontWeight: '800',
-            color: '#2A54A1',
-            margin: 0
-          }}>
-            Add New Job
-          </h2>
+          <div>
+            <h2 style={{
+              fontSize: '24px',
+              fontWeight: '800',
+              color: '#2A54A1',
+              margin: 0
+            }}>
+              Add New Job
+            </h2>
+            <p style={{
+              fontSize: '13px',
+              color: '#6B7280',
+              margin: '4px 0 0 0'
+            }}>
+              For verbally approved jobs - auto-marks as Quote Approved
+            </p>
+          </div>
           <button
             onClick={onClose}
             disabled={isSubmitting}
@@ -126,466 +196,222 @@ export default function AddJobModal({ onClose, onJobAdded }) {
         {/* Form */}
         <form onSubmit={handleSubmit}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {/* Service Name */}
+
+            {/* Service Selection */}
             <div>
-              <label style={{
-                display: 'block',
-                fontSize: '14px',
-                fontWeight: '600',
-                color: '#374151',
-                marginBottom: '6px'
-              }}>
-                Service Name *
-              </label>
-              <input
-                type="text"
+              <label style={labelStyle}>Service *</label>
+              <select
                 required
                 value={formData.serviceName}
                 onChange={(e) => handleChange('serviceName', e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  fontSize: '14px',
-                  border: '1px solid #D1D5DB',
-                  borderRadius: '8px',
-                  boxSizing: 'border-box'
-                }}
-                placeholder="e.g., Dryer Vent Cleaning"
-              />
+                style={selectStyle}
+              >
+                <option value="">Select a service...</option>
+                {SERVICES.map(service => (
+                  <option key={service} value={service}>{service}</option>
+                ))}
+              </select>
             </div>
 
-            {/* Date and Status */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: '#374151',
-                  marginBottom: '6px'
-                }}>
-                  Date *
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={formData.date}
-                  onChange={(e) => handleChange('date', e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    fontSize: '14px',
-                    border: '1px solid #D1D5DB',
-                    borderRadius: '8px',
-                    boxSizing: 'border-box'
-                  }}
-                />
-              </div>
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: '#374151',
-                  marginBottom: '6px'
-                }}>
-                  Status
-                </label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => handleChange('status', e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    fontSize: '14px',
-                    border: '1px solid #D1D5DB',
-                    borderRadius: '8px',
-                    boxSizing: 'border-box'
-                  }}
-                >
-                  <option value="Planned">Planned</option>
-                  <option value="Needs Review">Needs Review</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Customer Name and First Name */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: '#374151',
-                  marginBottom: '6px'
-                }}>
-                  Customer Full Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.customerName}
-                  onChange={(e) => handleChange('customerName', e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    fontSize: '14px',
-                    border: '1px solid #D1D5DB',
-                    borderRadius: '8px',
-                    boxSizing: 'border-box'
-                  }}
-                  placeholder="John Smith"
-                />
-              </div>
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: '#374151',
-                  marginBottom: '6px'
-                }}>
-                  First Name
-                </label>
-                <input
-                  type="text"
-                  value={formData.firstName}
-                  onChange={(e) => handleChange('firstName', e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    fontSize: '14px',
-                    border: '1px solid #D1D5DB',
-                    borderRadius: '8px',
-                    boxSizing: 'border-box'
-                  }}
-                  placeholder="John"
-                />
-              </div>
-            </div>
-
-            {/* Address */}
-            <div>
-              <label style={{
-                display: 'block',
-                fontSize: '14px',
-                fontWeight: '600',
-                color: '#374151',
-                marginBottom: '6px'
-              }}>
-                Address
-              </label>
-              <input
-                type="text"
-                value={formData.address}
-                onChange={(e) => handleChange('address', e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  fontSize: '14px',
-                  border: '1px solid #D1D5DB',
-                  borderRadius: '8px',
-                  boxSizing: 'border-box'
-                }}
-                placeholder="123 Main St"
-              />
-            </div>
-
-            {/* City and Zip */}
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px' }}>
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: '#374151',
-                  marginBottom: '6px'
-                }}>
-                  City
-                </label>
-                <input
-                  type="text"
-                  value={formData.city}
-                  onChange={(e) => handleChange('city', e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    fontSize: '14px',
-                    border: '1px solid #D1D5DB',
-                    borderRadius: '8px',
-                    boxSizing: 'border-box'
-                  }}
-                  placeholder="Pasadena"
-                />
-              </div>
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: '#374151',
-                  marginBottom: '6px'
-                }}>
-                  Zip Code
-                </label>
-                <input
-                  type="text"
-                  value={formData.zipCode}
-                  onChange={(e) => handleChange('zipCode', e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    fontSize: '14px',
-                    border: '1px solid #D1D5DB',
-                    borderRadius: '8px',
-                    boxSizing: 'border-box'
-                  }}
-                  placeholder="91101"
-                />
-              </div>
-            </div>
-
-            {/* Email and Phone */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: '#374151',
-                  marginBottom: '6px'
-                }}>
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => handleChange('email', e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    fontSize: '14px',
-                    border: '1px solid #D1D5DB',
-                    borderRadius: '8px',
-                    boxSizing: 'border-box'
-                  }}
-                  placeholder="john@example.com"
-                />
-              </div>
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: '#374151',
-                  marginBottom: '6px'
-                }}>
-                  Phone
-                </label>
-                <input
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => handleChange('phone', e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    fontSize: '14px',
-                    border: '1px solid #D1D5DB',
-                    borderRadius: '8px',
-                    boxSizing: 'border-box'
-                  }}
-                  placeholder="(626) 555-1234"
-                />
-              </div>
-            </div>
-
-            {/* Price and Quote ID */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: '#374151',
-                  marginBottom: '6px'
-                }}>
-                  Price ($)
-                </label>
-                <input
-                  type="number"
-                  value={formData.price}
-                  onChange={(e) => handleChange('price', e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    fontSize: '14px',
-                    border: '1px solid #D1D5DB',
-                    borderRadius: '8px',
-                    boxSizing: 'border-box'
-                  }}
-                  placeholder="0"
-                  min="0"
-                />
-              </div>
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: '#374151',
-                  marginBottom: '6px'
-                }}>
-                  Quote ID
-                </label>
-                <input
-                  type="text"
-                  value={formData.quoteId}
-                  onChange={(e) => handleChange('quoteId', e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    fontSize: '14px',
-                    border: '1px solid #D1D5DB',
-                    borderRadius: '8px',
-                    boxSizing: 'border-box'
-                  }}
-                  placeholder="Optional"
-                />
-              </div>
-            </div>
-
-            {/* Property Details Header */}
+            {/* Property Details */}
             <div style={{
-              marginTop: '8px',
-              paddingTop: '16px',
-              borderTop: '1px solid #E5E7EB'
+              padding: '16px',
+              backgroundColor: '#F9FAFB',
+              borderRadius: '8px',
+              border: '1px solid #E5E7EB'
             }}>
               <h3 style={{
-                fontSize: '16px',
+                fontSize: '14px',
                 fontWeight: '700',
                 color: '#2A54A1',
                 margin: '0 0 12px 0'
               }}>
-                Property Details (for pricing & scheduling)
+                Property Details
               </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={labelStyle}>Stories *</label>
+                  <select
+                    required
+                    value={formData.stories}
+                    onChange={(e) => handleChange('stories', e.target.value)}
+                    style={selectStyle}
+                  >
+                    <option value="">Select...</option>
+                    <option value="One">One</option>
+                    <option value="Two">Two</option>
+                    <option value="Three">Three</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={labelStyle}>Sq. Footage *</label>
+                  <select
+                    required
+                    value={formData.squareFootage}
+                    onChange={(e) => handleChange('squareFootage', e.target.value)}
+                    style={selectStyle}
+                  >
+                    <option value="">Select...</option>
+                    <option value="Less than 1,600 sq. feet">&lt; 1,600</option>
+                    <option value="1,600-2,500 sq. feet">1,600-2,500</option>
+                    <option value="2,500-4,500 sq. feet">2,500-4,500</option>
+                    <option value="4,500+ sq. feet">4,500+</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={labelStyle}>Lot Size *</label>
+                  <select
+                    required
+                    value={formData.lotSize}
+                    onChange={(e) => handleChange('lotSize', e.target.value)}
+                    style={selectStyle}
+                  >
+                    <option value="">Select...</option>
+                    <option value="Less than 5,000 sq. feet">&lt; 5,000</option>
+                    <option value="5,000-10,000 sq. feet">5,000-10,000</option>
+                    <option value="10,000-20,000 sq. feet">10,000-20,000</option>
+                    <option value="Greater than 20,000 sq. feet">&gt; 20,000</option>
+                  </select>
+                </div>
+              </div>
             </div>
 
-            {/* Square Footage, Lot Size, Stories */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: '#374151',
-                  marginBottom: '6px'
-                }}>
-                  Square Footage
-                </label>
-                <select
-                  value={formData.squareFootage}
-                  onChange={(e) => handleChange('squareFootage', e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    fontSize: '14px',
-                    border: '1px solid #D1D5DB',
-                    borderRadius: '8px',
-                    boxSizing: 'border-box'
-                  }}
-                >
-                  <option value="">Select...</option>
-                  <option value="Less than 1,600 sq. feet">Less than 1,600 sq. feet</option>
-                  <option value="1,600-2,500 sq. feet">1,600-2,500 sq. feet</option>
-                  <option value="2,500-4,500 sq. feet">2,500-4,500 sq. feet</option>
-                  <option value="4,500+ sq. feet">4,500+ sq. feet</option>
-                </select>
+            {/* Customer Info */}
+            <div style={{
+              padding: '16px',
+              backgroundColor: '#F9FAFB',
+              borderRadius: '8px',
+              border: '1px solid #E5E7EB'
+            }}>
+              <h3 style={{
+                fontSize: '14px',
+                fontWeight: '700',
+                color: '#2A54A1',
+                margin: '0 0 12px 0'
+              }}>
+                Customer Information
+              </h3>
+
+              {/* Name */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                <div>
+                  <label style={labelStyle}>First Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.firstName}
+                    onChange={(e) => handleChange('firstName', e.target.value)}
+                    style={inputStyle}
+                    placeholder="John"
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>Last Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.lastName}
+                    onChange={(e) => handleChange('lastName', e.target.value)}
+                    style={inputStyle}
+                    placeholder="Smith"
+                  />
+                </div>
               </div>
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: '#374151',
-                  marginBottom: '6px'
-                }}>
-                  Lot Size
-                </label>
-                <select
-                  value={formData.lotSize}
-                  onChange={(e) => handleChange('lotSize', e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    fontSize: '14px',
-                    border: '1px solid #D1D5DB',
-                    borderRadius: '8px',
-                    boxSizing: 'border-box'
-                  }}
-                >
-                  <option value="">Select...</option>
-                  <option value="Less than 5,000 sq. feet">Less than 5,000 sq. feet</option>
-                  <option value="5,000-10,000 sq. feet">5,000-10,000 sq. feet</option>
-                  <option value="10,000-20,000 sq. feet">10,000-20,000 sq. feet</option>
-                  <option value="Greater than 20,000 sq. feet">Greater than 20,000 sq. feet</option>
-                </select>
+
+              {/* Phone & Email */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={labelStyle}>Phone *</label>
+                  <input
+                    type="tel"
+                    required
+                    value={formData.phone}
+                    onChange={(e) => handleChange('phone', e.target.value)}
+                    style={inputStyle}
+                    placeholder="(626) 555-1234"
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>Email</label>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => handleChange('email', e.target.value)}
+                    style={inputStyle}
+                    placeholder="Optional"
+                  />
+                </div>
               </div>
+            </div>
+
+            {/* Address */}
+            <div style={{
+              padding: '16px',
+              backgroundColor: '#F9FAFB',
+              borderRadius: '8px',
+              border: '1px solid #E5E7EB'
+            }}>
+              <h3 style={{
+                fontSize: '14px',
+                fontWeight: '700',
+                color: '#2A54A1',
+                margin: '0 0 12px 0'
+              }}>
+                Address
+              </h3>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                <div>
+                  <label style={labelStyle}>City *</label>
+                  <select
+                    required
+                    value={formData.city}
+                    onChange={(e) => handleChange('city', e.target.value)}
+                    style={selectStyle}
+                  >
+                    <option value="">Select city...</option>
+                    {CITIES.map(city => (
+                      <option key={city} value={city}>{city}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={labelStyle}>Zip Code</label>
+                  <input
+                    type="text"
+                    value={formData.zipCode}
+                    onChange={(e) => handleChange('zipCode', e.target.value)}
+                    style={inputStyle}
+                    placeholder="Optional"
+                  />
+                </div>
+              </div>
+
               <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: '#374151',
-                  marginBottom: '6px'
-                }}>
-                  Stories
-                </label>
-                <select
-                  value={formData.stories}
-                  onChange={(e) => handleChange('stories', e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    fontSize: '14px',
-                    border: '1px solid #D1D5DB',
-                    borderRadius: '8px',
-                    boxSizing: 'border-box'
-                  }}
-                >
-                  <option value="">Select...</option>
-                  <option value="One">One</option>
-                  <option value="Two">Two</option>
-                  <option value="Three">Three</option>
-                </select>
+                <label style={labelStyle}>Street Address</label>
+                <input
+                  type="text"
+                  value={formData.address}
+                  onChange={(e) => handleChange('address', e.target.value)}
+                  style={inputStyle}
+                  placeholder="Optional - 123 Main St"
+                />
               </div>
             </div>
 
             {/* Notes */}
             <div>
-              <label style={{
-                display: 'block',
-                fontSize: '14px',
-                fontWeight: '600',
-                color: '#374151',
-                marginBottom: '6px'
-              }}>
-                Notes
-              </label>
+              <label style={labelStyle}>Notes</label>
               <textarea
                 value={formData.notes}
                 onChange={(e) => handleChange('notes', e.target.value)}
-                rows={3}
+                rows={2}
                 style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  fontSize: '14px',
-                  border: '1px solid #D1D5DB',
-                  borderRadius: '8px',
-                  boxSizing: 'border-box',
+                  ...inputStyle,
                   fontFamily: 'inherit',
                   resize: 'vertical'
                 }}
-                placeholder="Additional details..."
+                placeholder="Any additional details..."
               />
             </div>
           </div>
