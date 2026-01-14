@@ -58,24 +58,19 @@ export default function AddJobModal({ onClose, onJobAdded }) {
       // Build customer name from first + last
       const customerName = `${formData.firstName} ${formData.lastName}`.trim()
 
-      const response = await fetch('/api/jobs', {
+      const response = await fetch('/api/quote-requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           serviceName: formData.serviceName,
-          customerName,
           firstName: formData.firstName,
+          lastName: formData.lastName,
           phone: formData.phone,
           email: formData.email,
           city: formData.city,
-          address: formData.address,
-          zipCode: formData.zipCode,
           squareFootage: formData.squareFootage,
           lotSize: formData.lotSize,
-          stories: formData.stories,
-          notes: formData.notes,
-          status: 'Planned',
-          quoteApproved: true // Auto-approve since submitted through admin
+          stories: formData.stories
         })
       })
 

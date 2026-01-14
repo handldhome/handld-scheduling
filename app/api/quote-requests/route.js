@@ -1,0 +1,33 @@
+import { createQuoteRequest } from '@/lib/airtable'
+
+export async function POST(request) {
+  try {
+    const data = await request.json()
+
+    // Validate required fields
+    if (!data.serviceName || !data.firstName || !data.lastName || !data.phone || !data.city) {
+      return Response.json(
+        { error: 'Missing required fields: service, first name, last name, phone, city' },
+        { status: 400 }
+      )
+    }
+
+    const result = await createQuoteRequest(data)
+
+    return Response.json({
+      success: true,
+      quoteRequestId: result.id
+    })
+  } catch (error) {
+    console.error('Error creating quote request:', error)
+    return Response.json(
+      {
+        error: 'Failed to create quote request',
+        details: error.message,
+        airtableError: error.error || null,
+        statusCode: error.statusCode || null
+      },
+      { status: 500 }
+    )
+  }
+}
