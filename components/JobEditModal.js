@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { format, parseISO } from 'date-fns'
 
 // Color palette for dynamic service assignment
@@ -62,8 +62,29 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
     assignedTech: job.assignedTech?.[0] || null,
     time: job.time || '',
     confirmed: job.confirmed || false,
-    date: job.date ? format(parseISO(job.date), 'yyyy-MM-dd') : ''
+    date: job.date ? format(parseISO(job.date), 'yyyy-MM-dd') : '',
+    equipment: job.equipment || []
   })
+  const [equipmentOptions, setEquipmentOptions] = useState([])
+  const [loadingEquipment, setLoadingEquipment] = useState(true)
+
+  // Fetch equipment options on mount
+  useEffect(() => {
+    const fetchEquipmentOptions = async () => {
+      try {
+        const response = await fetch('/api/equipment-options')
+        if (response.ok) {
+          const data = await response.json()
+          setEquipmentOptions(data.options || [])
+        }
+      } catch (err) {
+        console.error('Failed to fetch equipment options:', err)
+      } finally {
+        setLoadingEquipment(false)
+      }
+    }
+    fetchEquipmentOptions()
+  }, [])
 
   const colors = getServiceColor(job.serviceName)
 
@@ -140,6 +161,17 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
     }
 
     handleUpdate({ confirmed: newConfirmed })
+  }
+
+  const handleEquipmentToggle = (equipmentName) => {
+    const newEquipment = formData.equipment.includes(equipmentName)
+      ? formData.equipment.filter(e => e !== equipmentName)
+      : [...formData.equipment, equipmentName]
+    setFormData(prev => ({ ...prev, equipment: newEquipment }))
+  }
+
+  const handleSaveEquipment = () => {
+    handleUpdate({ equipment: formData.equipment })
   }
 
   const getTechName = (techId) => {
@@ -429,6 +461,71 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
                 )
               })}
             </div>
+          </div>
+
+          {/* Equipment */}
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '12px',
+              fontWeight: '600',
+              color: '#6B7280',
+              marginBottom: '8px',
+              textTransform: 'uppercase'
+            }}>
+              Required Equipment
+            </label>
+            {loadingEquipment ? (
+              <div style={{ fontSize: '14px', color: '#6B7280' }}>Loading equipment options...</div>
+            ) : equipmentOptions.length === 0 ? (
+              <div style={{ fontSize: '14px', color: '#6B7280' }}>No equipment options available</div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+                  {equipmentOptions.map(option => {
+                    const isSelected = formData.equipment.includes(option.name)
+                    return (
+                      <button
+                        key={option.id || option.name}
+                        onClick={() => handleEquipmentToggle(option.name)}
+                        disabled={isUpdating}
+                        style={{
+                          padding: '8px 12px',
+                          fontSize: '13px',
+                          fontWeight: '500',
+                          border: '1px solid',
+                          borderColor: isSelected ? '#7C3AED' : '#E5E7EB',
+                          borderRadius: '6px',
+                          backgroundColor: isSelected ? 'rgba(124, 58, 237, 0.1)' : 'white',
+                          color: isSelected ? '#7C3AED' : '#374151',
+                          cursor: isUpdating ? 'not-allowed' : 'pointer',
+                          transition: 'all 0.15s'
+                        }}
+                      >
+                        {isSelected && '✓ '}{option.name}
+                      </button>
+                    )
+                  })}
+                </div>
+                <button
+                  onClick={handleSaveEquipment}
+                  disabled={isUpdating || JSON.stringify(formData.equipment.sort()) === JSON.stringify((job.equipment || []).sort())}
+                  style={{
+                    padding: '8px 16px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    border: 'none',
+                    borderRadius: '8px',
+                    backgroundColor: '#7C3AED',
+                    color: 'white',
+                    cursor: isUpdating ? 'not-allowed' : 'pointer',
+                    opacity: (isUpdating || JSON.stringify(formData.equipment.sort()) === JSON.stringify((job.equipment || []).sort())) ? 0.5 : 1
+                  }}
+                >
+                  Save Equipment
+                </button>
+              </>
+            )}
           </div>
 
           {/* Customer Details */}

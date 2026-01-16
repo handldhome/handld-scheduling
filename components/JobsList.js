@@ -196,6 +196,18 @@ export default function JobsList({ jobs, technicians }) {
                           Unassigned
                         </span>
                       )}
+                      {job.equipment && job.equipment.length > 0 && (
+                        <span style={{
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          padding: '4px 8px',
+                          borderRadius: '6px',
+                          backgroundColor: 'rgba(124, 58, 237, 0.1)',
+                          color: '#7C3AED'
+                        }}>
+                          🔧 Equipment
+                        </span>
+                      )}
                     </div>
                     <div style={{
                       fontSize: '14px',
@@ -318,6 +330,36 @@ export default function JobsList({ jobs, technicians }) {
                         </div>
                       )}
                     </div>
+
+                    {/* Equipment */}
+                    {job.equipment && job.equipment.length > 0 && (
+                      <div style={{ marginBottom: '16px' }}>
+                        <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '4px' }}>
+                          Required Equipment
+                        </div>
+                        <div style={{
+                          display: 'flex',
+                          gap: '6px',
+                          flexWrap: 'wrap'
+                        }}>
+                          {job.equipment.map((item, idx) => (
+                            <span
+                              key={idx}
+                              style={{
+                                fontSize: '12px',
+                                padding: '4px 8px',
+                                borderRadius: '6px',
+                                backgroundColor: 'rgba(124, 58, 237, 0.1)',
+                                color: '#7C3AED',
+                                fontWeight: '500'
+                              }}
+                            >
+                              {item}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Notes */}
                     {job.notes && (

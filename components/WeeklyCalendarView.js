@@ -80,7 +80,7 @@ const formatTime = (time24) => {
   return `${h12} ${suffix}`
 }
 
-export default function WeeklyCalendarView({ jobs, technicians }) {
+export default function WeeklyCalendarView({ jobs, technicians, availability = [] }) {
   const [currentWeekStart, setCurrentWeekStart] = useState(() =>
     startOfWeek(new Date(), { weekStartsOn: 1 })
   )
@@ -88,6 +88,8 @@ export default function WeeklyCalendarView({ jobs, technicians }) {
   const [showUnscheduledPanel, setShowUnscheduledPanel] = useState(true)
   const [draggedJob, setDraggedJob] = useState(null)
   const [dropTarget, setDropTarget] = useState(null)
+  const [selectedTechIds, setSelectedTechIds] = useState([]) // Empty = all technicians
+  const [showTechFilter, setShowTechFilter] = useState(false)
 
   // Restore saved week from sessionStorage after mount
   useEffect(() => {
@@ -144,14 +146,14 @@ export default function WeeklyCalendarView({ jobs, technicians }) {
     })
   }, [currentWeekStart])
 
-  // Group jobs by date and identify unscheduled
+  // Group jobs by date and identify unscheduled (uses filtered jobs)
   const { scheduledJobsByDay, unscheduledJobs } = useMemo(() => {
     const byDay = {}
     const unscheduled = []
 
     weekDays.forEach(day => { byDay[day.date] = [] })
 
-    jobs.forEach(job => {
+    filteredJobs.forEach(job => {
       // Jobs without a date or without a time are unscheduled
       if (!job.date || !job.time) {
         unscheduled.push(job)
@@ -168,7 +170,7 @@ export default function WeeklyCalendarView({ jobs, technicians }) {
     })
 
     return { scheduledJobsByDay: byDay, unscheduledJobs: unscheduled }
-  }, [jobs, weekDays])
+  }, [filteredJobs, weekDays])
 
   // Extract unique service names from all jobs for the legend
   const uniqueServices = useMemo(() => {
@@ -197,6 +199,51 @@ export default function WeeklyCalendarView({ jobs, technicians }) {
   }
 
   const weekEnd = addDays(currentWeekStart, 6)
+
+  // Filter jobs based on selected technicians
+  const filteredJobs = useMemo(() => {
+    if (selectedTechIds.length === 0) return jobs // Show all if no filter
+    return jobs.filter(job => {
+      if (!job.assignedTech || !Array.isArray(job.assignedTech)) return false
+      return job.assignedTech.some(techId => selectedTechIds.includes(techId))
+    })
+  }, [jobs, selectedTechIds])
+
+  // Get availability status for a specific date and time period
+  const getAvailabilityForSlot = (date, time) => {
+    if (selectedTechIds.length === 0) return null // No overlay if showing all
+
+    const hour = parseInt(time.split(':')[0])
+    const period = hour < 12 ? 'AM' : 'PM'
+
+    // Check availability for each selected technician
+    const techAvailability = selectedTechIds.map(techId => {
+      const avail = availability.find(a =>
+        a.technicianId === techId &&
+        a.date === date &&
+        a.timePeriod === period
+      )
+      return {
+        techId,
+        available: avail ? avail.available : null // null = no data
+      }
+    })
+
+    // If any selected tech is unavailable, return unavailable
+    const hasUnavailable = techAvailability.some(a => a.available === false)
+    const allAvailable = techAvailability.every(a => a.available === true)
+
+    if (hasUnavailable) return 'unavailable'
+    if (allAvailable) return 'available'
+    return 'unknown' // No availability data
+  }
+
+  // Check if dropping would conflict with availability
+  const checkDropConflict = (date, time) => {
+    if (selectedTechIds.length === 0) return false
+    const status = getAvailabilityForSlot(date, time)
+    return status === 'unavailable'
+  }
 
   return (
     <div>
@@ -258,6 +305,116 @@ export default function WeeklyCalendarView({ jobs, technicians }) {
         <span style={{ fontSize: '18px', fontWeight: '700', color: '#2A54A1' }}>
           {format(currentWeekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}
         </span>
+
+        {/* Technician Filter */}
+        <div style={{ position: 'relative', marginLeft: '16px' }}>
+          <button
+            onClick={() => setShowTechFilter(!showTechFilter)}
+            style={{
+              padding: '8px 16px',
+              fontSize: '14px',
+              fontWeight: '600',
+              border: '1px solid',
+              borderColor: selectedTechIds.length > 0 ? '#2A54A1' : '#E5E7EB',
+              borderRadius: '8px',
+              background: selectedTechIds.length > 0 ? '#EFF6FF' : 'white',
+              color: selectedTechIds.length > 0 ? '#2A54A1' : '#6B7280',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            {selectedTechIds.length === 0
+              ? 'All Technicians'
+              : selectedTechIds.length === 1
+                ? technicians.find(t => t.id === selectedTechIds[0])?.firstName || 'Selected'
+                : `${selectedTechIds.length} Technicians`}
+            <span style={{ fontSize: '10px' }}>{showTechFilter ? '▲' : '▼'}</span>
+          </button>
+
+          {showTechFilter && (
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              left: 0,
+              marginTop: '4px',
+              backgroundColor: 'white',
+              border: '1px solid #E5E7EB',
+              borderRadius: '8px',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+              zIndex: 100,
+              minWidth: '200px',
+              padding: '8px 0'
+            }}>
+              <button
+                onClick={() => {
+                  setSelectedTechIds([])
+                  setShowTechFilter(false)
+                }}
+                style={{
+                  width: '100%',
+                  padding: '8px 16px',
+                  border: 'none',
+                  background: selectedTechIds.length === 0 ? '#EFF6FF' : 'transparent',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  color: '#374151',
+                  fontWeight: selectedTechIds.length === 0 ? '600' : '400'
+                }}
+              >
+                All Technicians
+              </button>
+              <div style={{ height: '1px', backgroundColor: '#E5E7EB', margin: '4px 0' }} />
+              {technicians.map(tech => {
+                const isSelected = selectedTechIds.includes(tech.id)
+                return (
+                  <button
+                    key={tech.id}
+                    onClick={() => {
+                      if (isSelected) {
+                        setSelectedTechIds(selectedTechIds.filter(id => id !== tech.id))
+                      } else {
+                        setSelectedTechIds([...selectedTechIds, tech.id])
+                      }
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '8px 16px',
+                      border: 'none',
+                      background: isSelected ? '#EFF6FF' : 'transparent',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      color: '#374151',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    <span style={{
+                      width: '16px',
+                      height: '16px',
+                      border: '2px solid',
+                      borderColor: isSelected ? '#2A54A1' : '#D1D5DB',
+                      borderRadius: '4px',
+                      backgroundColor: isSelected ? '#2A54A1' : 'transparent',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontSize: '10px'
+                    }}>
+                      {isSelected && '✓'}
+                    </span>
+                    {tech.firstName} {tech.lastName}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
 
         {/* Unscheduled toggle */}
         <button
@@ -372,6 +529,18 @@ export default function WeeklyCalendarView({ jobs, technicians }) {
                 {weekDays.map(day => {
                   const slotJobs = getJobsForSlot(day.date, time)
                   const isDropTarget = dropTarget?.date === day.date && dropTarget?.time === time
+                  const availabilityStatus = getAvailabilityForSlot(day.date, time)
+
+                  // Determine background color based on availability
+                  let bgColor = 'transparent'
+                  if (isDropTarget) {
+                    bgColor = availabilityStatus === 'unavailable' ? '#FEE2E2' : '#DBEAFE'
+                  } else if (availabilityStatus === 'unavailable') {
+                    bgColor = '#FEF2F2' // Light red for unavailable
+                  } else if (day.isToday) {
+                    bgColor = '#FAFBFF'
+                  }
+
                   return (
                     <div
                       key={`${day.date}-${time}`}
@@ -382,12 +551,22 @@ export default function WeeklyCalendarView({ jobs, technicians }) {
                       onDragLeave={() => setDropTarget(null)}
                       onDrop={(e) => {
                         e.preventDefault()
+                        // Check for conflict and warn
+                        if (checkDropConflict(day.date, time)) {
+                          const confirmed = window.confirm(
+                            'Warning: The selected technician(s) may not be available at this time. Schedule anyway?'
+                          )
+                          if (!confirmed) {
+                            setDropTarget(null)
+                            return
+                          }
+                        }
                         handleDrop(day.date, time)
                       }}
                       style={{
                         position: 'relative',
                         borderRight: '1px solid #E5E7EB',
-                        backgroundColor: isDropTarget ? '#DBEAFE' : day.isToday ? '#FAFBFF' : 'transparent',
+                        backgroundColor: bgColor,
                         height: `${SLOT_HEIGHT}px`,
                         padding: '2px',
                         transition: 'background-color 0.15s',
@@ -464,25 +643,41 @@ export default function WeeklyCalendarView({ jobs, technicians }) {
                             }}>
                               {job.customerName}
                             </div>
-                            {techName ? (
-                              <div style={{
-                                color: '#059669',
-                                fontSize: '9px',
-                                fontWeight: '600',
-                                lineHeight: '1.2'
-                              }}>
-                                {techName}
-                              </div>
-                            ) : (
-                              <div style={{
-                                color: '#DC2626',
-                                fontSize: '9px',
-                                fontWeight: '600',
-                                lineHeight: '1.2'
-                              }}>
-                                Unassigned
-                              </div>
-                            )}
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              lineHeight: '1.2'
+                            }}>
+                              {techName ? (
+                                <span style={{
+                                  color: '#059669',
+                                  fontSize: '9px',
+                                  fontWeight: '600'
+                                }}>
+                                  {techName}
+                                </span>
+                              ) : (
+                                <span style={{
+                                  color: '#DC2626',
+                                  fontSize: '9px',
+                                  fontWeight: '600'
+                                }}>
+                                  Unassigned
+                                </span>
+                              )}
+                              {job.equipment && job.equipment.length > 0 && (
+                                <span
+                                  title={job.equipment.join(', ')}
+                                  style={{
+                                    fontSize: '9px',
+                                    color: '#7C3AED'
+                                  }}
+                                >
+                                  🔧
+                                </span>
+                              )}
+                            </div>
                           </div>
                         )
                       })}
@@ -601,6 +796,18 @@ export default function WeeklyCalendarView({ jobs, technicians }) {
                         fontWeight: '600'
                       }}>
                         Unassigned
+                      </div>
+                    )}
+                    {job.equipment && job.equipment.length > 0 && (
+                      <div style={{
+                        marginTop: '4px',
+                        padding: '4px 6px',
+                        backgroundColor: 'rgba(124, 58, 237, 0.1)',
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        color: '#7C3AED'
+                      }}>
+                        🔧 {job.equipment.join(', ')}
                       </div>
                     )}
                   </div>

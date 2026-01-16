@@ -121,7 +121,7 @@ export default function AdminDashboardClient({ technicians, availability, jobs }
           boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
         }}>
           {activeTab === 'schedule' && (
-            <WeeklyCalendarView jobs={jobs} technicians={technicians} />
+            <WeeklyCalendarView jobs={jobs} technicians={technicians} availability={availability} />
           )}
 
           {activeTab === 'jobs' && (
