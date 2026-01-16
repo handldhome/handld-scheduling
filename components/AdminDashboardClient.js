@@ -5,10 +5,12 @@ import AvailabilityCalendar from './AvailabilityCalendar'
 import JobsList from './JobsList'
 import AddJobModal from './AddJobModal'
 import WeeklyCalendarView from './WeeklyCalendarView'
+import TextTechsModal from './TextTechsModal'
 
 export default function AdminDashboardClient({ technicians, availability, jobs }) {
   const [activeTab, setActiveTab] = useState('schedule') // Default to schedule view
   const [showAddJobModal, setShowAddJobModal] = useState(false)
+  const [showTextTechsModal, setShowTextTechsModal] = useState(false)
 
   const tabButtonStyle = (isActive) => ({
     padding: '12px 24px',
@@ -111,6 +113,25 @@ export default function AdminDashboardClient({ technicians, availability, jobs }
               + Add Job
             </button>
           )}
+
+          {activeTab === 'availability' && (
+            <button
+              onClick={() => setShowTextTechsModal(true)}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: '#2A54A1',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+              }}
+            >
+              Text Technician(s)
+            </button>
+          )}
         </div>
 
         {/* Tab Content */}
@@ -146,6 +167,14 @@ export default function AdminDashboardClient({ technicians, availability, jobs }
             // Refresh the page to show new job
             window.location.reload()
           }}
+        />
+      )}
+
+      {/* Text Technicians Modal */}
+      {showTextTechsModal && (
+        <TextTechsModal
+          technicians={technicians}
+          onClose={() => setShowTextTechsModal(false)}
         />
       )}
     </div>
