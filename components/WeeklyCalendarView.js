@@ -146,6 +146,15 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
     })
   }, [currentWeekStart])
 
+  // Filter jobs based on selected technicians
+  const filteredJobs = useMemo(() => {
+    if (selectedTechIds.length === 0) return jobs // Show all if no filter
+    return jobs.filter(job => {
+      if (!job.assignedTech || !Array.isArray(job.assignedTech)) return false
+      return job.assignedTech.some(techId => selectedTechIds.includes(techId))
+    })
+  }, [jobs, selectedTechIds])
+
   // Group jobs by date and identify unscheduled (uses filtered jobs)
   const { scheduledJobsByDay, unscheduledJobs } = useMemo(() => {
     const byDay = {}
@@ -199,15 +208,6 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
   }
 
   const weekEnd = addDays(currentWeekStart, 6)
-
-  // Filter jobs based on selected technicians
-  const filteredJobs = useMemo(() => {
-    if (selectedTechIds.length === 0) return jobs // Show all if no filter
-    return jobs.filter(job => {
-      if (!job.assignedTech || !Array.isArray(job.assignedTech)) return false
-      return job.assignedTech.some(techId => selectedTechIds.includes(techId))
-    })
-  }, [jobs, selectedTechIds])
 
   // Get availability status for a specific date and time period
   const getAvailabilityForSlot = (date, time) => {
