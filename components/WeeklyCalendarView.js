@@ -137,19 +137,19 @@ export default function WeeklyCalendarView({ jobs, technicians }) {
     weekDays.forEach(day => { byDay[day.date] = [] })
 
     jobs.forEach(job => {
-      if (!job.date) {
+      // Jobs without a date or without a time are unscheduled
+      if (!job.date || !job.time) {
         unscheduled.push(job)
         return
       }
 
       const jobDate = format(parseISO(job.date), 'yyyy-MM-dd')
 
+      // Only show on calendar if date is in current week view
       if (byDay[jobDate]) {
         byDay[jobDate].push(job)
-      } else if (!job.time) {
-        // Job has date but no time - still counts as needing scheduling
-        unscheduled.push(job)
       }
+      // Jobs with date outside current week but with a time are just not shown in this view
     })
 
     return { scheduledJobsByDay: byDay, unscheduledJobs: unscheduled }
