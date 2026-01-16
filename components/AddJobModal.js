@@ -84,6 +84,8 @@ export default function AddJobModal({ onClose, onJobAdded }) {
           phone: formData.phone,
           email: formData.email,
           city: formData.city,
+          address: formData.address,
+          zipCode: formData.zipCode,
           squareFootage: formData.squareFootage,
           lotSize: formData.lotSize,
           stories: formData.stories
