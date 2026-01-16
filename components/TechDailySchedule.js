@@ -416,15 +416,6 @@ export default function TechDailySchedule({ techId, techName, jobs, initialDate 
               alt="Handld Home Services"
               style={{ width: '50px', height: '50px', margin: '0 auto' }}
             />
-            <div style={{
-              fontSize: '12px',
-              fontWeight: '600',
-              color: '#2A54A1',
-              marginTop: '6px',
-              letterSpacing: '0.5px'
-            }}>
-              HANDLD HOME SERVICES
-            </div>
           </div>
 
           <h1 style={{
