@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { format, addDays, startOfWeek, addWeeks, subWeeks, parseISO, isToday } from 'date-fns'
 import JobEditModal from './JobEditModal'
 
@@ -81,21 +81,22 @@ const formatTime = (time24) => {
 }
 
 export default function WeeklyCalendarView({ jobs, technicians }) {
-  const [currentWeekStart, setCurrentWeekStart] = useState(() => {
-    // Restore saved week from sessionStorage if available
-    if (typeof window !== 'undefined') {
-      const saved = sessionStorage.getItem('calendarWeekStart')
-      if (saved) {
-        sessionStorage.removeItem('calendarWeekStart') // Clear after reading
-        return parseISO(saved)
-      }
-    }
-    return startOfWeek(new Date(), { weekStartsOn: 0 })
-  })
+  const [currentWeekStart, setCurrentWeekStart] = useState(() =>
+    startOfWeek(new Date(), { weekStartsOn: 0 })
+  )
   const [selectedJob, setSelectedJob] = useState(null)
   const [showUnscheduledPanel, setShowUnscheduledPanel] = useState(true)
   const [draggedJob, setDraggedJob] = useState(null)
   const [dropTarget, setDropTarget] = useState(null)
+
+  // Restore saved week from sessionStorage after mount
+  useEffect(() => {
+    const saved = sessionStorage.getItem('calendarWeekStart')
+    if (saved) {
+      sessionStorage.removeItem('calendarWeekStart')
+      setCurrentWeekStart(startOfWeek(parseISO(saved), { weekStartsOn: 0 }))
+    }
+  }, [])
 
   // Save current week before reload to preserve view
   const reloadPreservingWeek = () => {
