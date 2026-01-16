@@ -113,26 +113,6 @@ function JobCard({ job, index, isExpanded, onToggle, onJobUpdate }) {
     setIsLoading(false)
   }
 
-  const handleClockOut = async () => {
-    setIsLoading(true)
-    try {
-      const response = await fetch(`/api/jobs/${job.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clockOut: new Date().toISOString() })
-      })
-      if (response.ok) {
-        onJobUpdate()
-      } else {
-        alert('Failed to clock out. Please try again.')
-      }
-    } catch (error) {
-      console.error('Clock out error:', error)
-      alert('Failed to clock out. Please try again.')
-    }
-    setIsLoading(false)
-  }
-
   const handleMarkCompleted = async () => {
     setIsLoading(true)
     try {
@@ -141,6 +121,7 @@ function JobCard({ job, index, isExpanded, onToggle, onJobUpdate }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           status: 'Completed',
+          clockOut: new Date().toISOString(),
           completionNotes: completionNotes
         })
       })
@@ -493,63 +474,44 @@ function JobCard({ job, index, isExpanded, onToggle, onJobUpdate }) {
                 </a>
               )}
 
-              {/* Clock In/Out Buttons */}
-              <div style={{ display: 'flex', gap: '10px' }}>
-                {!isClockedIn ? (
-                  <button
-                    onClick={handleClockIn}
-                    disabled={isLoading}
-                    style={{
-                      flex: 1,
-                      padding: '14px',
-                      backgroundColor: '#059669',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '12px',
-                      fontSize: '16px',
-                      fontWeight: '700',
-                      cursor: isLoading ? 'not-allowed' : 'pointer',
-                      opacity: isLoading ? 0.7 : 1
-                    }}
-                  >
-                    {isLoading ? 'Loading...' : 'Clock In'}
-                  </button>
-                ) : !isClockedOut ? (
-                  <button
-                    onClick={handleClockOut}
-                    disabled={isLoading}
-                    style={{
-                      flex: 1,
-                      padding: '14px',
-                      backgroundColor: '#DC2626',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '12px',
-                      fontSize: '16px',
-                      fontWeight: '700',
-                      cursor: isLoading ? 'not-allowed' : 'pointer',
-                      opacity: isLoading ? 0.7 : 1
-                    }}
-                  >
-                    {isLoading ? 'Loading...' : 'Clock Out'}
-                  </button>
-                ) : (
-                  <div style={{
-                    flex: 1,
+              {/* Clock In Button */}
+              {!isClockedIn && (
+                <button
+                  onClick={handleClockIn}
+                  disabled={isLoading}
+                  style={{
+                    width: '100%',
                     padding: '14px',
-                    backgroundColor: '#D1FAE5',
-                    color: '#059669',
-                    textAlign: 'center',
+                    backgroundColor: '#059669',
+                    color: 'white',
+                    border: 'none',
                     borderRadius: '12px',
-                    fontSize: '14px',
-                    fontWeight: '600'
-                  }}>
-                    Clocked: {formatClockTime(job.clockIn)} - {formatClockTime(job.clockOut)}
-                  </div>
-                )}
-              </div>
+                    fontSize: '16px',
+                    fontWeight: '700',
+                    cursor: isLoading ? 'not-allowed' : 'pointer',
+                    opacity: isLoading ? 0.7 : 1
+                  }}
+                >
+                  {isLoading ? 'Loading...' : 'Clock In'}
+                </button>
+              )}
 
-              {/* Mark Completed Section */}
+              {/* Clocked In indicator */}
+              {isClockedIn && (
+                <div style={{
+                  padding: '10px 14px',
+                  backgroundColor: '#D1FAE5',
+                  color: '#059669',
+                  textAlign: 'center',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600'
+                }}>
+                  Clocked In: {formatClockTime(job.clockIn)}
+                </div>
+              )}
+
+              {/* Mark Completed Section (includes clock out) */}
               {isClockedIn && (
                 <>
                   {!showCompletionForm ? (
