@@ -307,11 +307,32 @@ function JobCard({ job, index, isExpanded, onToggle, onJobUpdate }) {
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(2, 1fr)',
-              gap: '12px'
+              gap: '12px',
+              marginBottom: smsUrl ? '12px' : 0
             }}>
               <DetailItem label="Name" value={job.customerName || 'N/A'} />
               <DetailItem label="Phone" value={job.phone || 'N/A'} />
             </div>
+            {smsUrl && (
+              <a
+                href={smsUrl}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  padding: '12px',
+                  backgroundColor: '#2A54A1',
+                  color: 'white',
+                  textAlign: 'center',
+                  borderRadius: '10px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  textDecoration: 'none',
+                  boxSizing: 'border-box'
+                }}
+              >
+                Text Customer
+              </a>
+            )}
           </div>
 
           {/* Equipment Section */}
@@ -452,28 +473,6 @@ function JobCard({ job, index, isExpanded, onToggle, onJobUpdate }) {
           {/* Action Buttons */}
           {!isCompleted && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {/* Text Customer Button */}
-              {smsUrl && (
-                <a
-                  href={smsUrl}
-                  style={{
-                    display: 'block',
-                    width: '100%',
-                    padding: '14px',
-                    backgroundColor: '#2A54A1',
-                    color: 'white',
-                    textAlign: 'center',
-                    borderRadius: '12px',
-                    fontSize: '16px',
-                    fontWeight: '700',
-                    textDecoration: 'none',
-                    boxSizing: 'border-box'
-                  }}
-                >
-                  Text Customer
-                </a>
-              )}
-
               {/* Clock In Button */}
               {!isClockedIn && (
                 <button
