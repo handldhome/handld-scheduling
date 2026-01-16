@@ -81,13 +81,27 @@ const formatTime = (time24) => {
 }
 
 export default function WeeklyCalendarView({ jobs, technicians }) {
-  const [currentWeekStart, setCurrentWeekStart] = useState(() =>
-    startOfWeek(new Date(), { weekStartsOn: 0 })
-  )
+  const [currentWeekStart, setCurrentWeekStart] = useState(() => {
+    // Restore saved week from sessionStorage if available
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem('calendarWeekStart')
+      if (saved) {
+        sessionStorage.removeItem('calendarWeekStart') // Clear after reading
+        return parseISO(saved)
+      }
+    }
+    return startOfWeek(new Date(), { weekStartsOn: 0 })
+  })
   const [selectedJob, setSelectedJob] = useState(null)
   const [showUnscheduledPanel, setShowUnscheduledPanel] = useState(true)
   const [draggedJob, setDraggedJob] = useState(null)
   const [dropTarget, setDropTarget] = useState(null)
+
+  // Save current week before reload to preserve view
+  const reloadPreservingWeek = () => {
+    sessionStorage.setItem('calendarWeekStart', format(currentWeekStart, 'yyyy-MM-dd'))
+    window.location.reload()
+  }
 
   // Handle dropping a job onto a calendar slot
   const handleDrop = async (date, time) => {
@@ -102,8 +116,8 @@ export default function WeeklyCalendarView({ jobs, technicians }) {
 
       if (!response.ok) throw new Error('Failed to update job')
 
-      // Refresh to show updated schedule
-      window.location.reload()
+      // Refresh to show updated schedule while preserving week view
+      reloadPreservingWeek()
     } catch (error) {
       console.error('Error scheduling job:', error)
       alert('Failed to schedule job. Please try again.')
@@ -377,7 +391,9 @@ export default function WeeklyCalendarView({ jobs, technicians }) {
                         padding: '2px',
                         transition: 'background-color 0.15s',
                         display: 'flex',
-                        gap: '2px'
+                        gap: '2px',
+                        overflow: 'hidden',
+                        boxSizing: 'border-box'
                       }}
                     >
                       {slotJobs.map((job) => {
@@ -397,10 +413,11 @@ export default function WeeklyCalendarView({ jobs, technicians }) {
                             }}
                             onClick={() => setSelectedJob(job)}
                             style={{
-                              flex: 1,
+                              flex: '1 1 0',
                               minWidth: 0,
-                              height: '100%',
-                              padding: '3px 4px',
+                              maxWidth: '100%',
+                              height: `${SLOT_HEIGHT - 4}px`,
+                              padding: '2px 3px',
                               borderRadius: '4px',
                               backgroundColor: colors.bg,
                               border: isUnconfirmed
@@ -651,7 +668,7 @@ export default function WeeklyCalendarView({ jobs, technicians }) {
           onClose={() => setSelectedJob(null)}
           onUpdate={() => {
             setSelectedJob(null)
-            window.location.reload()
+            reloadPreservingWeek()
           }}
         />
       )}
