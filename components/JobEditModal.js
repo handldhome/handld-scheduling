@@ -166,7 +166,12 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
       }
     }
 
-    handleUpdate({ confirmed: newConfirmed })
+    // Update confirmed status and change status to Scheduled if confirming
+    if (newConfirmed) {
+      handleUpdate({ confirmed: newConfirmed, status: 'Scheduled' })
+    } else {
+      handleUpdate({ confirmed: newConfirmed })
+    }
   }
 
   const handleEquipmentToggle = (equipmentName) => {

@@ -47,6 +47,13 @@ const formatTimeDisplay = (time24) => {
   return `${h12}:${minutes} ${suffix}`
 }
 
+// Format ISO datetime to readable time
+const formatClockTime = (isoString) => {
+  if (!isoString) return null
+  const date = new Date(isoString)
+  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+}
+
 // Helper component for detail items
 function DetailItem({ label, value }) {
   return (
@@ -70,8 +77,11 @@ function DetailItem({ label, value }) {
 }
 
 // Job Card Component
-function JobCard({ job, index, isExpanded, onToggle }) {
+function JobCard({ job, index, isExpanded, onToggle, onJobUpdate }) {
   const colors = getServiceColor(job.serviceName)
+  const [isLoading, setIsLoading] = useState(false)
+  const [completionNotes, setCompletionNotes] = useState(job.completionNotes || '')
+  const [showCompletionForm, setShowCompletionForm] = useState(false)
 
   // Google Maps link
   const mapsUrl = job.address
@@ -79,6 +89,77 @@ function JobCard({ job, index, isExpanded, onToggle }) {
         job.address + (job.city ? ', ' + job.city : '')
       )}`
     : null
+
+  // SMS link for texting customer
+  const smsUrl = job.phone ? `sms:${job.phone}` : null
+
+  const handleClockIn = async () => {
+    setIsLoading(true)
+    try {
+      const response = await fetch(`/api/jobs/${job.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clockIn: new Date().toISOString() })
+      })
+      if (response.ok) {
+        onJobUpdate()
+      } else {
+        alert('Failed to clock in. Please try again.')
+      }
+    } catch (error) {
+      console.error('Clock in error:', error)
+      alert('Failed to clock in. Please try again.')
+    }
+    setIsLoading(false)
+  }
+
+  const handleClockOut = async () => {
+    setIsLoading(true)
+    try {
+      const response = await fetch(`/api/jobs/${job.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clockOut: new Date().toISOString() })
+      })
+      if (response.ok) {
+        onJobUpdate()
+      } else {
+        alert('Failed to clock out. Please try again.')
+      }
+    } catch (error) {
+      console.error('Clock out error:', error)
+      alert('Failed to clock out. Please try again.')
+    }
+    setIsLoading(false)
+  }
+
+  const handleMarkCompleted = async () => {
+    setIsLoading(true)
+    try {
+      const response = await fetch(`/api/jobs/${job.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'Completed',
+          completionNotes: completionNotes
+        })
+      })
+      if (response.ok) {
+        setShowCompletionForm(false)
+        onJobUpdate()
+      } else {
+        alert('Failed to mark as completed. Please try again.')
+      }
+    } catch (error) {
+      console.error('Mark completed error:', error)
+      alert('Failed to mark as completed. Please try again.')
+    }
+    setIsLoading(false)
+  }
+
+  const isCompleted = job.status === 'Completed'
+  const isClockedIn = !!job.clockIn
+  const isClockedOut = !!job.clockOut
 
   return (
     <div style={{
@@ -89,7 +170,8 @@ function JobCard({ job, index, isExpanded, onToggle }) {
         ? '0 4px 12px rgba(0, 0, 0, 0.15)'
         : '0 2px 4px rgba(0, 0, 0, 0.05)',
       transition: 'all 0.2s',
-      borderLeft: `4px solid ${colors.border}`
+      borderLeft: `4px solid ${isCompleted ? '#10B981' : colors.border}`,
+      opacity: isCompleted ? 0.7 : 1
     }}>
       {/* Card Header - Always Visible */}
       <div
@@ -97,44 +179,70 @@ function JobCard({ job, index, isExpanded, onToggle }) {
         style={{
           padding: '16px',
           cursor: 'pointer',
-          backgroundColor: colors.bg
+          backgroundColor: isCompleted ? '#D1FAE5' : colors.bg
         }}
       >
-        {/* Job Number and Time */}
+        {/* Job Number, Status, and Time */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          marginBottom: '8px'
+          marginBottom: '8px',
+          flexWrap: 'wrap',
+          gap: '6px'
         }}>
-          <span style={{
-            backgroundColor: colors.border,
-            color: 'white',
-            padding: '4px 10px',
-            borderRadius: '20px',
-            fontSize: '12px',
-            fontWeight: '700'
-          }}>
-            Job #{index + 1}
-          </span>
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <span style={{
+              backgroundColor: isCompleted ? '#10B981' : colors.border,
+              color: 'white',
+              padding: '4px 10px',
+              borderRadius: '20px',
+              fontSize: '12px',
+              fontWeight: '700'
+            }}>
+              Job #{index + 1}
+            </span>
+            {isCompleted && (
+              <span style={{
+                backgroundColor: '#059669',
+                color: 'white',
+                padding: '4px 8px',
+                borderRadius: '6px',
+                fontSize: '11px',
+                fontWeight: '600'
+              }}>
+                COMPLETED
+              </span>
+            )}
+          </div>
           <span style={{
             fontSize: '16px',
             fontWeight: '700',
-            color: colors.text
+            color: isCompleted ? '#065F46' : colors.text
           }}>
             {formatTimeDisplay(job.time)}
           </span>
         </div>
 
-        {/* Service Name */}
+        {/* Service Name and Duration */}
         <h3 style={{
-          margin: '0 0 6px 0',
+          margin: '0 0 4px 0',
           fontSize: '18px',
           fontWeight: '700',
-          color: colors.text
+          color: isCompleted ? '#065F46' : colors.text
         }}>
           {job.serviceName}
         </h3>
+
+        {job.estimatedDuration && (
+          <p style={{
+            margin: '0 0 6px 0',
+            fontSize: '13px',
+            color: '#6B7280'
+          }}>
+            Est. Duration: {job.estimatedDuration}
+          </p>
+        )}
 
         {/* Address with Map Link */}
         {mapsUrl ? (
@@ -172,6 +280,20 @@ function JobCard({ job, index, isExpanded, onToggle }) {
           {job.customerName}
         </p>
 
+        {/* Clock Status */}
+        {(isClockedIn || isClockedOut) && (
+          <div style={{
+            marginTop: '8px',
+            display: 'flex',
+            gap: '12px',
+            fontSize: '12px',
+            color: '#059669'
+          }}>
+            {isClockedIn && <span>In: {formatClockTime(job.clockIn)}</span>}
+            {isClockedOut && <span>Out: {formatClockTime(job.clockOut)}</span>}
+          </div>
+        )}
+
         {/* Expand/Collapse Indicator */}
         <div style={{
           textAlign: 'center',
@@ -190,6 +312,28 @@ function JobCard({ job, index, isExpanded, onToggle }) {
           borderTop: `1px solid ${colors.border}`,
           backgroundColor: 'white'
         }}>
+          {/* Customer Info Section */}
+          <div style={{ marginBottom: '16px' }}>
+            <div style={{
+              fontSize: '12px',
+              fontWeight: '700',
+              color: '#6B7280',
+              marginBottom: '8px',
+              textTransform: 'uppercase'
+            }}>
+              Customer Info
+            </div>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: '12px'
+            }}>
+              <DetailItem label="Name" value={job.customerName || 'N/A'} />
+              <DetailItem label="Phone" value={job.phone || 'N/A'} />
+              {job.email && <DetailItem label="Email" value={job.email} />}
+            </div>
+          </div>
+
           {/* Equipment Section */}
           {job.equipment && job.equipment.length > 0 && (
             <div style={{ marginBottom: '16px' }}>
@@ -223,34 +367,68 @@ function JobCard({ job, index, isExpanded, onToggle }) {
           )}
 
           {/* Property Details Grid */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, 1fr)',
-            gap: '12px',
-            marginBottom: '16px'
-          }}>
-            {job.stories && (
-              <DetailItem label="Stories" value={job.stories} />
-            )}
-            {job.squareFootage && (
-              <DetailItem label="Sq Footage" value={job.squareFootage} />
-            )}
-            {job.lotSize && (
-              <DetailItem label="Lot Size" value={job.lotSize} />
-            )}
-            {job.vibe && (
-              <DetailItem label="Vibe" value={job.vibe} />
-            )}
-            {job.pets && (
-              <DetailItem label="Pets" value={job.pets} />
-            )}
-            {job.gateCode && (
-              <DetailItem label="Access/Gate" value={job.gateCode} />
-            )}
-            {job.electricWater && (
-              <DetailItem label="Electric/Water" value={job.electricWater} />
-            )}
+          <div style={{ marginBottom: '16px' }}>
+            <div style={{
+              fontSize: '12px',
+              fontWeight: '700',
+              color: '#6B7280',
+              marginBottom: '8px',
+              textTransform: 'uppercase'
+            }}>
+              Property Details
+            </div>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: '12px'
+            }}>
+              {job.stories && (
+                <DetailItem label="Stories" value={job.stories} />
+              )}
+              {job.squareFootage && (
+                <DetailItem label="Sq Footage" value={job.squareFootage} />
+              )}
+              {job.lotSize && (
+                <DetailItem label="Lot Size" value={job.lotSize} />
+              )}
+              {job.estimatedDuration && (
+                <DetailItem label="Est. Duration" value={job.estimatedDuration} />
+              )}
+            </div>
           </div>
+
+          {/* Job Details Grid */}
+          {(job.vibe || job.pets || job.gateCode || job.electricWater) && (
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{
+                fontSize: '12px',
+                fontWeight: '700',
+                color: '#6B7280',
+                marginBottom: '8px',
+                textTransform: 'uppercase'
+              }}>
+                Job Details
+              </div>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gap: '12px'
+              }}>
+                {job.vibe && (
+                  <DetailItem label="Vibe" value={job.vibe} />
+                )}
+                {job.pets && (
+                  <DetailItem label="Pets" value={job.pets} />
+                )}
+                {job.gateCode && (
+                  <DetailItem label="Access/Gate" value={job.gateCode} />
+                )}
+                {job.electricWater && (
+                  <DetailItem label="Electric/Water" value={job.electricWater} />
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Notes Section */}
           {(job.notes || job.otherNotes) && (
@@ -290,26 +468,206 @@ function JobCard({ job, index, isExpanded, onToggle }) {
             </div>
           )}
 
-          {/* Call Customer Button */}
-          {job.phone && (
-            <a
-              href={`tel:${job.phone}`}
-              style={{
-                display: 'block',
-                width: '100%',
-                padding: '14px',
-                backgroundColor: '#059669',
-                color: 'white',
-                textAlign: 'center',
-                borderRadius: '12px',
+          {/* Action Buttons */}
+          {!isCompleted && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {/* Text Customer Button */}
+              {smsUrl && (
+                <a
+                  href={smsUrl}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    padding: '14px',
+                    backgroundColor: '#2A54A1',
+                    color: 'white',
+                    textAlign: 'center',
+                    borderRadius: '12px',
+                    fontSize: '16px',
+                    fontWeight: '700',
+                    textDecoration: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  Text Customer
+                </a>
+              )}
+
+              {/* Clock In/Out Buttons */}
+              <div style={{ display: 'flex', gap: '10px' }}>
+                {!isClockedIn ? (
+                  <button
+                    onClick={handleClockIn}
+                    disabled={isLoading}
+                    style={{
+                      flex: 1,
+                      padding: '14px',
+                      backgroundColor: '#059669',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '12px',
+                      fontSize: '16px',
+                      fontWeight: '700',
+                      cursor: isLoading ? 'not-allowed' : 'pointer',
+                      opacity: isLoading ? 0.7 : 1
+                    }}
+                  >
+                    {isLoading ? 'Loading...' : 'Clock In'}
+                  </button>
+                ) : !isClockedOut ? (
+                  <button
+                    onClick={handleClockOut}
+                    disabled={isLoading}
+                    style={{
+                      flex: 1,
+                      padding: '14px',
+                      backgroundColor: '#DC2626',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '12px',
+                      fontSize: '16px',
+                      fontWeight: '700',
+                      cursor: isLoading ? 'not-allowed' : 'pointer',
+                      opacity: isLoading ? 0.7 : 1
+                    }}
+                  >
+                    {isLoading ? 'Loading...' : 'Clock Out'}
+                  </button>
+                ) : (
+                  <div style={{
+                    flex: 1,
+                    padding: '14px',
+                    backgroundColor: '#D1FAE5',
+                    color: '#059669',
+                    textAlign: 'center',
+                    borderRadius: '12px',
+                    fontSize: '14px',
+                    fontWeight: '600'
+                  }}>
+                    Clocked: {formatClockTime(job.clockIn)} - {formatClockTime(job.clockOut)}
+                  </div>
+                )}
+              </div>
+
+              {/* Mark Completed Section */}
+              {isClockedIn && (
+                <>
+                  {!showCompletionForm ? (
+                    <button
+                      onClick={() => setShowCompletionForm(true)}
+                      style={{
+                        width: '100%',
+                        padding: '14px',
+                        backgroundColor: '#7C3AED',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '12px',
+                        fontSize: '16px',
+                        fontWeight: '700',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Mark Completed
+                    </button>
+                  ) : (
+                    <div style={{
+                      backgroundColor: '#F9FAFB',
+                      padding: '16px',
+                      borderRadius: '12px'
+                    }}>
+                      <div style={{
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        color: '#374151',
+                        marginBottom: '8px'
+                      }}>
+                        Completion Notes (optional)
+                      </div>
+                      <textarea
+                        value={completionNotes}
+                        onChange={(e) => setCompletionNotes(e.target.value)}
+                        placeholder="Add any notes about the completed job..."
+                        style={{
+                          width: '100%',
+                          padding: '12px',
+                          borderRadius: '8px',
+                          border: '1px solid #E5E7EB',
+                          fontSize: '14px',
+                          minHeight: '80px',
+                          resize: 'vertical',
+                          boxSizing: 'border-box',
+                          marginBottom: '12px'
+                        }}
+                      />
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <button
+                          onClick={() => setShowCompletionForm(false)}
+                          style={{
+                            flex: 1,
+                            padding: '12px',
+                            backgroundColor: 'white',
+                            color: '#6B7280',
+                            border: '1px solid #E5E7EB',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handleMarkCompleted}
+                          disabled={isLoading}
+                          style={{
+                            flex: 1,
+                            padding: '12px',
+                            backgroundColor: '#7C3AED',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            cursor: isLoading ? 'not-allowed' : 'pointer',
+                            opacity: isLoading ? 0.7 : 1
+                          }}
+                        >
+                          {isLoading ? 'Saving...' : 'Submit'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Completed Status */}
+          {isCompleted && (
+            <div style={{
+              backgroundColor: '#D1FAE5',
+              padding: '16px',
+              borderRadius: '12px',
+              textAlign: 'center'
+            }}>
+              <div style={{
                 fontSize: '16px',
                 fontWeight: '700',
-                textDecoration: 'none',
-                boxSizing: 'border-box'
-              }}
-            >
-              Call Customer
-            </a>
+                color: '#059669',
+                marginBottom: '4px'
+              }}>
+                Job Completed
+              </div>
+              {job.completionNotes && (
+                <div style={{
+                  fontSize: '14px',
+                  color: '#065F46',
+                  marginTop: '8px'
+                }}>
+                  Notes: {job.completionNotes}
+                </div>
+              )}
+            </div>
           )}
         </div>
       )}
@@ -317,7 +675,7 @@ function JobCard({ job, index, isExpanded, onToggle }) {
   )
 }
 
-export default function TechDailySchedule({ techId, techName, jobs, initialDate }) {
+export default function TechDailySchedule({ techId, techName, jobs: initialJobs, initialDate }) {
   // Calculate default date (tomorrow if no param provided)
   const getDefaultDate = () => {
     if (initialDate) return initialDate
@@ -327,6 +685,7 @@ export default function TechDailySchedule({ techId, techName, jobs, initialDate 
 
   const [selectedDate, setSelectedDate] = useState(getDefaultDate)
   const [expandedJobId, setExpandedJobId] = useState(null)
+  const [jobs, setJobs] = useState(initialJobs)
 
   // Update URL when date changes (without page reload)
   useEffect(() => {
@@ -334,6 +693,19 @@ export default function TechDailySchedule({ techId, techName, jobs, initialDate 
     url.searchParams.set('date', selectedDate)
     window.history.replaceState({}, '', url)
   }, [selectedDate])
+
+  // Function to refresh jobs data
+  const refreshJobs = async () => {
+    try {
+      const response = await fetch('/api/jobs')
+      if (response.ok) {
+        const data = await response.json()
+        setJobs(data.jobs)
+      }
+    } catch (error) {
+      console.error('Error refreshing jobs:', error)
+    }
+  }
 
   // Filter jobs for this tech on selected date
   const todaysJobs = useMemo(() => {
@@ -563,6 +935,7 @@ export default function TechDailySchedule({ techId, techName, jobs, initialDate 
                 onToggle={() => setExpandedJobId(
                   expandedJobId === job.id ? null : job.id
                 )}
+                onJobUpdate={refreshJobs}
               />
             ))}
           </div>
