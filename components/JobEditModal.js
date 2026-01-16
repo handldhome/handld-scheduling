@@ -241,6 +241,23 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
             }}>
               {job.serviceName}
             </h2>
+            {job.address && (
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(job.address + (job.city ? ', ' + job.city : ''))}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'block',
+                  margin: '4px 0 0 0',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#2A54A1',
+                  textDecoration: 'none'
+                }}
+              >
+                📍 {job.address}{job.city ? `, ${job.city}` : ''} ↗
+              </a>
+            )}
             <p style={{
               margin: '4px 0 0 0',
               fontSize: '14px',
