@@ -470,11 +470,28 @@ function JobCard({ job, index, isExpanded, onToggle, onJobUpdate }) {
             </div>
           )}
 
-          {/* Action Buttons */}
+          {/* Job Progress Section */}
           {!isCompleted && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {/* Clock In Button */}
-              {!isClockedIn && (
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{
+                fontSize: '12px',
+                fontWeight: '700',
+                color: '#6B7280',
+                marginBottom: '8px',
+                textTransform: 'uppercase'
+              }}>
+                Job Progress
+              </div>
+              <div style={{
+                backgroundColor: '#F9FAFB',
+                padding: '16px',
+                borderRadius: '8px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px'
+              }}>
+                {/* Clock In Button */}
+                {!isClockedIn && (
                 <button
                   onClick={handleClockIn}
                   disabled={isLoading}
@@ -600,6 +617,7 @@ function JobCard({ job, index, isExpanded, onToggle, onJobUpdate }) {
                   )}
                 </>
               )}
+              </div>
             </div>
           )}
 
