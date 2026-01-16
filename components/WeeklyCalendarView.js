@@ -373,44 +373,57 @@ export default function WeeklyCalendarView({ jobs, technicians }) {
                         position: 'relative',
                         borderRight: '1px solid #E5E7EB',
                         backgroundColor: isDropTarget ? '#DBEAFE' : day.isToday ? '#FAFBFF' : 'transparent',
-                        minHeight: `${SLOT_HEIGHT}px`,
+                        height: `${SLOT_HEIGHT}px`,
                         padding: '2px',
-                        transition: 'background-color 0.15s'
+                        transition: 'background-color 0.15s',
+                        display: 'flex',
+                        gap: '2px'
                       }}
                     >
-                      {slotJobs.map((job, idx) => {
+                      {slotJobs.map((job) => {
                         const colors = getServiceColor(job.serviceName)
                         const techName = getTechName(job.assignedTech)
                         const isUnconfirmed = !job.confirmed
+                        const isDragging = draggedJob?.id === job.id
 
                         return (
                           <div
                             key={job.id}
+                            draggable
+                            onDragStart={() => setDraggedJob(job)}
+                            onDragEnd={() => {
+                              setDraggedJob(null)
+                              setDropTarget(null)
+                            }}
                             onClick={() => setSelectedJob(job)}
                             style={{
-                              marginBottom: idx < slotJobs.length - 1 ? '2px' : 0,
-                              padding: '4px 6px',
+                              flex: 1,
+                              minWidth: 0,
+                              height: '100%',
+                              padding: '3px 4px',
                               borderRadius: '4px',
                               backgroundColor: colors.bg,
-                              borderLeft: `3px solid ${colors.border}`,
                               border: isUnconfirmed
                                 ? `2px dashed ${colors.border}`
                                 : `1px solid ${colors.border}`,
                               borderLeftWidth: '3px',
                               borderLeftStyle: 'solid',
-                              cursor: 'pointer',
+                              borderLeftColor: colors.border,
+                              cursor: 'grab',
                               overflow: 'hidden',
-                              fontSize: '11px',
-                              opacity: isUnconfirmed ? 0.85 : 1,
-                              transition: 'all 0.2s'
+                              fontSize: '10px',
+                              opacity: isDragging ? 0.5 : isUnconfirmed ? 0.85 : 1,
+                              transition: 'all 0.2s',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              justifyContent: 'center',
+                              boxSizing: 'border-box'
                             }}
                             onMouseEnter={(e) => {
-                              e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.15)'
-                              e.currentTarget.style.transform = 'scale(1.02)'
+                              if (!isDragging) e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.15)'
                             }}
                             onMouseLeave={(e) => {
                               e.currentTarget.style.boxShadow = 'none'
-                              e.currentTarget.style.transform = 'scale(1)'
                             }}
                           >
                             <div style={{
@@ -418,32 +431,36 @@ export default function WeeklyCalendarView({ jobs, technicians }) {
                               color: colors.text,
                               whiteSpace: 'nowrap',
                               overflow: 'hidden',
-                              textOverflow: 'ellipsis'
+                              textOverflow: 'ellipsis',
+                              lineHeight: '1.2'
                             }}>
                               {job.serviceName}
                             </div>
                             <div style={{
                               color: '#6B7280',
-                              fontSize: '10px',
+                              fontSize: '9px',
                               whiteSpace: 'nowrap',
                               overflow: 'hidden',
-                              textOverflow: 'ellipsis'
+                              textOverflow: 'ellipsis',
+                              lineHeight: '1.2'
                             }}>
                               {job.customerName}
                             </div>
                             {techName ? (
                               <div style={{
                                 color: '#059669',
-                                fontSize: '10px',
-                                fontWeight: '600'
+                                fontSize: '9px',
+                                fontWeight: '600',
+                                lineHeight: '1.2'
                               }}>
                                 {techName}
                               </div>
                             ) : (
                               <div style={{
                                 color: '#DC2626',
-                                fontSize: '10px',
-                                fontWeight: '600'
+                                fontSize: '9px',
+                                fontWeight: '600',
+                                lineHeight: '1.2'
                               }}>
                                 Unassigned
                               </div>
