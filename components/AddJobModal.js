@@ -29,7 +29,7 @@ const CITIES = [
 
 export default function AddJobModal({ onClose, onJobAdded }) {
   const [formData, setFormData] = useState({
-    serviceName: '',
+    selectedServices: [],
     stories: '',
     squareFootage: '',
     lotSize: '',
@@ -49,9 +49,25 @@ export default function AddJobModal({ onClose, onJobAdded }) {
     setFormData(prev => ({ ...prev, [field]: value }))
   }
 
+  const toggleService = (service) => {
+    setFormData(prev => ({
+      ...prev,
+      selectedServices: prev.selectedServices.includes(service)
+        ? prev.selectedServices.filter(s => s !== service)
+        : [...prev.selectedServices, service]
+    }))
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError(null)
+
+    // Validate at least one service selected
+    if (formData.selectedServices.length === 0) {
+      setError('Please select at least one service')
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
@@ -62,7 +78,7 @@ export default function AddJobModal({ onClose, onJobAdded }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          serviceName: formData.serviceName,
+          selectedServices: formData.selectedServices,
           firstName: formData.firstName,
           lastName: formData.lastName,
           phone: formData.phone,
@@ -194,18 +210,52 @@ export default function AddJobModal({ onClose, onJobAdded }) {
 
             {/* Service Selection */}
             <div>
-              <label style={labelStyle}>Service *</label>
-              <select
-                required
-                value={formData.serviceName}
-                onChange={(e) => handleChange('serviceName', e.target.value)}
-                style={selectStyle}
-              >
-                <option value="">Select a service...</option>
+              <label style={labelStyle}>Services * (select all that apply)</label>
+              <div style={{
+                border: '1px solid #D1D5DB',
+                borderRadius: '8px',
+                maxHeight: '180px',
+                overflowY: 'auto'
+              }}>
                 {SERVICES.map(service => (
-                  <option key={service} value={service}>{service}</option>
+                  <label
+                    key={service}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '10px 12px',
+                      borderBottom: '1px solid #E5E7EB',
+                      cursor: 'pointer',
+                      backgroundColor: formData.selectedServices.includes(service) ? '#EFF6FF' : 'white'
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={formData.selectedServices.includes(service)}
+                      onChange={() => toggleService(service)}
+                      style={{
+                        marginRight: '10px',
+                        width: '16px',
+                        height: '16px',
+                        accentColor: '#2A54A1'
+                      }}
+                    />
+                    <span style={{
+                      fontSize: '14px',
+                      color: '#1F2937'
+                    }}>
+                      {service}
+                    </span>
+                  </label>
                 ))}
-              </select>
+              </div>
+              <div style={{
+                fontSize: '12px',
+                color: '#6B7280',
+                marginTop: '6px'
+              }}>
+                {formData.selectedServices.length} service(s) selected
+              </div>
             </div>
 
             {/* Property Details */}

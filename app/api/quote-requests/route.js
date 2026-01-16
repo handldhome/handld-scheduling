@@ -5,9 +5,10 @@ export async function POST(request) {
     const data = await request.json()
 
     // Validate required fields
-    if (!data.serviceName || !data.firstName || !data.lastName || !data.phone || !data.city) {
+    const hasServices = (data.selectedServices && data.selectedServices.length > 0) || data.serviceName
+    if (!hasServices || !data.firstName || !data.lastName || !data.phone || !data.city) {
       return Response.json(
-        { error: 'Missing required fields: service, first name, last name, phone, city' },
+        { error: 'Missing required fields: service(s), first name, last name, phone, city' },
         { status: 400 }
       )
     }
