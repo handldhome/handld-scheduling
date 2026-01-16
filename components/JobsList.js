@@ -159,55 +159,65 @@ export default function JobsList({ jobs, technicians }) {
                   onClick={() => setExpandedJob(isExpanded ? null : job.id)}
                 >
                   <div style={{ flex: 1 }}>
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      marginBottom: '8px',
-                      flexWrap: 'wrap'
-                    }}>
-                      <h3 style={{
-                        fontSize: '18px',
-                        fontWeight: '700',
-                        color: '#2A54A1',
-                        margin: 0
+                    <div style={{ marginBottom: '6px' }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        flexWrap: 'wrap'
                       }}>
-                        {job.serviceName}
-                      </h3>
-                      <span style={{
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        padding: '4px 8px',
-                        borderRadius: '6px',
-                        backgroundColor: job.status === 'Planned' ? '#DBEAFE' : '#FEF3C7',
-                        color: job.status === 'Planned' ? '#1E40AF' : '#92400E'
-                      }}>
-                        {job.status}
-                      </span>
-                      {isUnassigned && (
+                        <h3 style={{
+                          fontSize: '18px',
+                          fontWeight: '700',
+                          color: '#2A54A1',
+                          margin: 0
+                        }}>
+                          {job.serviceName}
+                        </h3>
                         <span style={{
                           fontSize: '12px',
                           fontWeight: '600',
                           padding: '4px 8px',
                           borderRadius: '6px',
-                          backgroundColor: '#FEE2E2',
-                          color: '#991B1B'
+                          backgroundColor: job.status === 'Planned' ? '#DBEAFE' : '#FEF3C7',
+                          color: job.status === 'Planned' ? '#1E40AF' : '#92400E'
                         }}>
-                          Unassigned
+                          {job.status}
                         </span>
-                      )}
-                      {job.equipment && job.equipment.length > 0 && (
-                        <span style={{
-                          fontSize: '12px',
-                          fontWeight: '600',
-                          padding: '4px 8px',
-                          borderRadius: '6px',
-                          backgroundColor: 'rgba(124, 58, 237, 0.1)',
-                          color: '#7C3AED'
-                        }}>
-                          🔧 Equipment
-                        </span>
-                      )}
+                        {isUnassigned && (
+                          <span style={{
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            padding: '4px 8px',
+                            borderRadius: '6px',
+                            backgroundColor: '#FEE2E2',
+                            color: '#991B1B'
+                          }}>
+                            Unassigned
+                          </span>
+                        )}
+                        {job.equipment && job.equipment.length > 0 && (
+                          <span style={{
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            padding: '4px 8px',
+                            borderRadius: '6px',
+                            backgroundColor: 'rgba(124, 58, 237, 0.1)',
+                            color: '#7C3AED'
+                          }}>
+                            🔧 Equipment
+                          </span>
+                        )}
+                      </div>
+                      {/* Address as subtitle */}
+                      <div style={{
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        color: '#374151',
+                        marginTop: '4px'
+                      }}>
+                        📍 {job.address}{job.city ? `, ${job.city}` : ''}
+                      </div>
                     </div>
                     <div style={{
                       fontSize: '14px',
@@ -218,7 +228,7 @@ export default function JobsList({ jobs, technicians }) {
                     }}>
                       <span>📅 {format(jobDate, 'EEEE, MMM d, yyyy')}</span>
                       <span>👤 {job.customerName}</span>
-                      <span>🔧 {techName}</span>
+                      <span>👷 {techName}</span>
                     </div>
                   </div>
                   <button
@@ -242,7 +252,7 @@ export default function JobsList({ jobs, technicians }) {
                     paddingTop: '16px',
                     borderTop: '1px solid #E5E7EB'
                   }}>
-                    {/* Customer Details */}
+                    {/* Customer & Property Details */}
                     <div style={{
                       display: 'grid',
                       gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
@@ -259,43 +269,19 @@ export default function JobsList({ jobs, technicians }) {
                       </div>
                       <div>
                         <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '4px' }}>
-                          Address
-                        </div>
-                        <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>
-                          {job.address}, {job.city} {job.zipCode}
-                        </div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '4px' }}>
                           Phone
                         </div>
                         <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>
                           {job.phone || 'N/A'}
                         </div>
                       </div>
-                      <div>
-                        <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '4px' }}>
-                          Email
-                        </div>
-                        <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>
-                          {job.email || 'N/A'}
-                        </div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '4px' }}>
-                          Price
-                        </div>
-                        <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>
-                          ${job.price || 0}
-                        </div>
-                      </div>
-                      {job.quoteId && (
+                      {job.stories && (
                         <div>
                           <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '4px' }}>
-                            Quote ID
+                            Stories
                           </div>
                           <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>
-                            {job.quoteId}
+                            {job.stories}
                           </div>
                         </div>
                       )}
@@ -319,17 +305,65 @@ export default function JobsList({ jobs, technicians }) {
                           </div>
                         </div>
                       )}
-                      {job.stories && (
+                      {job.vibe && (
                         <div>
                           <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '4px' }}>
-                            Stories
+                            Vibe
                           </div>
                           <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>
-                            {job.stories}
+                            {job.vibe}
+                          </div>
+                        </div>
+                      )}
+                      {job.pets && (
+                        <div>
+                          <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '4px' }}>
+                            Pets?
+                          </div>
+                          <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>
+                            {job.pets}
+                          </div>
+                        </div>
+                      )}
+                      {job.gateCode && (
+                        <div>
+                          <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '4px' }}>
+                            Gate Code / Access
+                          </div>
+                          <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>
+                            {job.gateCode}
+                          </div>
+                        </div>
+                      )}
+                      {job.electricWater && (
+                        <div>
+                          <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '4px' }}>
+                            Electric / Water
+                          </div>
+                          <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>
+                            {job.electricWater}
                           </div>
                         </div>
                       )}
                     </div>
+
+                    {/* Other Notes */}
+                    {job.otherNotes && (
+                      <div style={{ marginBottom: '16px' }}>
+                        <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '4px' }}>
+                          Other Notes
+                        </div>
+                        <div style={{
+                          fontSize: '14px',
+                          color: '#111827',
+                          backgroundColor: '#F9FAFB',
+                          padding: '8px 12px',
+                          borderRadius: '6px'
+                        }}>
+                          {job.otherNotes}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Equipment */}
                     {job.equipment && job.equipment.length > 0 && (

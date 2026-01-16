@@ -63,7 +63,13 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
     time: job.time || '',
     confirmed: job.confirmed || false,
     date: job.date ? format(parseISO(job.date), 'yyyy-MM-dd') : '',
-    equipment: job.equipment || []
+    equipment: job.equipment || [],
+    // Editable job details
+    vibe: job.vibe || '',
+    pets: job.pets || '',
+    gateCode: job.gateCode || '',
+    electricWater: job.electricWater || '',
+    otherNotes: job.otherNotes || ''
   })
   const [equipmentOptions, setEquipmentOptions] = useState([])
   const [loadingEquipment, setLoadingEquipment] = useState(true)
@@ -172,6 +178,20 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
 
   const handleSaveEquipment = () => {
     handleUpdate({ equipment: formData.equipment })
+  }
+
+  const handleJobDetailsChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }))
+  }
+
+  const handleSaveJobDetails = () => {
+    handleUpdate({
+      vibe: formData.vibe,
+      pets: formData.pets,
+      gateCode: formData.gateCode,
+      electricWater: formData.electricWater,
+      otherNotes: formData.otherNotes
+    })
   }
 
   const getTechName = (techId) => {
@@ -528,7 +548,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
             )}
           </div>
 
-          {/* Customer Details */}
+          {/* Customer & Property Details */}
           <div style={{ marginBottom: '24px' }}>
             <label style={{
               display: 'block',
@@ -538,7 +558,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
               marginBottom: '12px',
               textTransform: 'uppercase'
             }}>
-              Customer Details
+              Customer & Property Details
             </label>
             <div style={{
               display: 'grid',
@@ -550,7 +570,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
                   Address
                 </div>
                 <div style={{ fontSize: '14px', color: '#111827' }}>
-                  {job.address}, {job.city} {job.zipCode}
+                  {job.address}, {job.city}
                 </div>
               </div>
               <div>
@@ -561,22 +581,16 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
                   {job.phone || 'N/A'}
                 </div>
               </div>
-              <div>
-                <div style={{ fontSize: '11px', color: '#9CA3AF', marginBottom: '2px' }}>
-                  Email
+              {job.stories && (
+                <div>
+                  <div style={{ fontSize: '11px', color: '#9CA3AF', marginBottom: '2px' }}>
+                    Stories
+                  </div>
+                  <div style={{ fontSize: '14px', color: '#111827' }}>
+                    {job.stories}
+                  </div>
                 </div>
-                <div style={{ fontSize: '14px', color: '#111827' }}>
-                  {job.email || 'N/A'}
-                </div>
-              </div>
-              <div>
-                <div style={{ fontSize: '11px', color: '#9CA3AF', marginBottom: '2px' }}>
-                  Price
-                </div>
-                <div style={{ fontSize: '14px', color: '#111827', fontWeight: '600' }}>
-                  ${job.price || 0}
-                </div>
-              </div>
+              )}
               {job.squareFootage && (
                 <div>
                   <div style={{ fontSize: '11px', color: '#9CA3AF', marginBottom: '2px' }}>
@@ -597,17 +611,154 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
                   </div>
                 </div>
               )}
-              {job.stories && (
-                <div>
-                  <div style={{ fontSize: '11px', color: '#9CA3AF', marginBottom: '2px' }}>
-                    Stories
-                  </div>
-                  <div style={{ fontSize: '14px', color: '#111827' }}>
-                    {job.stories}
-                  </div>
-                </div>
-              )}
             </div>
+          </div>
+
+          {/* Editable Job Details */}
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '12px',
+              fontWeight: '600',
+              color: '#6B7280',
+              marginBottom: '12px',
+              textTransform: 'uppercase'
+            }}>
+              Job Details (Editable)
+            </label>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: '12px',
+              marginBottom: '12px'
+            }}>
+              <div>
+                <div style={{ fontSize: '11px', color: '#9CA3AF', marginBottom: '4px' }}>
+                  Vibe
+                </div>
+                <input
+                  type="text"
+                  value={formData.vibe}
+                  onChange={(e) => handleJobDetailsChange('vibe', e.target.value)}
+                  placeholder="e.g., Friendly, Professional"
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    fontSize: '14px',
+                    border: '1px solid #E5E7EB',
+                    borderRadius: '6px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+              <div>
+                <div style={{ fontSize: '11px', color: '#9CA3AF', marginBottom: '4px' }}>
+                  Pets?
+                </div>
+                <input
+                  type="text"
+                  value={formData.pets}
+                  onChange={(e) => handleJobDetailsChange('pets', e.target.value)}
+                  placeholder="e.g., 2 dogs in backyard"
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    fontSize: '14px',
+                    border: '1px solid #E5E7EB',
+                    borderRadius: '6px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+              <div>
+                <div style={{ fontSize: '11px', color: '#9CA3AF', marginBottom: '4px' }}>
+                  Gate Code / Access
+                </div>
+                <input
+                  type="text"
+                  value={formData.gateCode}
+                  onChange={(e) => handleJobDetailsChange('gateCode', e.target.value)}
+                  placeholder="e.g., #1234, side gate unlocked"
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    fontSize: '14px',
+                    border: '1px solid #E5E7EB',
+                    borderRadius: '6px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+              <div>
+                <div style={{ fontSize: '11px', color: '#9CA3AF', marginBottom: '4px' }}>
+                  Electric / Water
+                </div>
+                <input
+                  type="text"
+                  value={formData.electricWater}
+                  onChange={(e) => handleJobDetailsChange('electricWater', e.target.value)}
+                  placeholder="e.g., Outlet on left side of house"
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    fontSize: '14px',
+                    border: '1px solid #E5E7EB',
+                    borderRadius: '6px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+            </div>
+            <div style={{ marginBottom: '12px' }}>
+              <div style={{ fontSize: '11px', color: '#9CA3AF', marginBottom: '4px' }}>
+                Other Notes
+              </div>
+              <textarea
+                value={formData.otherNotes}
+                onChange={(e) => handleJobDetailsChange('otherNotes', e.target.value)}
+                placeholder="Any other details the technician should know..."
+                rows={3}
+                style={{
+                  width: '100%',
+                  padding: '8px 10px',
+                  fontSize: '14px',
+                  border: '1px solid #E5E7EB',
+                  borderRadius: '6px',
+                  boxSizing: 'border-box',
+                  resize: 'vertical',
+                  fontFamily: 'inherit'
+                }}
+              />
+            </div>
+            <button
+              onClick={handleSaveJobDetails}
+              disabled={isUpdating || (
+                formData.vibe === (job.vibe || '') &&
+                formData.pets === (job.pets || '') &&
+                formData.gateCode === (job.gateCode || '') &&
+                formData.electricWater === (job.electricWater || '') &&
+                formData.otherNotes === (job.otherNotes || '')
+              )}
+              style={{
+                padding: '8px 16px',
+                fontSize: '14px',
+                fontWeight: '600',
+                border: 'none',
+                borderRadius: '8px',
+                backgroundColor: '#059669',
+                color: 'white',
+                cursor: isUpdating ? 'not-allowed' : 'pointer',
+                opacity: (isUpdating || (
+                  formData.vibe === (job.vibe || '') &&
+                  formData.pets === (job.pets || '') &&
+                  formData.gateCode === (job.gateCode || '') &&
+                  formData.electricWater === (job.electricWater || '') &&
+                  formData.otherNotes === (job.otherNotes || '')
+                )) ? 0.5 : 1
+              }}
+            >
+              Save Job Details
+            </button>
           </div>
 
           {/* Notes */}

@@ -633,15 +633,18 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
                             }}>
                               {job.serviceName}
                             </div>
-                            <div style={{
-                              color: '#6B7280',
-                              fontSize: '9px',
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              lineHeight: '1.2'
-                            }}>
-                              {job.customerName}
+                            <div
+                              title={job.address}
+                              style={{
+                                color: '#6B7280',
+                                fontSize: '9px',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                lineHeight: '1.2'
+                              }}
+                            >
+                              {job.address || job.customerName}
                             </div>
                             <div style={{
                               display: 'flex',
@@ -761,13 +764,21 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
                       fontWeight: '700',
                       color: colors.text,
                       fontSize: '13px',
-                      marginBottom: '4px'
+                      marginBottom: '2px'
                     }}>
                       {job.serviceName}
                     </div>
                     <div style={{
-                      color: '#6B7280',
+                      color: '#374151',
                       fontSize: '12px',
+                      fontWeight: '500',
+                      marginBottom: '2px'
+                    }}>
+                      📍 {job.address || 'No address'}
+                    </div>
+                    <div style={{
+                      color: '#6B7280',
+                      fontSize: '11px',
                       marginBottom: '2px'
                     }}>
                       {job.customerName}
