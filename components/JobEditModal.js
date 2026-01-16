@@ -263,7 +263,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
               fontSize: '14px',
               color: '#6B7280'
             }}>
-              {job.customerName}
+              Customer: {job.customerName}
             </p>
             {job.date && (
               <p style={{
@@ -271,8 +271,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
                 fontSize: '13px',
                 color: '#6B7280'
               }}>
-                {format(parseISO(job.date), 'EEEE, MMMM d, yyyy')}
-                {job.time && ` at ${formatTimeDisplay(job.time)}`}
+                {job.time ? `${formatTimeDisplay(job.time)} -- ` : ''}{format(parseISO(job.date), 'EEEE, MMMM d')}
               </p>
             )}
           </div>
