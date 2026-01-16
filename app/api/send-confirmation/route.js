@@ -8,8 +8,19 @@ const client = twilio(
 const formatPhoneNumber = (phone) => {
   if (!phone) return null
 
+  // Handle if phone is an array (from Airtable linked records)
+  let phoneStr = phone
+  if (Array.isArray(phone)) {
+    phoneStr = phone[0]
+  }
+
+  // Ensure it's a string
+  if (typeof phoneStr !== 'string') {
+    phoneStr = String(phoneStr)
+  }
+
   // Remove all non-numeric characters
-  const cleaned = phone.replace(/\D/g, '')
+  const cleaned = phoneStr.replace(/\D/g, '')
 
   // Add +1 if it's a 10-digit US number
   if (cleaned.length === 10) {
@@ -22,8 +33,8 @@ const formatPhoneNumber = (phone) => {
   }
 
   // Return as-is if already formatted
-  if (phone.startsWith('+')) {
-    return phone
+  if (phoneStr.startsWith('+')) {
+    return phoneStr
   }
 
   return null
