@@ -2,9 +2,12 @@
 
 import { useState } from 'react'
 
+const AVAILABILITY_REMINDER_MESSAGE = `Hey! Please submit your availability for next week using the link below. Thanks!`
+
 export default function TextTechsModal({ technicians, onClose }) {
   const [selectedTechs, setSelectedTechs] = useState([])
   const [message, setMessage] = useState('')
+  const [isAvailabilityReminder, setIsAvailabilityReminder] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [result, setResult] = useState(null)
 
@@ -25,6 +28,20 @@ export default function TextTechsModal({ technicians, onClose }) {
     setSelectedTechs([])
   }
 
+  const setupAvailabilityReminder = () => {
+    const allIds = technicians.filter(t => t.phone).map(t => t.id)
+    setSelectedTechs(allIds)
+    setMessage(AVAILABILITY_REMINDER_MESSAGE)
+    setIsAvailabilityReminder(true)
+    setResult(null)
+  }
+
+  const clearAvailabilityReminder = () => {
+    setIsAvailabilityReminder(false)
+    setMessage('')
+    setSelectedTechs([])
+  }
+
   const handleSend = async () => {
     if (selectedTechs.length === 0 || !message.trim()) return
 
@@ -37,7 +54,8 @@ export default function TextTechsModal({ technicians, onClose }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           techIds: selectedTechs,
-          message: message.trim()
+          message: message.trim(),
+          includeAvailabilityLink: isAvailabilityReminder
         })
       })
 
@@ -51,6 +69,7 @@ export default function TextTechsModal({ technicians, onClose }) {
         // Clear form after success
         setMessage('')
         setSelectedTechs([])
+        setIsAvailabilityReminder(false)
       } else {
         setResult({
           success: false,
@@ -122,6 +141,78 @@ export default function TextTechsModal({ technicians, onClose }) {
 
         {/* Content */}
         <div style={{ padding: '24px' }}>
+          {/* Quick Action - Availability Reminder */}
+          {!isAvailabilityReminder ? (
+            <button
+              onClick={setupAvailabilityReminder}
+              style={{
+                width: '100%',
+                padding: '14px 20px',
+                marginBottom: '20px',
+                backgroundColor: '#FEF3C7',
+                border: '2px solid #F59E0B',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '10px'
+              }}
+            >
+              <span style={{ fontSize: '20px' }}>📅</span>
+              <span style={{
+                fontSize: '15px',
+                fontWeight: '600',
+                color: '#92400E'
+              }}>
+                Send Availability Reminder
+              </span>
+            </button>
+          ) : (
+            <div style={{
+              padding: '14px 16px',
+              marginBottom: '20px',
+              backgroundColor: '#FEF3C7',
+              border: '2px solid #F59E0B',
+              borderRadius: '10px'
+            }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '8px'
+              }}>
+                <span style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#92400E'
+                }}>
+                  📅 Availability Reminder Mode
+                </span>
+                <button
+                  onClick={clearAvailabilityReminder}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '12px',
+                    color: '#B45309',
+                    cursor: 'pointer',
+                    textDecoration: 'underline'
+                  }}
+                >
+                  Switch to custom message
+                </button>
+              </div>
+              <p style={{
+                fontSize: '12px',
+                color: '#A16207',
+                margin: 0
+              }}>
+                Each tech will receive their personalized availability form link.
+              </p>
+            </div>
+          )}
+
           {/* Tech Selection */}
           <div style={{ marginBottom: '20px' }}>
             <div style={{

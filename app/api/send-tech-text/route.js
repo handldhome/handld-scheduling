@@ -43,7 +43,7 @@ const formatPhoneNumber = (phone) => {
 
 export async function POST(request) {
   try {
-    const { techIds, message } = await request.json()
+    const { techIds, message, includeAvailabilityLink } = await request.json()
 
     if (!techIds || !Array.isArray(techIds) || techIds.length === 0) {
       return Response.json({ error: 'At least one technician ID is required' }, { status: 400 })
@@ -52,6 +52,11 @@ export async function POST(request) {
     if (!message || !message.trim()) {
       return Response.json({ error: 'Message is required' }, { status: 400 })
     }
+
+    // Get base URL from request headers or environment
+    const host = request.headers.get('host')
+    const protocol = request.headers.get('x-forwarded-proto') || 'https'
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `${protocol}://${host}`
 
     const results = {
       successCount: 0,
@@ -76,8 +81,15 @@ export async function POST(request) {
           continue
         }
 
+        // Build the message, optionally adding the availability link
+        let finalMessage = message.trim()
+        if (includeAvailabilityLink) {
+          const availabilityLink = `${baseUrl}/tech/${techId}/availability`
+          finalMessage = `${finalMessage}\n\n${availabilityLink}`
+        }
+
         const result = await client.messages.create({
-          body: message.trim(),
+          body: finalMessage,
           from: process.env.TWILIO_PHONE_NUMBER,
           to: phoneNumber
         })
