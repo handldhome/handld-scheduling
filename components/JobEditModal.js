@@ -157,12 +157,12 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
         if (!smsResponse.ok) {
           const smsError = await smsResponse.json()
           console.error('SMS error:', smsError)
-          // Don't block confirmation if SMS fails, but alert user
-          alert('Job confirmed, but confirmation text failed to send. You may need to contact the customer manually.')
+          // Don't block confirmation if SMS fails, but alert user with details
+          alert(`Job confirmed, but confirmation text failed to send.\n\nError: ${smsError.details || smsError.error || 'Unknown error'}\n\nYou may need to contact the customer manually.`)
         }
       } catch (smsErr) {
         console.error('SMS send error:', smsErr)
-        alert('Job confirmed, but confirmation text failed to send. You may need to contact the customer manually.')
+        alert(`Job confirmed, but confirmation text failed to send.\n\nError: ${smsErr.message}\n\nYou may need to contact the customer manually.`)
       }
     }
 
