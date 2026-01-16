@@ -74,10 +74,18 @@ export async function POST(request) {
       return Response.json({ error: 'Valid phone number is required' }, { status: 400 })
     }
 
-    const firstName = job.firstName || job.customerName?.split(' ')[0] || 'there'
-    const serviceName = job.serviceName || 'service'
-    const date = formatDate(job.date)
-    const time = formatTime(job.time)
+    // Helper to safely get string from potentially array values (Airtable)
+    const getString = (val) => {
+      if (!val) return null
+      if (Array.isArray(val)) return val[0]
+      return String(val)
+    }
+
+    const customerName = getString(job.customerName)
+    const firstName = getString(job.firstName) || customerName?.split(' ')[0] || 'there'
+    const serviceName = getString(job.serviceName) || 'service'
+    const date = formatDate(getString(job.date))
+    const time = formatTime(getString(job.time))
 
     const message = `Hi ${firstName}, your ${serviceName} appointment with Handld Home Services is confirmed for ${date} at ${time}. Questions? Text us at (626) 298-7128`
 
