@@ -240,7 +240,7 @@ function JobCard({ job, index, isExpanded, onToggle, onJobUpdate }) {
             fontSize: '13px',
             color: '#6B7280'
           }}>
-            Est. Duration: {job.estimatedDuration}
+            Time Expected: {job.estimatedDuration}
           </p>
         )}
 
@@ -330,7 +330,6 @@ function JobCard({ job, index, isExpanded, onToggle, onJobUpdate }) {
             }}>
               <DetailItem label="Name" value={job.customerName || 'N/A'} />
               <DetailItem label="Phone" value={job.phone || 'N/A'} />
-              {job.email && <DetailItem label="Email" value={job.email} />}
             </div>
           </div>
 
@@ -392,13 +391,13 @@ function JobCard({ job, index, isExpanded, onToggle, onJobUpdate }) {
                 <DetailItem label="Lot Size" value={job.lotSize} />
               )}
               {job.estimatedDuration && (
-                <DetailItem label="Est. Duration" value={job.estimatedDuration} />
+                <DetailItem label="Time Expected" value={job.estimatedDuration} />
               )}
             </div>
           </div>
 
-          {/* Job Details Grid */}
-          {(job.vibe || job.pets || job.gateCode || job.electricWater) && (
+          {/* Customer Notes Section */}
+          {(job.vibe || job.pets || job.gateCode || job.electricWater || job.otherNotes) && (
             <div style={{ marginBottom: '16px' }}>
               <div style={{
                 fontSize: '12px',
@@ -407,31 +406,46 @@ function JobCard({ job, index, isExpanded, onToggle, onJobUpdate }) {
                 marginBottom: '8px',
                 textTransform: 'uppercase'
               }}>
-                Job Details
+                Customer Notes
               </div>
               <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(2, 1fr)',
-                gap: '12px'
+                backgroundColor: '#F9FAFB',
+                padding: '12px',
+                borderRadius: '8px',
+                fontSize: '14px',
+                color: '#374151'
               }}>
                 {job.vibe && (
-                  <DetailItem label="Vibe" value={job.vibe} />
+                  <div style={{ marginBottom: '8px' }}>
+                    <strong>Vibe:</strong> {job.vibe}
+                  </div>
                 )}
                 {job.pets && (
-                  <DetailItem label="Pets" value={job.pets} />
+                  <div style={{ marginBottom: '8px' }}>
+                    <strong>Pets:</strong> {job.pets}
+                  </div>
                 )}
                 {job.gateCode && (
-                  <DetailItem label="Access/Gate" value={job.gateCode} />
+                  <div style={{ marginBottom: '8px' }}>
+                    <strong>Access/Gate:</strong> {job.gateCode}
+                  </div>
                 )}
                 {job.electricWater && (
-                  <DetailItem label="Electric/Water" value={job.electricWater} />
+                  <div style={{ marginBottom: '8px' }}>
+                    <strong>Electric/Water:</strong> {job.electricWater}
+                  </div>
+                )}
+                {job.otherNotes && (
+                  <div style={{ marginBottom: '0' }}>
+                    <strong>Other:</strong> {job.otherNotes}
+                  </div>
                 )}
               </div>
             </div>
           )}
 
-          {/* Notes Section */}
-          {(job.notes || job.otherNotes) && (
+          {/* Job Notes Section */}
+          {job.notes && (
             <div style={{ marginBottom: '16px' }}>
               <div style={{
                 fontSize: '12px',
@@ -440,31 +454,17 @@ function JobCard({ job, index, isExpanded, onToggle, onJobUpdate }) {
                 marginBottom: '8px',
                 textTransform: 'uppercase'
               }}>
-                Notes
+                Job Notes
               </div>
-              {job.notes && (
-                <div style={{
-                  fontSize: '14px',
-                  color: '#374151',
-                  backgroundColor: '#F9FAFB',
-                  padding: '12px',
-                  borderRadius: '8px',
-                  marginBottom: job.otherNotes ? '8px' : 0
-                }}>
-                  {job.notes}
-                </div>
-              )}
-              {job.otherNotes && (
-                <div style={{
-                  fontSize: '14px',
-                  color: '#374151',
-                  backgroundColor: '#F9FAFB',
-                  padding: '12px',
-                  borderRadius: '8px'
-                }}>
-                  {job.otherNotes}
-                </div>
-              )}
+              <div style={{
+                fontSize: '14px',
+                color: '#374151',
+                backgroundColor: '#F9FAFB',
+                padding: '12px',
+                borderRadius: '8px'
+              }}>
+                {job.notes}
+              </div>
             </div>
           )}
 
