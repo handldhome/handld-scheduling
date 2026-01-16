@@ -82,7 +82,7 @@ const formatTime = (time24) => {
 
 export default function WeeklyCalendarView({ jobs, technicians }) {
   const [currentWeekStart, setCurrentWeekStart] = useState(() =>
-    startOfWeek(new Date(), { weekStartsOn: 0 })
+    startOfWeek(new Date(), { weekStartsOn: 1 })
   )
   const [selectedJob, setSelectedJob] = useState(null)
   const [showUnscheduledPanel, setShowUnscheduledPanel] = useState(true)
@@ -94,7 +94,7 @@ export default function WeeklyCalendarView({ jobs, technicians }) {
     const saved = sessionStorage.getItem('calendarWeekStart')
     if (saved) {
       sessionStorage.removeItem('calendarWeekStart')
-      setCurrentWeekStart(startOfWeek(parseISO(saved), { weekStartsOn: 0 }))
+      setCurrentWeekStart(startOfWeek(parseISO(saved), { weekStartsOn: 1 }))
     }
   }, [])
 
@@ -209,7 +209,7 @@ export default function WeeklyCalendarView({ jobs, technicians }) {
         flexWrap: 'wrap'
       }}>
         <button
-          onClick={() => setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: 0 }))}
+          onClick={() => setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}
           style={{
             padding: '8px 16px',
             fontSize: '14px',
