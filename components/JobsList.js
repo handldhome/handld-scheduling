@@ -1,30 +1,92 @@
 'use client'
 
-import { useState } from 'react'
-import { format } from 'date-fns'
+import { useState, useMemo } from 'react'
+import { format, addDays, subDays, parseISO, isWithinInterval, startOfDay } from 'date-fns'
+
+// Status color mapping
+const STATUS_COLORS = {
+  'Planned': { bg: '#DBEAFE', text: '#1E40AF' },      // Blue
+  'Scheduled': { bg: '#FEF3C7', text: '#92400E' },    // Amber/Yellow
+  'Completed': { bg: '#D1FAE5', text: '#065F46' },    // Green
+  'Needs Review': { bg: '#FEE2E2', text: '#991B1B' }, // Red
+  'Cancelled': { bg: '#F3F4F6', text: '#6B7280' },    // Gray
+  'In Progress': { bg: '#E0E7FF', text: '#3730A3' },  // Indigo
+}
+
+const getStatusColors = (status) => {
+  return STATUS_COLORS[status] || { bg: '#F3F4F6', text: '#6B7280' }
+}
 
 export default function JobsList({ jobs, technicians }) {
   const [filter, setFilter] = useState('all') // 'all', 'unscheduled', 'planned', 'needs-review'
   const [expandedJob, setExpandedJob] = useState(null)
 
-  // Filter jobs based on selected filter
-  const filteredJobs = jobs.filter(job => {
-    if (filter === 'unscheduled') {
-      return !job.assignedTech || job.assignedTech.length === 0
-    }
-    if (filter === 'planned') {
-      return job.status === 'Planned'
-    }
-    if (filter === 'needs-review') {
-      return job.status === 'Needs Review'
-    }
-    return true // 'all'
-  })
+  // Date filter - default to yesterday through 2 weeks from now
+  const today = startOfDay(new Date())
+  const [dateFrom, setDateFrom] = useState(format(subDays(today, 1), 'yyyy-MM-dd'))
+  const [dateTo, setDateTo] = useState(format(addDays(today, 14), 'yyyy-MM-dd'))
 
-  // Count jobs by filter type
-  const unscheduledCount = jobs.filter(j => !j.assignedTech || j.assignedTech.length === 0).length
-  const plannedCount = jobs.filter(j => j.status === 'Planned').length
-  const needsReviewCount = jobs.filter(j => j.status === 'Needs Review').length
+  // Filter jobs based on selected filter AND date range
+  const filteredJobs = useMemo(() => {
+    return jobs.filter(job => {
+      // Date filter
+      if (job.date) {
+        const jobDate = startOfDay(parseISO(job.date))
+        const fromDate = startOfDay(parseISO(dateFrom))
+        const toDate = startOfDay(parseISO(dateTo))
+
+        if (!isWithinInterval(jobDate, { start: fromDate, end: toDate })) {
+          return false
+        }
+      }
+
+      // Status filter
+      if (filter === 'unscheduled') {
+        return !job.assignedTech || job.assignedTech.length === 0
+      }
+      if (filter === 'planned') {
+        return job.status === 'Planned'
+      }
+      if (filter === 'needs-review') {
+        return job.status === 'Needs Review'
+      }
+      return true // 'all'
+    })
+  }, [jobs, filter, dateFrom, dateTo])
+
+  // Count jobs by filter type (within date range)
+  const jobsInRange = useMemo(() => {
+    return jobs.filter(job => {
+      if (!job.date) return true
+      const jobDate = startOfDay(parseISO(job.date))
+      const fromDate = startOfDay(parseISO(dateFrom))
+      const toDate = startOfDay(parseISO(dateTo))
+      return isWithinInterval(jobDate, { start: fromDate, end: toDate })
+    })
+  }, [jobs, dateFrom, dateTo])
+
+  const unscheduledCount = jobsInRange.filter(j => !j.assignedTech || j.assignedTech.length === 0).length
+  const plannedCount = jobsInRange.filter(j => j.status === 'Planned').length
+  const needsReviewCount = jobsInRange.filter(j => j.status === 'Needs Review').length
+
+  // Calculate total time from clock in/out
+  const calculateTotalTime = (clockIn, clockOut) => {
+    if (!clockIn || !clockOut) return null
+    const start = new Date(clockIn)
+    const end = new Date(clockOut)
+    const diffMs = end - start
+    const hours = Math.floor(diffMs / (1000 * 60 * 60))
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`
+    }
+    return `${minutes}m`
+  }
+
+  const formatClockTime = (isoString) => {
+    if (!isoString) return null
+    return format(new Date(isoString), 'h:mm a')
+  }
 
   const filterButtonStyle = (isActive) => ({
     padding: '8px 16px',
@@ -84,6 +146,62 @@ export default function JobsList({ jobs, technicians }) {
 
   return (
     <div>
+      {/* Date Filter */}
+      <div style={{
+        display: 'flex',
+        gap: '12px',
+        marginBottom: '16px',
+        alignItems: 'center',
+        flexWrap: 'wrap'
+      }}>
+        <span style={{ fontSize: '14px', fontWeight: '600', color: '#374151' }}>
+          Date Range:
+        </span>
+        <input
+          type="date"
+          value={dateFrom}
+          onChange={(e) => setDateFrom(e.target.value)}
+          style={{
+            padding: '8px 12px',
+            fontSize: '14px',
+            border: '1px solid #D1D5DB',
+            borderRadius: '8px',
+            backgroundColor: 'white'
+          }}
+        />
+        <span style={{ color: '#6B7280' }}>to</span>
+        <input
+          type="date"
+          value={dateTo}
+          onChange={(e) => setDateTo(e.target.value)}
+          style={{
+            padding: '8px 12px',
+            fontSize: '14px',
+            border: '1px solid #D1D5DB',
+            borderRadius: '8px',
+            backgroundColor: 'white'
+          }}
+        />
+        <button
+          onClick={() => {
+            setDateFrom(format(subDays(today, 1), 'yyyy-MM-dd'))
+            setDateTo(format(addDays(today, 14), 'yyyy-MM-dd'))
+          }}
+          style={{
+            padding: '8px 12px',
+            fontSize: '12px',
+            fontWeight: '500',
+            border: '1px solid #D1D5DB',
+            borderRadius: '6px',
+            backgroundColor: '#F9FAFB',
+            color: '#374151',
+            cursor: 'pointer'
+          }}
+        >
+          Reset
+        </button>
+      </div>
+
       {/* Filter Buttons */}
       <div style={{
         display: 'flex',
@@ -179,8 +297,8 @@ export default function JobsList({ jobs, technicians }) {
                           fontWeight: '600',
                           padding: '4px 8px',
                           borderRadius: '6px',
-                          backgroundColor: job.status === 'Planned' ? '#DBEAFE' : '#FEF3C7',
-                          color: job.status === 'Planned' ? '#1E40AF' : '#92400E'
+                          backgroundColor: getStatusColors(job.status).bg,
+                          color: getStatusColors(job.status).text
                         }}>
                           {job.status}
                         </span>
@@ -362,6 +480,79 @@ export default function JobsList({ jobs, technicians }) {
                         }}>
                           {job.otherNotes}
                         </div>
+                      </div>
+                    )}
+
+                    {/* Completion Details - shown for completed jobs */}
+                    {job.status === 'Completed' && (job.clockIn || job.clockOut || job.completionNotes) && (
+                      <div style={{
+                        marginBottom: '16px',
+                        padding: '16px',
+                        backgroundColor: '#D1FAE5',
+                        borderRadius: '8px',
+                        border: '1px solid #A7F3D0'
+                      }}>
+                        <div style={{
+                          fontSize: '14px',
+                          fontWeight: '700',
+                          color: '#065F46',
+                          marginBottom: '12px'
+                        }}>
+                          Completion Details
+                        </div>
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                          gap: '12px',
+                          marginBottom: job.completionNotes ? '12px' : '0'
+                        }}>
+                          {job.clockIn && (
+                            <div>
+                              <div style={{ fontSize: '12px', color: '#065F46', marginBottom: '2px' }}>
+                                Clock In
+                              </div>
+                              <div style={{ fontSize: '14px', fontWeight: '600', color: '#065F46' }}>
+                                {formatClockTime(job.clockIn)}
+                              </div>
+                            </div>
+                          )}
+                          {job.clockOut && (
+                            <div>
+                              <div style={{ fontSize: '12px', color: '#065F46', marginBottom: '2px' }}>
+                                Clock Out
+                              </div>
+                              <div style={{ fontSize: '14px', fontWeight: '600', color: '#065F46' }}>
+                                {formatClockTime(job.clockOut)}
+                              </div>
+                            </div>
+                          )}
+                          {job.clockIn && job.clockOut && (
+                            <div>
+                              <div style={{ fontSize: '12px', color: '#065F46', marginBottom: '2px' }}>
+                                Total Time
+                              </div>
+                              <div style={{ fontSize: '14px', fontWeight: '600', color: '#065F46' }}>
+                                {calculateTotalTime(job.clockIn, job.clockOut)}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        {job.completionNotes && (
+                          <div>
+                            <div style={{ fontSize: '12px', color: '#065F46', marginBottom: '4px' }}>
+                              Technician Notes
+                            </div>
+                            <div style={{
+                              fontSize: '14px',
+                              color: '#065F46',
+                              backgroundColor: '#ECFDF5',
+                              padding: '8px 12px',
+                              borderRadius: '6px'
+                            }}>
+                              {job.completionNotes}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
 
