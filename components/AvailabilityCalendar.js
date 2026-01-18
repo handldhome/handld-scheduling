@@ -21,17 +21,44 @@ export default function AvailabilityCalendar({ technicians, availability }) {
 
   const days = getNextTwoWeeks()
 
-  // Create a lookup map for quick access: techId-date-period -> available
+  // Create a lookup map for quick access: techId-date-period -> { submitted: boolean, available: boolean }
   const availabilityMap = {}
   availability.forEach(record => {
     const key = `${record.technicianId}-${record.date}-${record.timePeriod}`
-    availabilityMap[key] = record.available
+    availabilityMap[key] = { submitted: true, available: record.available }
   })
 
-  // Check if a tech is available for a specific date/period
-  const isAvailable = (techId, date, period) => {
+  // Get availability status for a specific tech/date/period
+  // Returns: { submitted: boolean, available: boolean }
+  const getAvailabilityStatus = (techId, date, period) => {
     const key = `${techId}-${date}-${period}`
-    return availabilityMap[key] || false
+    return availabilityMap[key] || { submitted: false, available: false }
+  }
+
+  // Get style for availability cell based on status
+  const getCellStyle = (status) => {
+    if (!status.submitted) {
+      // Not submitted - white with black outline
+      return {
+        backgroundColor: 'white',
+        color: '#333',
+        border: '1px solid #333'
+      }
+    }
+    if (status.available) {
+      // Available - green
+      return {
+        backgroundColor: '#27ae60',
+        color: 'white',
+        border: 'none'
+      }
+    }
+    // Not available - gray
+    return {
+      backgroundColor: '#e0e0e0',
+      color: '#999',
+      border: 'none'
+    }
   }
 
   if (technicians.length === 0) {
@@ -61,8 +88,9 @@ export default function AvailabilityCalendar({ technicians, availability }) {
       <div style={{
         display: 'flex',
         marginBottom: '15px',
-        gap: '10px',
-        alignItems: 'center'
+        gap: '16px',
+        alignItems: 'center',
+        flexWrap: 'wrap'
       }}>
         <div style={{
           display: 'flex',
@@ -89,6 +117,20 @@ export default function AvailabilityCalendar({ technicians, availability }) {
             borderRadius: '4px'
           }}></div>
           <span style={{ fontSize: '14px', color: '#666' }}>Not Available</span>
+        </div>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '5px'
+        }}>
+          <div style={{
+            width: '20px',
+            height: '20px',
+            backgroundColor: 'white',
+            borderRadius: '4px',
+            border: '1px solid #333'
+          }}></div>
+          <span style={{ fontSize: '14px', color: '#666' }}>Not Submitted</span>
         </div>
       </div>
 
@@ -144,8 +186,16 @@ export default function AvailabilityCalendar({ technicians, availability }) {
                 {tech.firstName} {tech.lastName}
               </td>
               {days.map(day => {
-                const amAvailable = isAvailable(tech.id, day.date, 'AM')
-                const pmAvailable = isAvailable(tech.id, day.date, 'PM')
+                const amStatus = getAvailabilityStatus(tech.id, day.date, 'AM')
+                const pmStatus = getAvailabilityStatus(tech.id, day.date, 'PM')
+                const amStyle = getCellStyle(amStatus)
+                const pmStyle = getCellStyle(pmStatus)
+
+                const getTitle = (period, status) => {
+                  const timeRange = period === 'AM' ? '8-12' : '1-5'
+                  if (!status.submitted) return `${period} (${timeRange}): Not Submitted`
+                  return `${period} (${timeRange}): ${status.available ? 'Available' : 'Not Available'}`
+                }
 
                 return (
                   <td key={day.date} style={{
@@ -161,12 +211,11 @@ export default function AvailabilityCalendar({ technicians, availability }) {
                         style={{
                           padding: '6px 4px',
                           borderRadius: '4px',
-                          backgroundColor: amAvailable ? '#27ae60' : '#e0e0e0',
-                          color: amAvailable ? 'white' : '#999',
                           fontSize: '11px',
-                          fontWeight: '600'
+                          fontWeight: '600',
+                          ...amStyle
                         }}
-                        title={`AM (8-12): ${amAvailable ? 'Available' : 'Not Available'}`}
+                        title={getTitle('AM', amStatus)}
                       >
                         AM
                       </div>
@@ -174,12 +223,11 @@ export default function AvailabilityCalendar({ technicians, availability }) {
                         style={{
                           padding: '6px 4px',
                           borderRadius: '4px',
-                          backgroundColor: pmAvailable ? '#27ae60' : '#e0e0e0',
-                          color: pmAvailable ? 'white' : '#999',
                           fontSize: '11px',
-                          fontWeight: '600'
+                          fontWeight: '600',
+                          ...pmStyle
                         }}
-                        title={`PM (1-5): ${pmAvailable ? 'Available' : 'Not Available'}`}
+                        title={getTitle('PM', pmStatus)}
                       >
                         PM
                       </div>
