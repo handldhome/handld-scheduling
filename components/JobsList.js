@@ -604,57 +604,68 @@ export default function JobsList({ jobs, technicians }) {
                       </div>
                     )}
 
-                    {/* Assign Technician */}
-                    <div>
-                      <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '8px' }}>
-                        Assign Technician
+                    {/* Technician - read-only for completed jobs, editable otherwise */}
+                    {job.status === 'Completed' ? (
+                      <div>
+                        <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '4px' }}>
+                          Technician
+                        </div>
+                        <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>
+                          {techName}
+                        </div>
                       </div>
-                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleAssignTech(job.id, null)
-                          }}
-                          style={{
-                            padding: '8px 12px',
-                            fontSize: '14px',
-                            fontWeight: '600',
-                            border: '1px solid #E5E7EB',
-                            borderRadius: '8px',
-                            backgroundColor: isUnassigned ? '#FEE2E2' : 'white',
-                            color: isUnassigned ? '#991B1B' : '#6B7280',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          Unassign
-                        </button>
-                        {technicians.map(tech => {
-                          const isAssigned = job.assignedTech?.[0] === tech.id
-                          return (
-                            <button
-                              key={tech.id}
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleAssignTech(job.id, tech.id)
-                              }}
-                              style={{
-                                padding: '8px 12px',
-                                fontSize: '14px',
-                                fontWeight: '600',
-                                border: '1px solid',
-                                borderColor: isAssigned ? '#2A54A1' : '#E5E7EB',
-                                borderRadius: '8px',
-                                backgroundColor: isAssigned ? '#2A54A1' : 'white',
-                                color: isAssigned ? 'white' : '#111827',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              {tech.firstName} {tech.lastName}
-                            </button>
-                          )
-                        })}
+                    ) : (
+                      <div>
+                        <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '8px' }}>
+                          Assign Technician
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleAssignTech(job.id, null)
+                            }}
+                            style={{
+                              padding: '8px 12px',
+                              fontSize: '14px',
+                              fontWeight: '600',
+                              border: '1px solid #E5E7EB',
+                              borderRadius: '8px',
+                              backgroundColor: isUnassigned ? '#FEE2E2' : 'white',
+                              color: isUnassigned ? '#991B1B' : '#6B7280',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Unassign
+                          </button>
+                          {technicians.map(tech => {
+                            const isAssigned = job.assignedTech?.[0] === tech.id
+                            return (
+                              <button
+                                key={tech.id}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleAssignTech(job.id, tech.id)
+                                }}
+                                style={{
+                                  padding: '8px 12px',
+                                  fontSize: '14px',
+                                  fontWeight: '600',
+                                  border: '1px solid',
+                                  borderColor: isAssigned ? '#2A54A1' : '#E5E7EB',
+                                  borderRadius: '8px',
+                                  backgroundColor: isAssigned ? '#2A54A1' : 'white',
+                                  color: isAssigned ? 'white' : '#111827',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                {tech.firstName} {tech.lastName}
+                              </button>
+                            )
+                          })}
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 )}
               </div>
