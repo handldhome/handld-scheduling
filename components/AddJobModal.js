@@ -173,7 +173,7 @@ export default function AddJobModal({ onClose, onJobAdded }) {
               color: '#6B7280',
               margin: '4px 0 0 0'
             }}>
-              For verbally approved jobs - auto-marks as Quote Approved
+              Creates a Quote Request - approve quote to move to Jobs
             </p>
           </div>
           <button
