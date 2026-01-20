@@ -546,6 +546,26 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
               >
                 Update
               </button>
+              {(job.date || job.time) && (
+                <button
+                  onClick={() => {
+                    handleUpdate({ date: null, time: '', confirmed: false })
+                  }}
+                  disabled={isUpdating}
+                  style={{
+                    padding: '10px 16px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    border: '1px solid #DC2626',
+                    borderRadius: '8px',
+                    backgroundColor: 'white',
+                    color: '#DC2626',
+                    cursor: isUpdating ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  Unschedule
+                </button>
+              )}
             </div>
           </div>
 

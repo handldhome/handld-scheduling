@@ -169,19 +169,31 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
     filteredJobs.forEach(job => {
       // Jobs with actual date and time are scheduled
       if (job.date && job.time) {
-        const jobDate = format(parseISO(job.date), 'yyyy-MM-dd')
-        if (byDay[jobDate]) {
-          byDay[jobDate].push(job)
+        try {
+          const jobDate = format(parseISO(job.date), 'yyyy-MM-dd')
+          if (byDay[jobDate]) {
+            byDay[jobDate].push(job)
+          }
+        } catch (e) {
+          console.error('Error parsing job date:', job.date, e)
         }
         return
       }
 
       // Jobs with AI suggestions (suggestedDate and suggestedTime) show as suggested
       if (job.suggestedDate && job.suggestedTime) {
-        const suggestedDate = format(parseISO(job.suggestedDate), 'yyyy-MM-dd')
-        if (suggestedByDay[suggestedDate]) {
-          suggestedByDay[suggestedDate].push(job)
+        try {
+          const suggestedDate = format(parseISO(job.suggestedDate), 'yyyy-MM-dd')
+          if (suggestedByDay[suggestedDate]) {
+            // Suggestion is in current week view - show on calendar
+            suggestedByDay[suggestedDate].push(job)
+            return
+          }
+        } catch (e) {
+          console.error('Error parsing suggested date:', job.suggestedDate, e)
         }
+        // Suggestion is outside current week - still show in unscheduled with suggestion badge
+        unscheduled.push(job)
         return
       }
 
@@ -978,6 +990,19 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
                         color: '#7C3AED'
                       }}>
                         🔧 {job.equipment.join(', ')}
+                      </div>
+                    )}
+                    {job.suggestedDate && job.suggestedTime && (
+                      <div style={{
+                        marginTop: '4px',
+                        padding: '4px 6px',
+                        backgroundColor: '#FAF5FF',
+                        border: '1px dashed #7C3AED',
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        color: '#7C3AED'
+                      }}>
+                        ✨ Suggested: {format(parseISO(job.suggestedDate), 'MMM d')} @ {job.suggestedTime}
                       </div>
                     )}
                   </div>

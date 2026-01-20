@@ -24,18 +24,10 @@ export default function AdminDashboardClient({ technicians, availability, jobs }
         throw new Error(data.error || 'Failed to run scheduler')
       }
 
-      // Show summary and refresh
-      const { stats } = data
-      if (stats.successfulSuggestions > 0) {
-        alert(`AI Scheduler found ${stats.successfulSuggestions} suggestion${stats.successfulSuggestions !== 1 ? 's' : ''}. They appear on the calendar with purple dotted borders.`)
-      } else if (stats.totalUnscheduled === 0) {
-        alert('No unscheduled jobs found.')
-      } else {
-        alert(`Couldn't find suggestions for ${stats.issuesFound} job${stats.issuesFound !== 1 ? 's' : ''}. Check tech ratings and availability.`)
-      }
-
+      // Refresh page to show suggestions on calendar
       window.location.reload()
     } catch (error) {
+      console.error('AI Scheduler error:', error)
       alert('Error running AI Scheduler: ' + error.message)
     } finally {
       setIsRunningAI(false)
