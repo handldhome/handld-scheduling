@@ -62,6 +62,11 @@ export function middleware(request) {
 
     case 'schedule':
       // schedule.handldhome.com -> /admin (with secret key protection)
+      // Allow API routes through WITHOUT key check (called from authenticated dashboard)
+      if (url.pathname.startsWith('/api')) {
+        return NextResponse.next()
+      }
+      // Check secret key for page access
       const key = url.searchParams.get('key')
       if (key !== ADMIN_SECRET_KEY) {
         return new NextResponse('Not Found', { status: 404 })
@@ -73,10 +78,6 @@ export function middleware(request) {
       }
       // Allow /admin paths through
       if (url.pathname.startsWith('/admin')) {
-        return NextResponse.next()
-      }
-      // Allow API routes through
-      if (url.pathname.startsWith('/api')) {
         return NextResponse.next()
       }
       break
