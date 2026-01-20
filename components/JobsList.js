@@ -250,7 +250,7 @@ export default function JobsList({ jobs, technicians }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {filteredJobs.map(job => {
             const isExpanded = expandedJob === job.id
-            const jobDate = new Date(job.date)
+            const jobDate = job.date ? new Date(job.date) : null
             const techName = getTechName(job.assignedTech)
             const isUnassigned = techName === 'Unassigned'
 
@@ -344,7 +344,7 @@ export default function JobsList({ jobs, technicians }) {
                       gap: '16px',
                       flexWrap: 'wrap'
                     }}>
-                      <span>📅 {format(jobDate, 'EEEE, MMM d, yyyy')}</span>
+                      <span>📅 {jobDate ? format(jobDate, 'EEEE, MMM d, yyyy') : 'No date scheduled'}</span>
                       <span>👤 {job.customerName}</span>
                       <span>👷 {techName}</span>
                     </div>
