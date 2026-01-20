@@ -18,7 +18,7 @@ const getStatusColors = (status) => {
 }
 
 export default function JobsList({ jobs, technicians }) {
-  const [filter, setFilter] = useState('all') // 'all', 'unscheduled', 'planned', 'needs-review'
+  const [filter, setFilter] = useState('all') // 'all', 'unscheduled', 'needs-review', 'scheduled', 'completed'
   const [expandedJob, setExpandedJob] = useState(null)
 
   // Date filter - default to yesterday through 2 weeks from now
@@ -44,11 +44,14 @@ export default function JobsList({ jobs, technicians }) {
       if (filter === 'unscheduled') {
         return !job.assignedTech || job.assignedTech.length === 0
       }
-      if (filter === 'planned') {
-        return job.status === 'Planned'
-      }
       if (filter === 'needs-review') {
         return job.status === 'Needs Review'
+      }
+      if (filter === 'scheduled') {
+        return job.status === 'Scheduled'
+      }
+      if (filter === 'completed') {
+        return job.status === 'Completed'
       }
       return true // 'all'
     })
@@ -66,8 +69,9 @@ export default function JobsList({ jobs, technicians }) {
   }, [jobs, dateFrom, dateTo])
 
   const unscheduledCount = jobsInRange.filter(j => !j.assignedTech || j.assignedTech.length === 0).length
-  const plannedCount = jobsInRange.filter(j => j.status === 'Planned').length
   const needsReviewCount = jobsInRange.filter(j => j.status === 'Needs Review').length
+  const scheduledCount = jobsInRange.filter(j => j.status === 'Scheduled').length
+  const completedCount = jobsInRange.filter(j => j.status === 'Completed').length
 
   // Calculate total time from clock in/out
   const calculateTotalTime = (clockIn, clockOut) => {
@@ -222,16 +226,22 @@ export default function JobsList({ jobs, technicians }) {
           Unscheduled ({unscheduledCount})
         </button>
         <button
-          onClick={() => setFilter('planned')}
-          style={filterButtonStyle(filter === 'planned')}
-        >
-          Planned ({plannedCount})
-        </button>
-        <button
           onClick={() => setFilter('needs-review')}
           style={filterButtonStyle(filter === 'needs-review')}
         >
           Needs Review ({needsReviewCount})
+        </button>
+        <button
+          onClick={() => setFilter('scheduled')}
+          style={filterButtonStyle(filter === 'scheduled')}
+        >
+          Scheduled ({scheduledCount})
+        </button>
+        <button
+          onClick={() => setFilter('completed')}
+          style={filterButtonStyle(filter === 'completed')}
+        >
+          Completed ({completedCount})
         </button>
       </div>
 
