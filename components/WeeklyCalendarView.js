@@ -155,30 +155,41 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
     })
   }, [jobs, selectedTechIds])
 
-  // Group jobs by date and identify unscheduled (uses filtered jobs)
-  const { scheduledJobsByDay, unscheduledJobs } = useMemo(() => {
+  // Group jobs by date, identify unscheduled, and create suggested jobs view
+  const { scheduledJobsByDay, suggestedJobsByDay, unscheduledJobs } = useMemo(() => {
     const byDay = {}
+    const suggestedByDay = {}
     const unscheduled = []
 
-    weekDays.forEach(day => { byDay[day.date] = [] })
+    weekDays.forEach(day => {
+      byDay[day.date] = []
+      suggestedByDay[day.date] = []
+    })
 
     filteredJobs.forEach(job => {
-      // Jobs without a date or without a time are unscheduled
-      if (!job.date || !job.time) {
-        unscheduled.push(job)
+      // Jobs with actual date and time are scheduled
+      if (job.date && job.time) {
+        const jobDate = format(parseISO(job.date), 'yyyy-MM-dd')
+        if (byDay[jobDate]) {
+          byDay[jobDate].push(job)
+        }
         return
       }
 
-      const jobDate = format(parseISO(job.date), 'yyyy-MM-dd')
-
-      // Only show on calendar if date is in current week view
-      if (byDay[jobDate]) {
-        byDay[jobDate].push(job)
+      // Jobs with AI suggestions (suggestedDate and suggestedTime) show as suggested
+      if (job.suggestedDate && job.suggestedTime) {
+        const suggestedDate = format(parseISO(job.suggestedDate), 'yyyy-MM-dd')
+        if (suggestedByDay[suggestedDate]) {
+          suggestedByDay[suggestedDate].push(job)
+        }
+        return
       }
-      // Jobs with date outside current week but with a time are just not shown in this view
+
+      // Everything else is unscheduled
+      unscheduled.push(job)
     })
 
-    return { scheduledJobsByDay: byDay, unscheduledJobs: unscheduled }
+    return { scheduledJobsByDay: byDay, suggestedJobsByDay: suggestedByDay, unscheduledJobs: unscheduled }
   }, [filteredJobs, weekDays])
 
   // Extract unique service names from all jobs for the legend
@@ -199,6 +210,71 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
       const slotHour = slotTime.split(':')[0]
       return jobHour === slotHour
     })
+  }
+
+  // Get suggested jobs for a specific time slot
+  const getSuggestedJobsForSlot = (date, slotTime) => {
+    const dayJobs = suggestedJobsByDay[date] || []
+    return dayJobs.filter(job => {
+      if (!job.suggestedTime) return false
+      // Parse suggested time (format: "8:00 AM", "10:00 AM", "2:00 PM", etc.)
+      const timeMatch = job.suggestedTime.match(/(\d{1,2}):?(\d{2})?\s*(AM|PM)?/i)
+      if (!timeMatch) return false
+
+      let suggestedHour = parseInt(timeMatch[1])
+      const isPM = timeMatch[3]?.toUpperCase() === 'PM'
+      if (isPM && suggestedHour !== 12) suggestedHour += 12
+      if (!isPM && suggestedHour === 12) suggestedHour = 0
+
+      const slotHour = parseInt(slotTime.split(':')[0])
+      return suggestedHour === slotHour
+    })
+  }
+
+  // Accept an AI suggestion
+  const handleAcceptSuggestion = async (job) => {
+    try {
+      const response = await fetch('/api/scheduling-agent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'apply',
+          suggestions: [{
+            jobId: job.id,
+            suggestedTech: job.suggestedTech, // This is the tech name, we need the ID
+            suggestedDate: job.suggestedDate,
+            suggestedTime: job.suggestedTime
+          }]
+        })
+      })
+
+      if (!response.ok) throw new Error('Failed to accept suggestion')
+      reloadPreservingWeek()
+    } catch (error) {
+      console.error('Error accepting suggestion:', error)
+      alert('Failed to accept suggestion. Please try again.')
+    }
+  }
+
+  // Reject an AI suggestion
+  const handleRejectSuggestion = async (job) => {
+    try {
+      const response = await fetch('/api/scheduling-agent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'reject',
+          jobIds: [job.id],
+          reason: 'Other'
+        })
+      })
+
+      if (!response.ok) throw new Error('Failed to reject suggestion')
+      reloadPreservingWeek()
+    } catch (error) {
+      console.error('Error rejecting suggestion:', error)
+      alert('Failed to reject suggestion. Please try again.')
+    }
   }
 
   const getTechName = (techId) => {
@@ -458,6 +534,7 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
             {/* Day Headers */}
             {weekDays.map(day => {
               const dayJobCount = (scheduledJobsByDay[day.date] || []).length
+              const daySuggestedCount = (suggestedJobsByDay[day.date] || []).length
               return (
                 <div
                   key={day.date}
@@ -484,13 +561,19 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
                   }}>
                     {day.dayNumber}
                   </div>
-                  {dayJobCount > 0 && (
+                  {(dayJobCount > 0 || daySuggestedCount > 0) && (
                     <div style={{
                       fontSize: '11px',
                       color: '#6B7280',
                       marginTop: '2px'
                     }}>
-                      {dayJobCount} job{dayJobCount !== 1 ? 's' : ''}
+                      {dayJobCount > 0 && `${dayJobCount} job${dayJobCount !== 1 ? 's' : ''}`}
+                      {dayJobCount > 0 && daySuggestedCount > 0 && ' + '}
+                      {daySuggestedCount > 0 && (
+                        <span style={{ color: '#7C3AED' }}>
+                          {daySuggestedCount} suggested
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
@@ -528,6 +611,7 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
                 {/* Day Cells */}
                 {weekDays.map(day => {
                   const slotJobs = getJobsForSlot(day.date, time)
+                  const suggestedJobs = getSuggestedJobsForSlot(day.date, time)
                   const isDropTarget = dropTarget?.date === day.date && dropTarget?.time === time
                   const availabilityStatus = getAvailabilityForSlot(day.date, time)
 
@@ -680,6 +764,81 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
                                   🔧
                                 </span>
                               )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                      {/* AI Suggested Jobs - Purple Dotted Border */}
+                      {suggestedJobs.map((job) => {
+                        const colors = getServiceColor(job.serviceName)
+
+                        return (
+                          <div
+                            key={`suggested-${job.id}`}
+                            onClick={() => setSelectedJob(job)}
+                            style={{
+                              flex: '1 1 0',
+                              minWidth: 0,
+                              maxWidth: '100%',
+                              height: `${SLOT_HEIGHT - 4}px`,
+                              padding: '2px 3px',
+                              borderRadius: '4px',
+                              backgroundColor: '#FAF5FF',
+                              border: '2px dashed #7C3AED',
+                              cursor: 'pointer',
+                              overflow: 'hidden',
+                              fontSize: '10px',
+                              opacity: 0.9,
+                              transition: 'all 0.2s',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              justifyContent: 'center',
+                              boxSizing: 'border-box'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.boxShadow = '0 2px 4px rgba(124,58,237,0.3)'
+                              e.currentTarget.style.opacity = '1'
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.boxShadow = 'none'
+                              e.currentTarget.style.opacity = '0.9'
+                            }}
+                            title="AI Suggestion - Click to review"
+                          >
+                            <div style={{
+                              fontWeight: '700',
+                              color: '#7C3AED',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              lineHeight: '1.2',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '3px'
+                            }}>
+                              <span style={{ fontSize: '9px' }}>✨</span>
+                              {job.serviceName}
+                            </div>
+                            <div
+                              title={Array.isArray(job.address) ? job.address[0] : job.address}
+                              style={{
+                                color: '#6B7280',
+                                fontSize: '9px',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                lineHeight: '1.2'
+                              }}
+                            >
+                              {Array.isArray(job.address) ? job.address[0] : job.address || job.customerName}
+                            </div>
+                            <div style={{
+                              color: '#7C3AED',
+                              fontSize: '9px',
+                              fontWeight: '600',
+                              lineHeight: '1.2'
+                            }}>
+                              {job.suggestedTech}
                             </div>
                           </div>
                         )
@@ -861,6 +1020,16 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
             backgroundColor: '#F3F4F6'
           }} />
           <span style={{ color: '#6B7280' }}>Confirmed</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div style={{
+            width: '40px',
+            height: '16px',
+            borderRadius: '3px',
+            border: '2px dashed #7C3AED',
+            backgroundColor: '#FAF5FF'
+          }} />
+          <span style={{ color: '#7C3AED' }}>AI Suggestion</span>
         </div>
         {uniqueServices.map(serviceName => {
           const colors = getServiceColor(serviceName)

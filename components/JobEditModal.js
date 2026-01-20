@@ -311,6 +311,159 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
             </div>
           )}
 
+          {/* AI Suggestion Accept/Reject */}
+          {job.suggestedDate && job.suggestedTime && !job.date && !job.time && (
+            <div style={{
+              padding: '16px',
+              backgroundColor: '#FAF5FF',
+              border: '2px dashed #7C3AED',
+              borderRadius: '12px',
+              marginBottom: '24px'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                marginBottom: '12px'
+              }}>
+                <span style={{ fontSize: '20px' }}>✨</span>
+                <span style={{
+                  fontSize: '16px',
+                  fontWeight: '700',
+                  color: '#7C3AED'
+                }}>
+                  AI Scheduling Suggestion
+                </span>
+              </div>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: '12px',
+                marginBottom: '16px'
+              }}>
+                <div>
+                  <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '2px' }}>
+                    Suggested Tech
+                  </div>
+                  <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>
+                    {job.suggestedTech || 'Not assigned'}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '2px' }}>
+                    Suggested Date
+                  </div>
+                  <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>
+                    {job.suggestedDate ? format(parseISO(job.suggestedDate), 'EEE, MMM d') : 'None'}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '2px' }}>
+                    Suggested Time
+                  </div>
+                  <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>
+                    {job.suggestedTime || 'None'}
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  onClick={async () => {
+                    setIsUpdating(true)
+                    try {
+                      // Find the tech ID from the name
+                      const tech = technicians.find(t =>
+                        `${t.firstName} ${t.lastName}` === job.suggestedTech
+                      )
+
+                      // Convert suggested time to 24-hour format
+                      let time24 = job.suggestedTime
+                      if (job.suggestedTime) {
+                        const match = job.suggestedTime.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i)
+                        if (match) {
+                          let hour = parseInt(match[1])
+                          const isPM = match[3].toUpperCase() === 'PM'
+                          if (isPM && hour !== 12) hour += 12
+                          if (!isPM && hour === 12) hour = 0
+                          time24 = `${hour.toString().padStart(2, '0')}:${match[2]}`
+                        }
+                      }
+
+                      const response = await fetch(`/api/jobs/${job.id}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          assignedTech: tech ? [tech.id] : [],
+                          date: job.suggestedDate,
+                          time: time24,
+                          suggestedTech: '',
+                          suggestedDate: null,
+                          suggestedTime: '',
+                          schedulingIssue: ''
+                        })
+                      })
+                      if (!response.ok) throw new Error('Failed to accept suggestion')
+                      onUpdate()
+                    } catch (err) {
+                      setError(err.message)
+                      setIsUpdating(false)
+                    }
+                  }}
+                  disabled={isUpdating}
+                  style={{
+                    flex: 1,
+                    padding: '12px 20px',
+                    fontSize: '14px',
+                    fontWeight: '700',
+                    border: 'none',
+                    borderRadius: '8px',
+                    backgroundColor: '#059669',
+                    color: 'white',
+                    cursor: isUpdating ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {isUpdating ? 'Accepting...' : 'Accept Suggestion'}
+                </button>
+                <button
+                  onClick={async () => {
+                    setIsUpdating(true)
+                    try {
+                      const response = await fetch(`/api/jobs/${job.id}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          suggestedTech: '',
+                          suggestedDate: null,
+                          suggestedTime: '',
+                          schedulingIssue: '',
+                          rejectionReason: 'Other'
+                        })
+                      })
+                      if (!response.ok) throw new Error('Failed to reject suggestion')
+                      onUpdate()
+                    } catch (err) {
+                      setError(err.message)
+                      setIsUpdating(false)
+                    }
+                  }}
+                  disabled={isUpdating}
+                  style={{
+                    padding: '12px 20px',
+                    fontSize: '14px',
+                    fontWeight: '700',
+                    border: '1px solid #DC2626',
+                    borderRadius: '8px',
+                    backgroundColor: 'white',
+                    color: '#DC2626',
+                    cursor: isUpdating ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  Reject
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Confirmation Status */}
           <div style={{ marginBottom: '24px' }}>
             <label style={{

@@ -6,7 +6,7 @@ export const revalidate = 0
 
 /**
  * GET /api/scheduling-agent
- * Run the scheduling agent and return suggestions (without saving)
+ * Run the scheduling agent, save suggestions to jobs, and return results
  */
 export async function GET() {
   try {
@@ -26,6 +26,22 @@ export async function GET() {
       pricingRules
     )
 
+    // Save suggestions directly to job records
+    const saveResults = []
+    for (const suggestion of suggestions) {
+      try {
+        await updateJob(suggestion.jobId, {
+          suggestedTech: suggestion.suggestedTechName || '',
+          suggestedDate: suggestion.suggestedDate || null,
+          suggestedTime: suggestion.suggestedTime || '',
+          schedulingIssue: suggestion.schedulingIssue || ''
+        })
+        saveResults.push({ jobId: suggestion.jobId, success: true })
+      } catch (error) {
+        saveResults.push({ jobId: suggestion.jobId, success: false, error: error.message })
+      }
+    }
+
     // Return summary stats
     const stats = {
       totalUnscheduled: suggestions.length,
@@ -37,6 +53,7 @@ export async function GET() {
       success: true,
       suggestions,
       stats,
+      saveResults,
       technicians: technicians.map(t => ({
         id: t.id,
         name: `${t.firstName} ${t.lastName}`

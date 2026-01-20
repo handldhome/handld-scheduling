@@ -6,13 +6,41 @@ import JobsList from './JobsList'
 import AddJobModal from './AddJobModal'
 import WeeklyCalendarView from './WeeklyCalendarView'
 import TextTechsModal from './TextTechsModal'
-import SchedulingSuggestions from './SchedulingSuggestions'
 
 export default function AdminDashboardClient({ technicians, availability, jobs }) {
   const [activeTab, setActiveTab] = useState('schedule') // Default to schedule view
   const [showAddJobModal, setShowAddJobModal] = useState(false)
   const [showTextTechsModal, setShowTextTechsModal] = useState(false)
-  const [showAIScheduler, setShowAIScheduler] = useState(false)
+  const [isRunningAI, setIsRunningAI] = useState(false)
+
+  // Run AI Scheduler and refresh
+  const runAIScheduler = async () => {
+    setIsRunningAI(true)
+    try {
+      const response = await fetch('/api/scheduling-agent')
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to run scheduler')
+      }
+
+      // Show summary and refresh
+      const { stats } = data
+      if (stats.successfulSuggestions > 0) {
+        alert(`AI Scheduler found ${stats.successfulSuggestions} suggestion${stats.successfulSuggestions !== 1 ? 's' : ''}. They appear on the calendar with purple dotted borders.`)
+      } else if (stats.totalUnscheduled === 0) {
+        alert('No unscheduled jobs found.')
+      } else {
+        alert(`Couldn't find suggestions for ${stats.issuesFound} job${stats.issuesFound !== 1 ? 's' : ''}. Check tech ratings and availability.`)
+      }
+
+      window.location.reload()
+    } catch (error) {
+      alert('Error running AI Scheduler: ' + error.message)
+    } finally {
+      setIsRunningAI(false)
+    }
+  }
 
   const tabButtonStyle = (isActive) => ({
     padding: '12px 24px',
@@ -137,16 +165,17 @@ export default function AdminDashboardClient({ technicians, availability, jobs }
 
           {activeTab === 'schedule' && (
             <button
-              onClick={() => setShowAIScheduler(!showAIScheduler)}
+              onClick={runAIScheduler}
+              disabled={isRunningAI}
               style={{
                 padding: '10px 20px',
-                backgroundColor: showAIScheduler ? '#059669' : '#7C3AED',
+                backgroundColor: isRunningAI ? '#9CA3AF' : '#7C3AED',
                 color: 'white',
                 border: 'none',
                 borderRadius: '8px',
                 fontSize: '14px',
                 fontWeight: '700',
-                cursor: 'pointer',
+                cursor: isRunningAI ? 'not-allowed' : 'pointer',
                 boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
                 display: 'flex',
                 alignItems: 'center',
@@ -154,7 +183,7 @@ export default function AdminDashboardClient({ technicians, availability, jobs }
               }}
             >
               <span style={{ fontSize: '16px' }}>✨</span>
-              {showAIScheduler ? 'Hide AI Scheduler' : 'AI Scheduler'}
+              {isRunningAI ? 'Running...' : 'Run AI Scheduler'}
             </button>
           )}
         </div>
@@ -167,19 +196,7 @@ export default function AdminDashboardClient({ technicians, availability, jobs }
           boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
         }}>
           {activeTab === 'schedule' && (
-            <>
-              {showAIScheduler && (
-                <div style={{ marginBottom: '20px' }}>
-                  <SchedulingSuggestions
-                    onComplete={() => {
-                      // Refresh page to show updated schedule
-                      window.location.reload()
-                    }}
-                  />
-                </div>
-              )}
-              <WeeklyCalendarView jobs={jobs} technicians={technicians} availability={availability} />
-            </>
+            <WeeklyCalendarView jobs={jobs} technicians={technicians} availability={availability} />
           )}
 
           {activeTab === 'jobs' && (
