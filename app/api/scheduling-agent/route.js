@@ -51,14 +51,15 @@ export async function GET() {
     )
 
     // Save suggestions directly to job records
+    // Use null instead of '' for single select fields to avoid Airtable errors
     const saveResults = []
     for (const suggestion of suggestions) {
       try {
         await updateJob(suggestion.jobId, {
-          suggestedTech: suggestion.suggestedTechName || '',
+          suggestedTech: suggestion.suggestedTechName || null,
           suggestedDate: suggestion.suggestedDate || null,
-          suggestedTime: suggestion.suggestedTime || '',
-          schedulingIssue: suggestion.schedulingIssue || ''
+          suggestedTime: suggestion.suggestedTime || null,
+          schedulingIssue: suggestion.schedulingIssue || null
         })
         saveResults.push({ jobId: suggestion.jobId, success: true })
       } catch (error) {
@@ -175,11 +176,11 @@ export async function POST(request) {
             updates.time = suggestion.suggestedTime
           }
 
-          // Clear suggestion fields after applying
-          updates.suggestedTech = ''
+          // Clear suggestion fields after applying (use null for single select fields)
+          updates.suggestedTech = null
           updates.suggestedDate = null
-          updates.suggestedTime = ''
-          updates.schedulingIssue = ''
+          updates.suggestedTime = null
+          updates.schedulingIssue = null
 
           await updateJob(suggestion.jobId, updates)
           results.push({ jobId: suggestion.jobId, success: true })
@@ -210,10 +211,10 @@ export async function POST(request) {
       for (const jobId of jobIds) {
         try {
           await updateJob(jobId, {
-            suggestedTech: '',
+            suggestedTech: null,
             suggestedDate: null,
-            suggestedTime: '',
-            schedulingIssue: '',
+            suggestedTime: null,
+            schedulingIssue: null,
             rejectionReason: reason || 'Other'
           })
           results.push({ jobId, success: true })

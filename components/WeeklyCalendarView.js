@@ -132,12 +132,12 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             date: null,
-            time: '',
+            time: null,
             confirmed: false,
-            suggestedTech: '',
+            suggestedTech: null,
             suggestedDate: null,
-            suggestedTime: '',
-            schedulingIssue: ''
+            suggestedTime: null,
+            schedulingIssue: null
           })
         })
       )
@@ -188,10 +188,10 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
             assignedTech: tech ? [tech.id] : [],
             date: job.suggestedDate,
             time: time24,
-            suggestedTech: '',
+            suggestedTech: null,
             suggestedDate: null,
-            suggestedTime: '',
-            schedulingIssue: ''
+            suggestedTime: null,
+            schedulingIssue: null
           })
         })
       })

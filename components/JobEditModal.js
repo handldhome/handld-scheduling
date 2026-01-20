@@ -396,10 +396,10 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
                           assignedTech: tech ? [tech.id] : [],
                           date: job.suggestedDate,
                           time: time24,
-                          suggestedTech: '',
+                          suggestedTech: null,
                           suggestedDate: null,
-                          suggestedTime: '',
-                          schedulingIssue: ''
+                          suggestedTime: null,
+                          schedulingIssue: null
                         })
                       })
                       if (!response.ok) throw new Error('Failed to accept suggestion')
@@ -432,10 +432,10 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
                         method: 'PATCH',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                          suggestedTech: '',
+                          suggestedTech: null,
                           suggestedDate: null,
-                          suggestedTime: '',
-                          schedulingIssue: '',
+                          suggestedTime: null,
+                          schedulingIssue: null,
                           rejectionReason: 'Other'
                         })
                       })
@@ -551,13 +551,13 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
                   onClick={() => {
                     handleUpdate({
                       date: null,
-                      time: '',
+                      time: null,
                       confirmed: false,
-                      // Also clear any AI suggestions
-                      suggestedTech: '',
+                      // Also clear any AI suggestions (use null for single select fields)
+                      suggestedTech: null,
                       suggestedDate: null,
-                      suggestedTime: '',
-                      schedulingIssue: ''
+                      suggestedTime: null,
+                      schedulingIssue: null
                     })
                   }}
                   disabled={isUpdating}
