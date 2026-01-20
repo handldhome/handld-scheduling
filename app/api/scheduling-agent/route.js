@@ -18,6 +18,30 @@ export async function GET() {
       getPricingRules()
     ])
 
+    // Debug: Log unscheduled jobs
+    const unscheduledJobs = jobs.filter(job =>
+      !job.date || !job.time || !job.assignedTech || job.assignedTech.length === 0
+    )
+    console.log('=== SCHEDULING AGENT DEBUG ===')
+    console.log('Total jobs:', jobs.length)
+    console.log('Unscheduled jobs:', unscheduledJobs.length)
+    unscheduledJobs.forEach(job => {
+      console.log(`  - Job: "${job.serviceName}" | Date: ${job.date} | Time: ${job.time} | Tech: ${JSON.stringify(job.assignedTech)}`)
+    })
+
+    // Debug: Log tech ratings
+    console.log('Technicians and ratings:')
+    technicians.forEach(tech => {
+      console.log(`  - ${tech.firstName} ${tech.lastName}:`)
+      console.log(`      Window Washing: ${tech['Window Washing Rating']}`)
+      console.log(`      Pressure Washing: ${tech['Pressure Washing Rating']}`)
+      console.log(`      Handyman: ${tech['Handyman Rating']}`)
+    })
+
+    // Debug: Log availability count
+    console.log('Availability records:', availability.length)
+    console.log('=== END DEBUG ===')
+
     // Generate suggestions
     const suggestions = generateSchedulingSuggestions(
       jobs,
@@ -49,11 +73,34 @@ export async function GET() {
       issuesFound: suggestions.filter(s => s.schedulingIssue).length
     }
 
+    // Build debug info
+    const debugInfo = {
+      unscheduledJobs: unscheduledJobs.map(j => ({
+        id: j.id,
+        serviceName: j.serviceName,
+        date: j.date,
+        time: j.time,
+        assignedTech: j.assignedTech
+      })),
+      techRatings: technicians.map(t => ({
+        name: `${t.firstName} ${t.lastName}`,
+        'Window Washing': t['Window Washing Rating'],
+        'Pressure Washing': t['Pressure Washing Rating'],
+        'Handyman': t['Handyman Rating'],
+        'Gutter Cleaning': t['Gutter Cleaning Rating'],
+        'Holiday Lights': t['Holiday Lights Rating'],
+        'Pest Control': t['Pest Control Rating'],
+        'Home TuneUp': t['Home TuneUp Rating']
+      })),
+      availabilityCount: availability.length
+    }
+
     return Response.json({
       success: true,
       suggestions,
       stats,
       saveResults,
+      debug: debugInfo,
       technicians: technicians.map(t => ({
         id: t.id,
         name: `${t.firstName} ${t.lastName}`
