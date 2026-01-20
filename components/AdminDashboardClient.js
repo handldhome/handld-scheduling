@@ -6,11 +6,13 @@ import JobsList from './JobsList'
 import AddJobModal from './AddJobModal'
 import WeeklyCalendarView from './WeeklyCalendarView'
 import TextTechsModal from './TextTechsModal'
+import SchedulingSuggestions from './SchedulingSuggestions'
 
 export default function AdminDashboardClient({ technicians, availability, jobs }) {
   const [activeTab, setActiveTab] = useState('schedule') // Default to schedule view
   const [showAddJobModal, setShowAddJobModal] = useState(false)
   const [showTextTechsModal, setShowTextTechsModal] = useState(false)
+  const [showAIScheduler, setShowAIScheduler] = useState(false)
 
   const tabButtonStyle = (isActive) => ({
     padding: '12px 24px',
@@ -132,6 +134,29 @@ export default function AdminDashboardClient({ technicians, availability, jobs }
               Text Technician(s)
             </button>
           )}
+
+          {activeTab === 'schedule' && (
+            <button
+              onClick={() => setShowAIScheduler(!showAIScheduler)}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: showAIScheduler ? '#059669' : '#7C3AED',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <span style={{ fontSize: '16px' }}>✨</span>
+              {showAIScheduler ? 'Hide AI Scheduler' : 'AI Scheduler'}
+            </button>
+          )}
         </div>
 
         {/* Tab Content */}
@@ -142,7 +167,19 @@ export default function AdminDashboardClient({ technicians, availability, jobs }
           boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
         }}>
           {activeTab === 'schedule' && (
-            <WeeklyCalendarView jobs={jobs} technicians={technicians} availability={availability} />
+            <>
+              {showAIScheduler && (
+                <div style={{ marginBottom: '20px' }}>
+                  <SchedulingSuggestions
+                    onComplete={() => {
+                      // Refresh page to show updated schedule
+                      window.location.reload()
+                    }}
+                  />
+                </div>
+              )}
+              <WeeklyCalendarView jobs={jobs} technicians={technicians} availability={availability} />
+            </>
           )}
 
           {activeTab === 'jobs' && (
