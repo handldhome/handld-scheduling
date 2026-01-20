@@ -549,7 +549,16 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
               {(job.date || job.time) && (
                 <button
                   onClick={() => {
-                    handleUpdate({ date: null, time: '', confirmed: false })
+                    handleUpdate({
+                      date: null,
+                      time: '',
+                      confirmed: false,
+                      // Also clear any AI suggestions
+                      suggestedTech: '',
+                      suggestedDate: null,
+                      suggestedTime: '',
+                      schedulingIssue: ''
+                    })
                   }}
                   disabled={isUpdating}
                   style={{

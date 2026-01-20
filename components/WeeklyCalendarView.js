@@ -90,6 +90,8 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
   const [dropTarget, setDropTarget] = useState(null)
   const [selectedTechIds, setSelectedTechIds] = useState([]) // Empty = all technicians
   const [showTechFilter, setShowTechFilter] = useState(false)
+  const [selectedJobIds, setSelectedJobIds] = useState(new Set()) // For bulk operations
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false)
 
   // Restore saved week from sessionStorage after mount
   useEffect(() => {
@@ -104,6 +106,104 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
   const reloadPreservingWeek = () => {
     sessionStorage.setItem('calendarWeekStart', format(currentWeekStart, 'yyyy-MM-dd'))
     window.location.reload()
+  }
+
+  // Toggle job selection for bulk operations
+  const toggleJobSelection = (jobId, e) => {
+    e.stopPropagation()
+    const newSelected = new Set(selectedJobIds)
+    if (newSelected.has(jobId)) {
+      newSelected.delete(jobId)
+    } else {
+      newSelected.add(jobId)
+    }
+    setSelectedJobIds(newSelected)
+  }
+
+  // Bulk unschedule selected jobs
+  const handleBulkUnschedule = async () => {
+    if (selectedJobIds.size === 0) return
+    setIsBulkUpdating(true)
+
+    try {
+      const promises = Array.from(selectedJobIds).map(jobId =>
+        fetch(`/api/jobs/${jobId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            date: null,
+            time: '',
+            confirmed: false,
+            suggestedTech: '',
+            suggestedDate: null,
+            suggestedTime: '',
+            schedulingIssue: ''
+          })
+        })
+      )
+
+      await Promise.all(promises)
+      setSelectedJobIds(new Set())
+      reloadPreservingWeek()
+    } catch (error) {
+      console.error('Error bulk unscheduling:', error)
+      alert('Failed to unschedule some jobs. Please try again.')
+      setIsBulkUpdating(false)
+    }
+  }
+
+  // Bulk accept AI suggestions
+  const handleBulkAcceptSuggestions = async () => {
+    const suggestedJobs = jobs.filter(job =>
+      selectedJobIds.has(job.id) && job.suggestedDate && job.suggestedTime
+    )
+
+    if (suggestedJobs.length === 0) return
+    setIsBulkUpdating(true)
+
+    try {
+      const promises = suggestedJobs.map(job => {
+        // Find tech ID from name
+        const tech = technicians.find(t =>
+          `${t.firstName} ${t.lastName}` === job.suggestedTech
+        )
+
+        // Convert time to 24-hour format
+        let time24 = job.suggestedTime
+        if (job.suggestedTime) {
+          const match = job.suggestedTime.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i)
+          if (match) {
+            let hour = parseInt(match[1])
+            const isPM = match[3].toUpperCase() === 'PM'
+            if (isPM && hour !== 12) hour += 12
+            if (!isPM && hour === 12) hour = 0
+            time24 = `${hour.toString().padStart(2, '0')}:${match[2]}`
+          }
+        }
+
+        return fetch(`/api/jobs/${job.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            assignedTech: tech ? [tech.id] : [],
+            date: job.suggestedDate,
+            time: time24,
+            suggestedTech: '',
+            suggestedDate: null,
+            suggestedTime: '',
+            schedulingIssue: ''
+          })
+        })
+      })
+
+      await Promise.all(promises)
+      setSelectedJobIds(new Set())
+      reloadPreservingWeek()
+    } catch (error) {
+      console.error('Error accepting suggestions:', error)
+      alert('Failed to accept some suggestions. Please try again.')
+      setIsBulkUpdating(false)
+    }
   }
 
   // Handle dropping a job onto a calendar slot
@@ -524,6 +624,79 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
         </button>
       </div>
 
+      {/* Bulk Action Bar */}
+      {selectedJobIds.size > 0 && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          padding: '12px 16px',
+          marginBottom: '16px',
+          backgroundColor: '#EFF6FF',
+          border: '1px solid #BFDBFE',
+          borderRadius: '8px'
+        }}>
+          <span style={{
+            fontSize: '14px',
+            fontWeight: '600',
+            color: '#1E40AF'
+          }}>
+            {selectedJobIds.size} job{selectedJobIds.size !== 1 ? 's' : ''} selected
+          </span>
+          <button
+            onClick={() => setSelectedJobIds(new Set())}
+            style={{
+              padding: '6px 12px',
+              fontSize: '13px',
+              fontWeight: '500',
+              border: '1px solid #93C5FD',
+              borderRadius: '6px',
+              backgroundColor: 'white',
+              color: '#1E40AF',
+              cursor: 'pointer'
+            }}
+          >
+            Clear
+          </button>
+          <div style={{ flex: 1 }} />
+          {/* Show Accept Suggestions if any selected jobs have suggestions */}
+          {jobs.some(job => selectedJobIds.has(job.id) && job.suggestedDate && job.suggestedTime) && (
+            <button
+              onClick={handleBulkAcceptSuggestions}
+              disabled={isBulkUpdating}
+              style={{
+                padding: '8px 16px',
+                fontSize: '14px',
+                fontWeight: '600',
+                border: 'none',
+                borderRadius: '6px',
+                backgroundColor: '#059669',
+                color: 'white',
+                cursor: isBulkUpdating ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {isBulkUpdating ? 'Accepting...' : 'Accept Suggestions'}
+            </button>
+          )}
+          <button
+            onClick={handleBulkUnschedule}
+            disabled={isBulkUpdating}
+            style={{
+              padding: '8px 16px',
+              fontSize: '14px',
+              fontWeight: '600',
+              border: '1px solid #DC2626',
+              borderRadius: '6px',
+              backgroundColor: 'white',
+              color: '#DC2626',
+              cursor: isBulkUpdating ? 'not-allowed' : 'pointer'
+            }}
+          >
+            {isBulkUpdating ? 'Processing...' : 'Unschedule'}
+          </button>
+        </div>
+      )}
+
       <div style={{ display: 'flex', gap: '16px' }}>
         {/* Calendar Grid */}
         <div style={{
@@ -677,6 +850,7 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
                         const techName = getTechName(job.assignedTech)
                         const isUnconfirmed = !job.confirmed
                         const isDragging = draggedJob?.id === job.id
+                        const isSelected = selectedJobIds.has(job.id)
 
                         return (
                           <div
@@ -687,7 +861,13 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
                               setDraggedJob(null)
                               setDropTarget(null)
                             }}
-                            onClick={() => setSelectedJob(job)}
+                            onClick={(e) => {
+                              if (e.shiftKey) {
+                                toggleJobSelection(job.id, e)
+                              } else {
+                                setSelectedJob(job)
+                              }
+                            }}
                             style={{
                               flex: '1 1 0',
                               minWidth: 0,
@@ -695,13 +875,15 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
                               height: `${SLOT_HEIGHT - 4}px`,
                               padding: '2px 3px',
                               borderRadius: '4px',
-                              backgroundColor: colors.bg,
-                              border: isUnconfirmed
-                                ? `2px dashed ${colors.border}`
-                                : `1px solid ${colors.border}`,
+                              backgroundColor: isSelected ? '#DBEAFE' : colors.bg,
+                              border: isSelected
+                                ? '2px solid #2563EB'
+                                : isUnconfirmed
+                                  ? `2px dashed ${colors.border}`
+                                  : `1px solid ${colors.border}`,
                               borderLeftWidth: '3px',
                               borderLeftStyle: 'solid',
-                              borderLeftColor: colors.border,
+                              borderLeftColor: isSelected ? '#2563EB' : colors.border,
                               cursor: 'grab',
                               overflow: 'hidden',
                               fontSize: '10px',
@@ -718,6 +900,7 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
                             onMouseLeave={(e) => {
                               e.currentTarget.style.boxShadow = 'none'
                             }}
+                            title="Click to edit • Shift+click to select"
                           >
                             <div style={{
                               fontWeight: '700',
@@ -783,11 +966,18 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
                       {/* AI Suggested Jobs - Purple Dotted Border */}
                       {suggestedJobs.map((job) => {
                         const colors = getServiceColor(job.serviceName)
+                        const isSelected = selectedJobIds.has(job.id)
 
                         return (
                           <div
                             key={`suggested-${job.id}`}
-                            onClick={() => setSelectedJob(job)}
+                            onClick={(e) => {
+                              if (e.shiftKey) {
+                                toggleJobSelection(job.id, e)
+                              } else {
+                                setSelectedJob(job)
+                              }
+                            }}
                             style={{
                               flex: '1 1 0',
                               minWidth: 0,
@@ -795,8 +985,8 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
                               height: `${SLOT_HEIGHT - 4}px`,
                               padding: '2px 3px',
                               borderRadius: '4px',
-                              backgroundColor: '#FAF5FF',
-                              border: '2px dashed #7C3AED',
+                              backgroundColor: isSelected ? '#DBEAFE' : '#FAF5FF',
+                              border: isSelected ? '2px solid #2563EB' : '2px dashed #7C3AED',
                               cursor: 'pointer',
                               overflow: 'hidden',
                               fontSize: '10px',
@@ -815,7 +1005,7 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
                               e.currentTarget.style.boxShadow = 'none'
                               e.currentTarget.style.opacity = '0.9'
                             }}
-                            title="AI Suggestion - Click to review"
+                            title="Click to review • Shift+click to select"
                           >
                             <div style={{
                               fontWeight: '700',
@@ -1003,6 +1193,19 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
                         color: '#7C3AED'
                       }}>
                         ✨ Suggested: {format(parseISO(job.suggestedDate), 'MMM d')} @ {job.suggestedTime}
+                      </div>
+                    )}
+                    {job.schedulingIssue && !job.suggestedDate && (
+                      <div style={{
+                        marginTop: '4px',
+                        padding: '4px 6px',
+                        backgroundColor: '#FEF2F2',
+                        border: '1px solid #FECACA',
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        color: '#991B1B'
+                      }}>
+                        ⚠️ {job.schedulingIssue}
                       </div>
                     )}
                   </div>
