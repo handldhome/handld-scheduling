@@ -109,10 +109,17 @@ export default function TechOnboardingPage() {
         w9FormData.append('techId', techData.techId)
         w9FormData.append('w9', w9File)
 
-        await fetch('/api/technicians/w9-upload', {
+        const w9Response = await fetch('/api/technicians/w9-upload', {
           method: 'POST',
           body: w9FormData
         })
+
+        if (!w9Response.ok) {
+          const w9Error = await w9Response.json()
+          console.error('W9 upload failed:', w9Error)
+          // Don't fail the whole submission, but log the error
+          // The tech record was created, just W9 didn't upload
+        }
       }
 
       setSubmitted(true)
