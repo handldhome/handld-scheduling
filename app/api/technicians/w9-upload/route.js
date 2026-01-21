@@ -1,4 +1,5 @@
 import Airtable from 'airtable'
+import { put } from '@vercel/blob'
 
 const base = new Airtable({
   apiKey: process.env.AIRTABLE_API_KEY
@@ -17,26 +18,27 @@ export async function POST(request) {
       )
     }
 
-    // Convert file to base64
-    const bytes = await w9File.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-    const base64 = buffer.toString('base64')
-    const mimeType = w9File.type || 'application/pdf'
+    // Upload file to Vercel Blob storage
+    const filename = `w9/${techId}-${Date.now()}-${w9File.name || 'W9-form.pdf'}`
+    const blob = await put(filename, w9File, {
+      access: 'public',
+    })
 
-    // Create attachment object for Airtable
+    // Create attachment object for Airtable using the public blob URL
     const attachment = {
-      url: `data:${mimeType};base64,${base64}`,
+      url: blob.url,
       filename: w9File.name || 'W9-form.pdf'
     }
 
     // Update technician record with W9 attachment
-    const record = await base(process.env.AIRTABLE_TECHNICIANS_TABLE).update(techId, {
+    await base(process.env.AIRTABLE_TECHNICIANS_TABLE).update(techId, {
       'W9': [attachment]
     })
 
     return Response.json({
       success: true,
-      message: 'W9 uploaded successfully'
+      message: 'W9 uploaded successfully',
+      url: blob.url
     })
   } catch (error) {
     console.error('Error uploading W9:', error)
