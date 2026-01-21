@@ -78,7 +78,7 @@ function DetailItem({ label, value }) {
 }
 
 // Job Card Component
-function JobCard({ job, index, isExpanded, onToggle, onJobUpdate }) {
+function JobCard({ job, index, isExpanded, onToggle, onJobUpdate, techName }) {
   const colors = getServiceColor(job.serviceName)
 
   // Google Maps link
@@ -426,6 +426,7 @@ function JobCard({ job, index, isExpanded, onToggle, onJobUpdate }) {
           {/* Job Checklist - replaces old progress section */}
           <JobChecklist
             job={job}
+            techName={techName}
             onUpdate={onJobUpdate}
           />
         </div>
@@ -695,6 +696,7 @@ export default function TechDailySchedule({ techId, techName, jobs: initialJobs,
                   expandedJobId === job.id ? null : job.id
                 )}
                 onJobUpdate={refreshJobs}
+                techName={techName}
               />
             ))}
           </div>

@@ -12,6 +12,7 @@ const STEPS = [
       'Phone fully charged',
       'All equipment loaded for today\'s jobs'
     ],
+    confirmText: 'Ready to Go',
     actionType: null
   },
   {
@@ -23,6 +24,7 @@ const STEPS = [
       'Confirm scope: "Any specific areas of concern?"',
       'Locate water/power hookups if needed'
     ],
+    confirmText: 'Clock In & Notify Customer',
     actionType: 'clockIn'
   },
   {
@@ -48,16 +50,17 @@ const STEPS = [
       'Clean up area and collect all equipment',
       'Review work with customer (note any issues or upsell opportunities)'
     ],
+    confirmText: 'Clock Out & Complete Job',
     actionType: 'clockOut'
   }
 ]
 
-export default function JobChecklist({ job, onUpdate }) {
+export default function JobChecklist({ job, techName, onUpdate }) {
   // Track which step is expanded
   const [expandedStep, setExpandedStep] = useState(null)
 
-  // Track checked items per step
-  const [checkedItems, setCheckedItems] = useState({})
+  // Track confirmed steps (single checkbox per step)
+  const [confirmedSteps, setConfirmedSteps] = useState({})
 
   // Track uploaded photos
   const [beforePhotos, setBeforePhotos] = useState([])
@@ -87,15 +90,7 @@ export default function JobChecklist({ job, onUpdate }) {
 
   // Check if a step is complete
   const isStepComplete = (stepIndex) => {
-    if (stepIndex < currentStep) return true
-    if (stepIndex === currentStep) {
-      const step = STEPS[stepIndex]
-      if (step.checklistItems) {
-        const stepChecks = checkedItems[step.id] || []
-        return stepChecks.length === step.checklistItems.length
-      }
-    }
-    return false
+    return stepIndex < currentStep
   }
 
   // Check if step can be accessed
@@ -103,22 +98,19 @@ export default function JobChecklist({ job, onUpdate }) {
     return stepIndex <= currentStep
   }
 
-  // Toggle checklist item
-  const toggleCheck = (stepId, itemIndex) => {
-    setCheckedItems(prev => {
-      const stepChecks = prev[stepId] || []
-      if (stepChecks.includes(itemIndex)) {
-        return { ...prev, [stepId]: stepChecks.filter(i => i !== itemIndex) }
-      } else {
-        return { ...prev, [stepId]: [...stepChecks, itemIndex] }
-      }
-    })
+  // Toggle step confirmation
+  const toggleConfirm = (stepId) => {
+    setConfirmedSteps(prev => ({
+      ...prev,
+      [stepId]: !prev[stepId]
+    }))
   }
 
-  // Handle Clock In
+  // Handle Clock In (also sends arrival text to customer)
   const handleClockIn = async () => {
     setIsClockingIn(true)
     try {
+      // Clock in the job
       const response = await fetch(`/api/jobs/${job.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -128,6 +120,21 @@ export default function JobChecklist({ job, onUpdate }) {
         })
       })
       if (!response.ok) throw new Error('Failed to clock in')
+
+      // Send arrival text to customer
+      if (job.phone) {
+        try {
+          await fetch('/api/send-arrival-text', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ job, techName })
+          })
+        } catch (textError) {
+          console.error('Failed to send arrival text:', textError)
+          // Don't fail the clock-in if text fails
+        }
+      }
+
       onUpdate?.()
     } catch (error) {
       console.error('Clock in error:', error)
@@ -250,7 +257,7 @@ export default function JobChecklist({ job, onUpdate }) {
           const isComplete = isStepComplete(index)
           const canAccess = canAccessStep(index)
           const isCurrent = index === currentStep
-          const stepChecks = checkedItems[step.id] || []
+          const isConfirmed = confirmedSteps[step.id]
 
           return (
             <div
@@ -349,46 +356,53 @@ export default function JobChecklist({ job, onUpdate }) {
                     </p>
                   )}
 
-                  {/* Checklist Items */}
+                  {/* Checklist Items as bullet points with single confirmation */}
                   {step.checklistItems && (
-                    <div style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '10px',
-                      marginBottom: step.actionType ? '16px' : 0
-                    }}>
-                      {step.checklistItems.map((item, itemIndex) => (
-                        <label
-                          key={itemIndex}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'flex-start',
-                            gap: '10px',
-                            cursor: 'pointer',
-                            fontSize: '14px',
-                            color: '#374151'
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={stepChecks.includes(itemIndex)}
-                            onChange={() => toggleCheck(step.id, itemIndex)}
-                            style={{
-                              width: '18px',
-                              height: '18px',
-                              marginTop: '2px',
-                              accentColor: '#2A54A1',
-                              cursor: 'pointer'
-                            }}
-                          />
-                          <span style={{
-                            textDecoration: stepChecks.includes(itemIndex) ? 'line-through' : 'none',
-                            color: stepChecks.includes(itemIndex) ? '#9CA3AF' : '#374151'
-                          }}>
+                    <div style={{ marginBottom: '16px' }}>
+                      {/* Bullet point list (informational) */}
+                      <ul style={{
+                        margin: '0 0 16px 0',
+                        paddingLeft: '20px',
+                        color: '#374151',
+                        fontSize: '14px',
+                        lineHeight: '1.6'
+                      }}>
+                        {step.checklistItems.map((item, itemIndex) => (
+                          <li key={itemIndex} style={{ marginBottom: '6px' }}>
                             {item}
-                          </span>
-                        </label>
-                      ))}
+                          </li>
+                        ))}
+                      </ul>
+
+                      {/* Single confirmation checkbox */}
+                      <label
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          cursor: 'pointer',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          color: '#2A54A1',
+                          padding: '12px',
+                          backgroundColor: isConfirmed ? '#EFF6FF' : '#F9FAFB',
+                          borderRadius: '8px',
+                          border: `1px solid ${isConfirmed ? '#2A54A1' : '#E5E7EB'}`
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isConfirmed || false}
+                          onChange={() => toggleConfirm(step.id)}
+                          style={{
+                            width: '20px',
+                            height: '20px',
+                            accentColor: '#2A54A1',
+                            cursor: 'pointer'
+                          }}
+                        />
+                        <span>I confirm all items above are complete</span>
+                      </label>
                     </div>
                   )}
 
@@ -396,7 +410,7 @@ export default function JobChecklist({ job, onUpdate }) {
                   {step.actionType === 'clockIn' && !job.clockIn && (
                     <button
                       onClick={handleClockIn}
-                      disabled={isClockingIn || stepChecks.length < step.checklistItems.length}
+                      disabled={isClockingIn || !isConfirmed}
                       style={{
                         width: '100%',
                         padding: '14px',
@@ -404,12 +418,37 @@ export default function JobChecklist({ job, onUpdate }) {
                         fontWeight: '700',
                         border: 'none',
                         borderRadius: '8px',
-                        backgroundColor: stepChecks.length < step.checklistItems.length ? '#D1D5DB' : '#059669',
+                        backgroundColor: !isConfirmed ? '#D1D5DB' : '#059669',
                         color: 'white',
-                        cursor: stepChecks.length < step.checklistItems.length ? 'not-allowed' : 'pointer'
+                        cursor: !isConfirmed ? 'not-allowed' : 'pointer'
                       }}
                     >
-                      {isClockingIn ? 'Clocking In...' : 'Clock In'}
+                      {isClockingIn ? 'Clocking In...' : step.confirmText}
+                    </button>
+                  )}
+
+                  {/* Pre-departure done button (no clock action) */}
+                  {step.actionType === null && step.checklistItems && (
+                    <button
+                      onClick={() => {
+                        if (isConfirmed) {
+                          setExpandedStep(null)
+                        }
+                      }}
+                      disabled={!isConfirmed}
+                      style={{
+                        width: '100%',
+                        padding: '14px',
+                        fontSize: '16px',
+                        fontWeight: '700',
+                        border: 'none',
+                        borderRadius: '8px',
+                        backgroundColor: !isConfirmed ? '#D1D5DB' : '#2A54A1',
+                        color: 'white',
+                        cursor: !isConfirmed ? 'not-allowed' : 'pointer'
+                      }}
+                    >
+                      {step.confirmText}
                     </button>
                   )}
 
@@ -541,7 +580,7 @@ export default function JobChecklist({ job, onUpdate }) {
                   {step.actionType === 'clockOut' && !job.clockOut && (
                     <button
                       onClick={handleClockOut}
-                      disabled={isClockingOut || stepChecks.length < step.checklistItems.length}
+                      disabled={isClockingOut || !isConfirmed}
                       style={{
                         width: '100%',
                         padding: '14px',
@@ -549,12 +588,12 @@ export default function JobChecklist({ job, onUpdate }) {
                         fontWeight: '700',
                         border: 'none',
                         borderRadius: '8px',
-                        backgroundColor: stepChecks.length < step.checklistItems.length ? '#D1D5DB' : '#DC2626',
+                        backgroundColor: !isConfirmed ? '#D1D5DB' : '#DC2626',
                         color: 'white',
-                        cursor: stepChecks.length < step.checklistItems.length ? 'not-allowed' : 'pointer'
+                        cursor: !isConfirmed ? 'not-allowed' : 'pointer'
                       }}
                     >
-                      {isClockingOut ? 'Clocking Out...' : 'Clock Out & Complete Job'}
+                      {isClockingOut ? 'Clocking Out...' : step.confirmText}
                     </button>
                   )}
 

@@ -574,6 +574,7 @@ export default function TechScheduleView({ jobs, technicians }) {
                   {/* Job Checklist */}
                   <JobChecklist
                     job={job}
+                    techName={selectedTech ? `${selectedTech.firstName} ${selectedTech.lastName}` : ''}
                     onUpdate={() => window.location.reload()}
                   />
                 </div>
