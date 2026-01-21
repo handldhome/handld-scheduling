@@ -3,13 +3,20 @@
 import { useState } from 'react'
 
 const AVAILABILITY_REMINDER_MESSAGE = `Hey! Please submit your availability for next week using the link below. Thanks!`
+const ONBOARDING_MESSAGE = `Welcome to the Handld team! Please complete your onboarding form using the link below. Thanks!`
 
 export default function TextTechsModal({ technicians, onClose }) {
   const [selectedTechs, setSelectedTechs] = useState([])
   const [message, setMessage] = useState('')
-  const [isAvailabilityReminder, setIsAvailabilityReminder] = useState(false)
+  const [messageType, setMessageType] = useState(null) // 'availability' | 'onboarding' | null
   const [isSending, setIsSending] = useState(false)
   const [result, setResult] = useState(null)
+
+  // New tech form state
+  const [showAddNewTech, setShowAddNewTech] = useState(false)
+  const [newTechName, setNewTechName] = useState('')
+  const [newTechPhone, setNewTechPhone] = useState('')
+  const [newTechs, setNewTechs] = useState([]) // Temporary new techs to send onboarding to
 
   const toggleTech = (techId) => {
     setSelectedTechs(prev =>
@@ -32,18 +39,48 @@ export default function TextTechsModal({ technicians, onClose }) {
     const allIds = technicians.filter(t => t.phone).map(t => t.id)
     setSelectedTechs(allIds)
     setMessage(AVAILABILITY_REMINDER_MESSAGE)
-    setIsAvailabilityReminder(true)
+    setMessageType('availability')
     setResult(null)
+    setShowAddNewTech(false)
   }
 
-  const clearAvailabilityReminder = () => {
-    setIsAvailabilityReminder(false)
+  const setupOnboardingForm = () => {
+    setSelectedTechs([])
+    setMessage(ONBOARDING_MESSAGE)
+    setMessageType('onboarding')
+    setResult(null)
+    setShowAddNewTech(true)
+  }
+
+  const clearMessageType = () => {
+    setMessageType(null)
     setMessage('')
     setSelectedTechs([])
+    setShowAddNewTech(false)
+    setNewTechs([])
+  }
+
+  const addNewTech = () => {
+    if (!newTechName.trim() || !newTechPhone.trim()) return
+
+    setNewTechs(prev => [...prev, {
+      id: `new-${Date.now()}`,
+      name: newTechName.trim(),
+      phone: newTechPhone.trim()
+    }])
+    setNewTechName('')
+    setNewTechPhone('')
+  }
+
+  const removeNewTech = (id) => {
+    setNewTechs(prev => prev.filter(t => t.id !== id))
   }
 
   const handleSend = async () => {
-    if (selectedTechs.length === 0 || !message.trim()) return
+    const hasSelectedTechs = selectedTechs.length > 0
+    const hasNewTechs = newTechs.length > 0
+
+    if ((!hasSelectedTechs && !hasNewTechs) || !message.trim()) return
 
     setIsSending(true)
     setResult(null)
@@ -54,8 +91,10 @@ export default function TextTechsModal({ technicians, onClose }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           techIds: selectedTechs,
+          newTechs: newTechs,
           message: message.trim(),
-          includeAvailabilityLink: isAvailabilityReminder
+          includeAvailabilityLink: messageType === 'availability',
+          includeOnboardingLink: messageType === 'onboarding'
         })
       })
 
@@ -64,12 +103,14 @@ export default function TextTechsModal({ technicians, onClose }) {
       if (response.ok) {
         setResult({
           success: true,
-          message: `Sent to ${data.successCount} technician(s)${data.failedCount > 0 ? `, ${data.failedCount} failed` : ''}`
+          message: `Sent to ${data.successCount} recipient(s)${data.failedCount > 0 ? `, ${data.failedCount} failed` : ''}`
         })
         // Clear form after success
         setMessage('')
         setSelectedTechs([])
-        setIsAvailabilityReminder(false)
+        setNewTechs([])
+        setMessageType(null)
+        setShowAddNewTech(false)
       } else {
         setResult({
           success: false,
@@ -87,6 +128,7 @@ export default function TextTechsModal({ technicians, onClose }) {
   }
 
   const techsWithPhone = technicians.filter(t => t.phone)
+  const totalRecipients = selectedTechs.length + newTechs.length
 
   return (
     <div style={{
@@ -141,39 +183,68 @@ export default function TextTechsModal({ technicians, onClose }) {
 
         {/* Content */}
         <div style={{ padding: '24px' }}>
-          {/* Quick Action - Availability Reminder */}
-          {!isAvailabilityReminder ? (
-            <button
-              onClick={setupAvailabilityReminder}
-              style={{
-                width: '100%',
-                padding: '14px 20px',
-                marginBottom: '20px',
-                backgroundColor: '#FEF3C7',
-                border: '2px solid #F59E0B',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '10px'
-              }}
-            >
-              <span style={{ fontSize: '20px' }}>📅</span>
-              <span style={{
-                fontSize: '15px',
-                fontWeight: '600',
-                color: '#92400E'
-              }}>
-                Send Availability Reminder
-              </span>
-            </button>
-          ) : (
+          {/* Quick Actions */}
+          {!messageType && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
+              <button
+                onClick={setupAvailabilityReminder}
+                style={{
+                  width: '100%',
+                  padding: '14px 20px',
+                  backgroundColor: '#FEF3C7',
+                  border: '2px solid #F59E0B',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '10px'
+                }}
+              >
+                <span style={{ fontSize: '20px' }}>📅</span>
+                <span style={{
+                  fontSize: '15px',
+                  fontWeight: '600',
+                  color: '#92400E'
+                }}>
+                  Send Availability Reminder
+                </span>
+              </button>
+
+              <button
+                onClick={setupOnboardingForm}
+                style={{
+                  width: '100%',
+                  padding: '14px 20px',
+                  backgroundColor: '#DBEAFE',
+                  border: '2px solid #3B82F6',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '10px'
+                }}
+              >
+                <span style={{ fontSize: '20px' }}>📝</span>
+                <span style={{
+                  fontSize: '15px',
+                  fontWeight: '600',
+                  color: '#1E40AF'
+                }}>
+                  Send Onboarding Form
+                </span>
+              </button>
+            </div>
+          )}
+
+          {/* Active Message Type Banner */}
+          {messageType && (
             <div style={{
               padding: '14px 16px',
               marginBottom: '20px',
-              backgroundColor: '#FEF3C7',
-              border: '2px solid #F59E0B',
+              backgroundColor: messageType === 'availability' ? '#FEF3C7' : '#DBEAFE',
+              border: `2px solid ${messageType === 'availability' ? '#F59E0B' : '#3B82F6'}`,
               borderRadius: '10px'
             }}>
               <div style={{
@@ -185,17 +256,17 @@ export default function TextTechsModal({ technicians, onClose }) {
                 <span style={{
                   fontSize: '14px',
                   fontWeight: '600',
-                  color: '#92400E'
+                  color: messageType === 'availability' ? '#92400E' : '#1E40AF'
                 }}>
-                  📅 Availability Reminder Mode
+                  {messageType === 'availability' ? '📅 Availability Reminder Mode' : '📝 Onboarding Form Mode'}
                 </span>
                 <button
-                  onClick={clearAvailabilityReminder}
+                  onClick={clearMessageType}
                   style={{
                     background: 'none',
                     border: 'none',
                     fontSize: '12px',
-                    color: '#B45309',
+                    color: messageType === 'availability' ? '#B45309' : '#2563EB',
                     cursor: 'pointer',
                     textDecoration: 'underline'
                   }}
@@ -205,11 +276,118 @@ export default function TextTechsModal({ technicians, onClose }) {
               </div>
               <p style={{
                 fontSize: '12px',
-                color: '#A16207',
+                color: messageType === 'availability' ? '#A16207' : '#1E40AF',
                 margin: 0
               }}>
-                Each tech will receive their personalized availability form link.
+                {messageType === 'availability'
+                  ? 'Each tech will receive their personalized availability form link.'
+                  : 'Recipients will receive a link to complete the onboarding form.'}
               </p>
+            </div>
+          )}
+
+          {/* Add New Tech Section (for onboarding) */}
+          {showAddNewTech && (
+            <div style={{
+              marginBottom: '20px',
+              padding: '16px',
+              backgroundColor: '#F9FAFB',
+              borderRadius: '10px',
+              border: '1px solid #E5E7EB'
+            }}>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '600',
+                color: '#374151',
+                marginBottom: '12px'
+              }}>
+                Add New Technician
+              </label>
+
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                <input
+                  type="text"
+                  placeholder="Name"
+                  value={newTechName}
+                  onChange={(e) => setNewTechName(e.target.value)}
+                  style={{
+                    flex: 1,
+                    padding: '10px 12px',
+                    fontSize: '14px',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '6px'
+                  }}
+                />
+                <input
+                  type="tel"
+                  placeholder="Phone"
+                  value={newTechPhone}
+                  onChange={(e) => setNewTechPhone(e.target.value)}
+                  style={{
+                    flex: 1,
+                    padding: '10px 12px',
+                    fontSize: '14px',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '6px'
+                  }}
+                />
+                <button
+                  onClick={addNewTech}
+                  disabled={!newTechName.trim() || !newTechPhone.trim()}
+                  style={{
+                    padding: '10px 16px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    backgroundColor: !newTechName.trim() || !newTechPhone.trim() ? '#D1D5DB' : '#2A54A1',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: !newTechName.trim() || !newTechPhone.trim() ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  Add
+                </button>
+              </div>
+
+              {/* List of new techs to send to */}
+              {newTechs.length > 0 && (
+                <div style={{
+                  border: '1px solid #D1D5DB',
+                  borderRadius: '6px',
+                  backgroundColor: 'white'
+                }}>
+                  {newTechs.map(tech => (
+                    <div
+                      key={tech.id}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '10px 12px',
+                        borderBottom: '1px solid #E5E7EB'
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: '500', color: '#1F2937' }}>{tech.name}</div>
+                        <div style={{ fontSize: '12px', color: '#6B7280' }}>{tech.phone}</div>
+                      </div>
+                      <button
+                        onClick={() => removeNewTech(tech.id)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#EF4444',
+                          cursor: 'pointer',
+                          fontSize: '16px'
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -226,7 +404,7 @@ export default function TextTechsModal({ technicians, onClose }) {
                 fontWeight: '600',
                 color: '#374151'
               }}>
-                Select Technicians
+                {messageType === 'onboarding' ? 'Or Select Existing Technicians' : 'Select Technicians'}
               </label>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button
@@ -321,7 +499,7 @@ export default function TextTechsModal({ technicians, onClose }) {
               color: '#6B7280',
               marginTop: '8px'
             }}>
-              {selectedTechs.length} technician(s) selected
+              {totalRecipients} recipient(s) selected
             </div>
           </div>
 
@@ -399,17 +577,17 @@ export default function TextTechsModal({ technicians, onClose }) {
             </button>
             <button
               onClick={handleSend}
-              disabled={isSending || selectedTechs.length === 0 || !message.trim()}
+              disabled={isSending || totalRecipients === 0 || !message.trim()}
               style={{
                 padding: '12px 24px',
                 fontSize: '14px',
                 fontWeight: '600',
-                backgroundColor: isSending || selectedTechs.length === 0 || !message.trim()
+                backgroundColor: isSending || totalRecipients === 0 || !message.trim()
                   ? '#9CA3AF'
                   : '#2A54A1',
                 border: 'none',
                 borderRadius: '8px',
-                cursor: isSending || selectedTechs.length === 0 || !message.trim()
+                cursor: isSending || totalRecipients === 0 || !message.trim()
                   ? 'not-allowed'
                   : 'pointer',
                 color: 'white'
