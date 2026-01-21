@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { format, addDays, subDays, parseISO, isToday, isTomorrow, isYesterday } from 'date-fns'
 
 // Color palette for services (same as WeeklyCalendarView)
@@ -31,10 +31,49 @@ const getServiceColor = (serviceName) => {
   return COLOR_PALETTE[index]
 }
 
+// Map OpenWeatherMap icon codes to emoji
+const getWeatherEmoji = (iconCode) => {
+  if (!iconCode) return ''
+  const code = iconCode.slice(0, 2)
+  const emojiMap = {
+    '01': '\u2600\uFE0F',
+    '02': '\u26C5',
+    '03': '\u2601\uFE0F',
+    '04': '\u2601\uFE0F',
+    '09': '\uD83C\uDF27\uFE0F',
+    '10': '\uD83C\uDF26\uFE0F',
+    '11': '\u26C8\uFE0F',
+    '13': '\u2744\uFE0F',
+    '50': '\uD83C\uDF2B\uFE0F',
+  }
+  return emojiMap[code] || '\u2600\uFE0F'
+}
+
 export default function TechScheduleView({ jobs, technicians }) {
   const [selectedTechId, setSelectedTechId] = useState(technicians[0]?.id || null)
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [expandedJobId, setExpandedJobId] = useState(null)
+  const [weather, setWeather] = useState({})
+
+  // Fetch weather data
+  useEffect(() => {
+    const fetchWeather = async () => {
+      try {
+        const response = await fetch('/api/weather')
+        const data = await response.json()
+        if (data.forecast && data.forecast.length > 0) {
+          const weatherByDate = {}
+          data.forecast.forEach(day => {
+            weatherByDate[day.date] = day
+          })
+          setWeather(weatherByDate)
+        }
+      } catch (error) {
+        console.error('Error fetching weather:', error)
+      }
+    }
+    fetchWeather()
+  }, [])
 
   // Get selected technician
   const selectedTech = technicians.find(t => t.id === selectedTechId)
@@ -185,6 +224,33 @@ export default function TechScheduleView({ jobs, technicians }) {
         </button>
 
         <div style={{ textAlign: 'center' }}>
+          {/* Weather Display */}
+          {weather[selectedDate] && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              marginBottom: '8px'
+            }}>
+              <span style={{ fontSize: '28px' }}>
+                {getWeatherEmoji(weather[selectedDate].icon)}
+              </span>
+              <span style={{
+                fontSize: '18px',
+                fontWeight: '700',
+                color: '#374151'
+              }}>
+                {weather[selectedDate].high}°
+              </span>
+              <span style={{
+                fontSize: '14px',
+                color: '#9CA3AF'
+              }}>
+                / {weather[selectedDate].low}°
+              </span>
+            </div>
+          )}
           <div style={{
             fontSize: '18px',
             fontWeight: '700',
