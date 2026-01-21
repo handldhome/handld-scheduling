@@ -5,6 +5,7 @@ import AvailabilityCalendar from './AvailabilityCalendar'
 import JobsList from './JobsList'
 import AddJobModal from './AddJobModal'
 import WeeklyCalendarView from './WeeklyCalendarView'
+import TechScheduleView from './TechScheduleView'
 import TextTechsModal from './TextTechsModal'
 
 export default function AdminDashboardClient({ technicians, availability, jobs }) {
@@ -104,6 +105,12 @@ export default function AdminDashboardClient({ technicians, availability, jobs }
               Schedule
             </button>
             <button
+              onClick={() => setActiveTab('tech-schedules')}
+              style={tabButtonStyle(activeTab === 'tech-schedules')}
+            >
+              Tech Schedules
+            </button>
+            <button
               onClick={() => setActiveTab('jobs')}
               style={tabButtonStyle(activeTab === 'jobs')}
             >
@@ -189,6 +196,10 @@ export default function AdminDashboardClient({ technicians, availability, jobs }
         }}>
           {activeTab === 'schedule' && (
             <WeeklyCalendarView jobs={jobs} technicians={technicians} availability={availability} />
+          )}
+
+          {activeTab === 'tech-schedules' && (
+            <TechScheduleView jobs={jobs} technicians={technicians} />
           )}
 
           {activeTab === 'jobs' && (
