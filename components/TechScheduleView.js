@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { format, addDays, subDays, parseISO, isToday, isTomorrow, isYesterday } from 'date-fns'
+import JobChecklist from './JobChecklist'
 
 // Color palette for services (same as WeeklyCalendarView)
 const COLOR_PALETTE = [
@@ -569,6 +570,12 @@ export default function TechScheduleView({ jobs, technicians }) {
                       Call Customer: {job.phone}
                     </a>
                   )}
+
+                  {/* Job Checklist */}
+                  <JobChecklist
+                    job={job}
+                    onUpdate={() => window.location.reload()}
+                  />
                 </div>
               )}
             </div>

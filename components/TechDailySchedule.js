@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { format, parseISO, addDays, subDays, isToday, isTomorrow } from 'date-fns'
+import JobChecklist from './JobChecklist'
 
 // Color palette for dynamic service assignment (from WeeklyCalendarView)
 const COLOR_PALETTE = [
@@ -79,9 +80,6 @@ function DetailItem({ label, value }) {
 // Job Card Component
 function JobCard({ job, index, isExpanded, onToggle, onJobUpdate }) {
   const colors = getServiceColor(job.serviceName)
-  const [isLoading, setIsLoading] = useState(false)
-  const [completionNotes, setCompletionNotes] = useState(job.completionNotes || '')
-  const [showCompletionForm, setShowCompletionForm] = useState(false)
 
   // Google Maps link
   const mapsUrl = job.address
@@ -92,51 +90,6 @@ function JobCard({ job, index, isExpanded, onToggle, onJobUpdate }) {
 
   // SMS link for texting customer
   const smsUrl = job.phone ? `sms:${job.phone}` : null
-
-  const handleClockIn = async () => {
-    setIsLoading(true)
-    try {
-      const response = await fetch(`/api/jobs/${job.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clockIn: new Date().toISOString() })
-      })
-      if (response.ok) {
-        onJobUpdate()
-      } else {
-        alert('Failed to clock in. Please try again.')
-      }
-    } catch (error) {
-      console.error('Clock in error:', error)
-      alert('Failed to clock in. Please try again.')
-    }
-    setIsLoading(false)
-  }
-
-  const handleMarkCompleted = async () => {
-    setIsLoading(true)
-    try {
-      const response = await fetch(`/api/jobs/${job.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          status: 'Completed',
-          clockOut: new Date().toISOString(),
-          completionNotes: completionNotes
-        })
-      })
-      if (response.ok) {
-        setShowCompletionForm(false)
-        onJobUpdate()
-      } else {
-        alert('Failed to mark as completed. Please try again.')
-      }
-    } catch (error) {
-      console.error('Mark completed error:', error)
-      alert('Failed to mark as completed. Please try again.')
-    }
-    setIsLoading(false)
-  }
 
   const isCompleted = job.status === 'Completed'
   const isClockedIn = !!job.clockIn
@@ -470,184 +423,11 @@ function JobCard({ job, index, isExpanded, onToggle, onJobUpdate }) {
             </div>
           )}
 
-          {/* Job Progress Section */}
-          {!isCompleted && (
-            <div style={{ marginBottom: '16px' }}>
-              <div style={{
-                fontSize: '12px',
-                fontWeight: '700',
-                color: '#6B7280',
-                marginBottom: '8px',
-                textTransform: 'uppercase'
-              }}>
-                Job Progress
-              </div>
-              <div style={{
-                backgroundColor: '#F9FAFB',
-                padding: '16px',
-                borderRadius: '8px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '10px'
-              }}>
-                {/* Clock In Button */}
-                {!isClockedIn && (
-                <button
-                  onClick={handleClockIn}
-                  disabled={isLoading}
-                  style={{
-                    width: '100%',
-                    padding: '14px',
-                    backgroundColor: '#059669',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '12px',
-                    fontSize: '16px',
-                    fontWeight: '700',
-                    cursor: isLoading ? 'not-allowed' : 'pointer',
-                    opacity: isLoading ? 0.7 : 1
-                  }}
-                >
-                  {isLoading ? 'Loading...' : 'Clock In'}
-                </button>
-              )}
-
-              {/* Clocked In indicator */}
-              {isClockedIn && (
-                <div style={{
-                  padding: '10px 14px',
-                  backgroundColor: '#D1FAE5',
-                  color: '#059669',
-                  textAlign: 'center',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '600'
-                }}>
-                  Clocked In: {formatClockTime(job.clockIn)}
-                </div>
-              )}
-
-              {/* Mark Completed Section (includes clock out) */}
-              {isClockedIn && (
-                <>
-                  {!showCompletionForm ? (
-                    <button
-                      onClick={() => setShowCompletionForm(true)}
-                      style={{
-                        width: '100%',
-                        padding: '14px',
-                        backgroundColor: '#7C3AED',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '12px',
-                        fontSize: '16px',
-                        fontWeight: '700',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Mark Completed
-                    </button>
-                  ) : (
-                    <div style={{
-                      backgroundColor: '#F9FAFB',
-                      padding: '16px',
-                      borderRadius: '12px'
-                    }}>
-                      <div style={{
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        color: '#374151',
-                        marginBottom: '8px'
-                      }}>
-                        Completion Notes (optional)
-                      </div>
-                      <textarea
-                        value={completionNotes}
-                        onChange={(e) => setCompletionNotes(e.target.value)}
-                        placeholder="Add any notes about the completed job..."
-                        style={{
-                          width: '100%',
-                          padding: '12px',
-                          borderRadius: '8px',
-                          border: '1px solid #E5E7EB',
-                          fontSize: '14px',
-                          minHeight: '80px',
-                          resize: 'vertical',
-                          boxSizing: 'border-box',
-                          marginBottom: '12px'
-                        }}
-                      />
-                      <div style={{ display: 'flex', gap: '10px' }}>
-                        <button
-                          onClick={() => setShowCompletionForm(false)}
-                          style={{
-                            flex: 1,
-                            padding: '12px',
-                            backgroundColor: 'white',
-                            color: '#6B7280',
-                            border: '1px solid #E5E7EB',
-                            borderRadius: '8px',
-                            fontSize: '14px',
-                            fontWeight: '600',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={handleMarkCompleted}
-                          disabled={isLoading}
-                          style={{
-                            flex: 1,
-                            padding: '12px',
-                            backgroundColor: '#7C3AED',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '8px',
-                            fontSize: '14px',
-                            fontWeight: '600',
-                            cursor: isLoading ? 'not-allowed' : 'pointer',
-                            opacity: isLoading ? 0.7 : 1
-                          }}
-                        >
-                          {isLoading ? 'Saving...' : 'Submit'}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-              </div>
-            </div>
-          )}
-
-          {/* Completed Status */}
-          {isCompleted && (
-            <div style={{
-              backgroundColor: '#D1FAE5',
-              padding: '16px',
-              borderRadius: '12px',
-              textAlign: 'center'
-            }}>
-              <div style={{
-                fontSize: '16px',
-                fontWeight: '700',
-                color: '#059669',
-                marginBottom: '4px'
-              }}>
-                Job Completed
-              </div>
-              {job.completionNotes && (
-                <div style={{
-                  fontSize: '14px',
-                  color: '#065F46',
-                  marginTop: '8px'
-                }}>
-                  Notes: {job.completionNotes}
-                </div>
-              )}
-            </div>
-          )}
+          {/* Job Checklist - replaces old progress section */}
+          <JobChecklist
+            job={job}
+            onUpdate={onJobUpdate}
+          />
         </div>
       )}
     </div>
