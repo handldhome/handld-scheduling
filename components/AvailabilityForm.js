@@ -55,12 +55,20 @@ export default function AvailabilityForm({ techId, techName }) {
     setLoading(true)
 
     try {
+      // Build complete availability object with ALL slots (checked = true, unchecked = false)
+      // This ensures unchecked slots are saved as "Not Available" rather than "Not Submitted"
+      const completeAvailability = {}
+      days.forEach(day => {
+        completeAvailability[`${day.date}-AM`] = availability[`${day.date}-AM`] || false
+        completeAvailability[`${day.date}-PM`] = availability[`${day.date}-PM`] || false
+      })
+
       const response = await fetch('/api/availability/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           techId,
-          availability,
+          availability: completeAvailability,
           dayNotes
         })
       })
