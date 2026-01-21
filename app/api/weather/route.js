@@ -1,5 +1,5 @@
-// Weather API route - fetches 7-day forecast for service area
-// Uses OpenWeatherMap API (free tier)
+// Weather API route - fetches forecast for service area
+// Uses OpenWeatherMap 5-day forecast API (free tier)
 
 export const revalidate = 1800 // Cache for 30 minutes
 
@@ -16,47 +16,59 @@ export async function GET() {
       return Response.json({ error: 'Weather API not configured', forecast: [] })
     }
 
-    // Use One Call API 3.0 for daily forecast
-    // Free tier: 1,000 calls/day
+    // Use 5-day/3-hour forecast API (free tier)
     const response = await fetch(
-      `https://api.openweathermap.org/data/3.0/onecall?lat=${LAT}&lon=${LON}&exclude=minutely,hourly,alerts&units=imperial&appid=${apiKey}`
+      `https://api.openweathermap.org/data/2.5/forecast?lat=${LAT}&lon=${LON}&units=imperial&appid=${apiKey}`
     )
 
     if (!response.ok) {
-      // Try the older 2.5 API as fallback
-      const fallbackResponse = await fetch(
-        `https://api.openweathermap.org/data/2.5/forecast/daily?lat=${LAT}&lon=${LON}&cnt=8&units=imperial&appid=${apiKey}`
-      )
-
-      if (!fallbackResponse.ok) {
-        throw new Error(`Weather API error: ${response.status}`)
-      }
-
-      const fallbackData = await fallbackResponse.json()
-
-      const forecast = fallbackData.list.map(day => ({
-        date: new Date(day.dt * 1000).toISOString().split('T')[0],
-        high: Math.round(day.temp.max),
-        low: Math.round(day.temp.min),
-        icon: day.weather[0]?.icon || '01d',
-        description: day.weather[0]?.main || 'Clear',
-        precipitation: day.pop ? Math.round(day.pop * 100) : 0
-      }))
-
-      return Response.json({ forecast })
+      const errorText = await response.text()
+      console.error('Weather API error:', response.status, errorText)
+      return Response.json({ error: `Weather API error: ${response.status}`, forecast: [] })
     }
 
     const data = await response.json()
 
-    // Map daily forecast to simpler format
-    const forecast = data.daily.slice(0, 8).map(day => ({
-      date: new Date(day.dt * 1000).toISOString().split('T')[0],
-      high: Math.round(day.temp.max),
-      low: Math.round(day.temp.min),
-      icon: day.weather[0]?.icon || '01d',
-      description: day.weather[0]?.main || 'Clear',
-      precipitation: day.pop ? Math.round(day.pop * 100) : 0
-    }))
+    // Aggregate 3-hour forecasts into daily high/low
+    const dailyData = {}
+
+    data.list.forEach(item => {
+      const date = item.dt_txt.split(' ')[0] // Get just the date part
+
+      if (!dailyData[date]) {
+        dailyData[date] = {
+          date,
+          temps: [],
+          icons: [],
+          descriptions: []
+        }
+      }
+
+      dailyData[date].temps.push(item.main.temp)
+      dailyData[date].icons.push(item.weather[0]?.icon)
+      dailyData[date].descriptions.push(item.weather[0]?.main)
+    })
+
+    // Convert to forecast array with high/low
+    const forecast = Object.values(dailyData).map(day => {
+      const high = Math.round(Math.max(...day.temps))
+      const low = Math.round(Math.min(...day.temps))
+
+      // Use the most common icon (midday preferred)
+      const middayIndex = Math.floor(day.icons.length / 2)
+      const icon = day.icons[middayIndex] || day.icons[0] || '01d'
+      const description = day.descriptions[middayIndex] || day.descriptions[0] || 'Clear'
+
+      return {
+        date: day.date,
+        high,
+        low,
+        icon,
+        description
+      }
+    })
+
+    console.log('Weather forecast fetched:', forecast.length, 'days')
 
     return Response.json({ forecast })
   } catch (error) {
