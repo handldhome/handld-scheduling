@@ -178,14 +178,14 @@ export default function TechOnboardingPage() {
             fontWeight: '700',
             marginBottom: '12px'
           }}>
-            Thank You!
+            You're All Set!
           </h1>
           <p style={{
             color: '#6B7280',
             fontSize: '16px',
             lineHeight: '1.5'
           }}>
-            Your information has been submitted successfully. The Handld team will review your application and be in touch soon!
+            Your information has been submitted. Welcome to the Handld team!
           </p>
         </div>
       </div>
@@ -632,7 +632,7 @@ export default function TechOnboardingPage() {
                   : 'pointer'
               }}
             >
-              {isSubmitting ? 'Submitting...' : 'Submit Application'}
+              {isSubmitting ? 'Submitting...' : 'Submit'}
             </button>
           </div>
         </form>
