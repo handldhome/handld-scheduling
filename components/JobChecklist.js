@@ -214,11 +214,14 @@ export default function JobChecklist({ job, onUpdate }) {
   }
 
   return (
-    <div style={{
-      borderTop: '1px solid #E5E7EB',
-      marginTop: '16px',
-      paddingTop: '16px'
-    }}>
+    <div
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        borderTop: '1px solid #E5E7EB',
+        marginTop: '16px',
+        paddingTop: '16px'
+      }}
+    >
       <div style={{
         fontSize: '14px',
         fontWeight: '700',
@@ -262,7 +265,10 @@ export default function JobChecklist({ job, onUpdate }) {
             >
               {/* Step Header */}
               <button
-                onClick={() => canAccess && setExpandedStep(isExpanded ? null : step.id)}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (canAccess) setExpandedStep(isExpanded ? null : step.id)
+                }}
                 disabled={!canAccess}
                 style={{
                   width: '100%',
