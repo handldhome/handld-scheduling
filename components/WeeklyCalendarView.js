@@ -103,7 +103,7 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
     startOfWeek(new Date(), { weekStartsOn: 1 })
   )
   const [selectedJob, setSelectedJob] = useState(null)
-  const [showUnscheduledPanel, setShowUnscheduledPanel] = useState(true)
+  const [showUnscheduledPanel, setShowUnscheduledPanel] = useState(false) // Default closed
   const [draggedJob, setDraggedJob] = useState(null)
   const [dropTarget, setDropTarget] = useState(null)
   const [selectedTechIds, setSelectedTechIds] = useState([]) // Empty = all technicians
@@ -111,6 +111,22 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
   const [selectedJobIds, setSelectedJobIds] = useState(new Set()) // For bulk operations
   const [isBulkUpdating, setIsBulkUpdating] = useState(false)
   const [weather, setWeather] = useState({}) // Weather data keyed by date
+  const [isMobile, setIsMobile] = useState(false)
+
+  // Detect mobile viewport
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768
+      setIsMobile(mobile)
+      // Show unscheduled panel by default on desktop only
+      if (!mobile && showUnscheduledPanel === false) {
+        setShowUnscheduledPanel(true)
+      }
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   // Restore saved week from sessionStorage after mount
   useEffect(() => {
@@ -478,15 +494,15 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        gap: '12px',
+        gap: isMobile ? '8px' : '12px',
         marginBottom: '16px',
         flexWrap: 'wrap'
       }}>
         <button
           onClick={() => setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}
           style={{
-            padding: '8px 16px',
-            fontSize: '14px',
+            padding: isMobile ? '6px 10px' : '8px 16px',
+            fontSize: isMobile ? '12px' : '14px',
             fontWeight: '600',
             border: '1px solid #2A54A1',
             borderRadius: '8px',
@@ -501,8 +517,8 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
           <button
             onClick={() => setCurrentWeekStart(subWeeks(currentWeekStart, 1))}
             style={{
-              padding: '8px 12px',
-              fontSize: '16px',
+              padding: isMobile ? '6px 10px' : '8px 12px',
+              fontSize: isMobile ? '14px' : '16px',
               fontWeight: '600',
               border: '1px solid #E5E7EB',
               borderRadius: '8px',
@@ -516,8 +532,8 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
           <button
             onClick={() => setCurrentWeekStart(addWeeks(currentWeekStart, 1))}
             style={{
-              padding: '8px 12px',
-              fontSize: '16px',
+              padding: isMobile ? '6px 10px' : '8px 12px',
+              fontSize: isMobile ? '14px' : '16px',
               fontWeight: '600',
               border: '1px solid #E5E7EB',
               borderRadius: '8px',
@@ -529,17 +545,17 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
             &gt;
           </button>
         </div>
-        <span style={{ fontSize: '18px', fontWeight: '700', color: '#2A54A1' }}>
-          {format(currentWeekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}
+        <span style={{ fontSize: isMobile ? '14px' : '18px', fontWeight: '700', color: '#2A54A1' }}>
+          {format(currentWeekStart, 'MMM d')} - {format(weekEnd, isMobile ? 'MMM d' : 'MMM d, yyyy')}
         </span>
 
         {/* Technician Filter */}
-        <div style={{ position: 'relative', marginLeft: '16px' }}>
+        <div style={{ position: 'relative', marginLeft: isMobile ? '0' : '16px' }}>
           <button
             onClick={() => setShowTechFilter(!showTechFilter)}
             style={{
-              padding: '8px 16px',
-              fontSize: '14px',
+              padding: isMobile ? '6px 10px' : '8px 16px',
+              fontSize: isMobile ? '12px' : '14px',
               fontWeight: '600',
               border: '1px solid',
               borderColor: selectedTechIds.length > 0 ? '#2A54A1' : '#E5E7EB',
@@ -553,10 +569,10 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
             }}
           >
             {selectedTechIds.length === 0
-              ? 'All Technicians'
+              ? (isMobile ? 'All Techs' : 'All Technicians')
               : selectedTechIds.length === 1
                 ? technicians.find(t => t.id === selectedTechIds[0])?.firstName || 'Selected'
-                : `${selectedTechIds.length} Technicians`}
+                : `${selectedTechIds.length} Techs`}
             <span style={{ fontSize: '10px' }}>{showTechFilter ? '▲' : '▼'}</span>
           </button>
 
@@ -648,8 +664,8 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
           onClick={() => setShowUnscheduledPanel(!showUnscheduledPanel)}
           style={{
             marginLeft: 'auto',
-            padding: '8px 16px',
-            fontSize: '14px',
+            padding: isMobile ? '6px 10px' : '8px 16px',
+            fontSize: isMobile ? '12px' : '14px',
             fontWeight: '600',
             border: '1px solid',
             borderColor: showUnscheduledPanel ? '#F59E0B' : '#E5E7EB',
@@ -659,7 +675,7 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
             cursor: 'pointer'
           }}
         >
-          Unscheduled ({unscheduledJobs.length})
+          {isMobile ? `(${unscheduledJobs.length})` : `Unscheduled (${unscheduledJobs.length})`}
         </button>
       </div>
 
@@ -736,15 +752,18 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: '16px' }}>
+      <div style={{ display: 'flex', gap: isMobile ? '8px' : '16px', flexDirection: isMobile ? 'column' : 'row' }}>
         {/* Calendar Grid */}
         <div style={{
           flex: 1,
           border: '1px solid #E5E7EB',
           borderRadius: '8px',
-          overflow: 'hidden',
-          backgroundColor: 'white'
+          overflow: 'auto',
+          backgroundColor: 'white',
+          WebkitOverflowScrolling: 'touch'
         }}>
+          {/* Make calendar scrollable on mobile with min-width */}
+          <div style={{ minWidth: isMobile ? '700px' : 'auto' }}>
           {/* Header Row */}
           <div style={{
             display: 'grid',
@@ -1118,16 +1137,19 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
               </div>
             ))}
           </div>
+          </div>{/* Close minWidth wrapper */}
         </div>
 
         {/* Unscheduled Jobs Panel */}
         {showUnscheduledPanel && unscheduledJobs.length > 0 && (
           <div style={{
-            width: '280px',
+            width: isMobile ? '100%' : '280px',
             border: '1px solid #E5E7EB',
             borderRadius: '8px',
             backgroundColor: 'white',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            maxHeight: isMobile ? '300px' : 'none',
+            overflowY: isMobile ? 'auto' : 'visible'
           }}>
             <div style={{
               padding: '12px 16px',
