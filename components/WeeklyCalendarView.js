@@ -80,6 +80,24 @@ const formatTime = (time24) => {
   return `${h12} ${suffix}`
 }
 
+// Map OpenWeatherMap icon codes to emoji
+const getWeatherEmoji = (iconCode) => {
+  if (!iconCode) return ''
+  const code = iconCode.slice(0, 2)
+  const emojiMap = {
+    '01': '\u2600\uFE0F', // sun
+    '02': '\u26C5',       // sun behind cloud
+    '03': '\u2601\uFE0F', // cloud
+    '04': '\u2601\uFE0F', // clouds
+    '09': '\uD83C\uDF27\uFE0F', // rain
+    '10': '\uD83C\uDF26\uFE0F', // sun behind rain cloud
+    '11': '\u26C8\uFE0F', // thunderstorm
+    '13': '\u2744\uFE0F', // snowflake
+    '50': '\uD83C\uDF2B\uFE0F', // fog
+  }
+  return emojiMap[code] || '\u2600\uFE0F'
+}
+
 export default function WeeklyCalendarView({ jobs, technicians, availability = [] }) {
   const [currentWeekStart, setCurrentWeekStart] = useState(() =>
     startOfWeek(new Date(), { weekStartsOn: 1 })
@@ -92,6 +110,7 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
   const [showTechFilter, setShowTechFilter] = useState(false)
   const [selectedJobIds, setSelectedJobIds] = useState(new Set()) // For bulk operations
   const [isBulkUpdating, setIsBulkUpdating] = useState(false)
+  const [weather, setWeather] = useState({}) // Weather data keyed by date
 
   // Restore saved week from sessionStorage after mount
   useEffect(() => {
@@ -100,6 +119,26 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
       sessionStorage.removeItem('calendarWeekStart')
       setCurrentWeekStart(startOfWeek(parseISO(saved), { weekStartsOn: 1 }))
     }
+  }, [])
+
+  // Fetch weather data
+  useEffect(() => {
+    const fetchWeather = async () => {
+      try {
+        const response = await fetch('/api/weather')
+        const data = await response.json()
+        if (data.forecast && data.forecast.length > 0) {
+          const weatherByDate = {}
+          data.forecast.forEach(day => {
+            weatherByDate[day.date] = day
+          })
+          setWeather(weatherByDate)
+        }
+      } catch (error) {
+        console.error('Error fetching weather:', error)
+      }
+    }
+    fetchWeather()
   }, [])
 
   // Save current week before reload to preserve view
@@ -720,11 +759,12 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
             {weekDays.map(day => {
               const dayJobCount = (scheduledJobsByDay[day.date] || []).length
               const daySuggestedCount = (suggestedJobsByDay[day.date] || []).length
+              const dayWeather = weather[day.date]
               return (
                 <div
                   key={day.date}
                   style={{
-                    padding: '12px 8px',
+                    padding: '8px 4px',
                     textAlign: 'center',
                     borderRight: '1px solid #E5E7EB',
                     backgroundColor: day.isToday ? '#EFF6FF' : 'transparent'
@@ -746,6 +786,33 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
                   }}>
                     {day.dayNumber}
                   </div>
+                  {/* Weather */}
+                  {dayWeather && (
+                    <div style={{
+                      marginTop: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '4px'
+                    }}>
+                      <span style={{ fontSize: '16px' }}>
+                        {getWeatherEmoji(dayWeather.icon)}
+                      </span>
+                      <span style={{
+                        fontSize: '11px',
+                        fontWeight: '600',
+                        color: '#374151'
+                      }}>
+                        {dayWeather.high}°
+                      </span>
+                      <span style={{
+                        fontSize: '10px',
+                        color: '#9CA3AF'
+                      }}>
+                        {dayWeather.low}°
+                      </span>
+                    </div>
+                  )}
                   {(dayJobCount > 0 || daySuggestedCount > 0) && (
                     <div style={{
                       fontSize: '11px',
