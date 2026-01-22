@@ -66,8 +66,10 @@ export function middleware(request) {
       if (url.pathname.startsWith('/api')) {
         return NextResponse.next()
       }
-      // Allow public tech pages through (onboarding form, etc.)
-      if (url.pathname === '/tech/onboarding') {
+      // Allow public tech pages through (onboarding, availability, schedule)
+      if (url.pathname === '/tech/onboarding' ||
+          (url.pathname.startsWith('/tech/') && url.pathname.includes('/availability')) ||
+          (url.pathname.startsWith('/tech/') && url.pathname.includes('/schedule'))) {
         return NextResponse.next()
       }
       // Check secret key for page access
