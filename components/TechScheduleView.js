@@ -387,7 +387,7 @@ export default function TechScheduleView({ jobs, technicians }) {
                       color: '#111827',
                       marginBottom: '4px'
                     }}>
-                      {job.serviceName}
+                      {job.serviceDetail ? `${job.serviceName}: ${job.serviceDetail}` : job.serviceName}
                     </div>
 
                     {/* Address */}

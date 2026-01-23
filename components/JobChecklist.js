@@ -2,7 +2,8 @@
 
 import { useState, useRef } from 'react'
 
-const STEPS = [
+// Base steps for all jobs
+const BASE_STEPS = [
   {
     id: 'pre-departure',
     title: 'Pre-Departure',
@@ -55,12 +56,48 @@ const STEPS = [
   }
 ]
 
+// Complexity confirmation step (inserted after On-Site Arrival for plumbing/electrical)
+const COMPLEXITY_STEP = {
+  id: 'confirm-complexity',
+  title: 'Confirm Complexity',
+  icon: '3',
+  instructions: 'After evaluating the work, confirm the job complexity below.',
+  actionType: 'confirmComplexity'
+}
+
+// Services that require complexity confirmation
+const COMPLEXITY_SERVICES = ['Plumbing Repairs', 'Electrical Repairs']
+
 export default function JobChecklist({ job, techName, onUpdate }) {
+  // Determine if this job needs complexity confirmation
+  const needsComplexity = COMPLEXITY_SERVICES.includes(job.serviceName)
+
+  // Build steps based on job type
+  const getSteps = () => {
+    if (!needsComplexity) return BASE_STEPS
+
+    // Insert complexity step after on-site-arrival (index 1)
+    const steps = [...BASE_STEPS]
+    steps.splice(2, 0, COMPLEXITY_STEP)
+
+    // Renumber icons
+    return steps.map((step, index) => ({
+      ...step,
+      icon: String(index + 1)
+    }))
+  }
+
+  const STEPS = getSteps()
+
   // Track which step is expanded
   const [expandedStep, setExpandedStep] = useState(null)
 
   // Track confirmed steps (single checkbox per step)
   const [confirmedSteps, setConfirmedSteps] = useState({})
+
+  // Track selected complexity
+  const [selectedComplexity, setSelectedComplexity] = useState(job.confirmedComplexity || job.complexity || null)
+  const [isSavingComplexity, setIsSavingComplexity] = useState(false)
 
   // Track uploaded photos
   const [beforePhotos, setBeforePhotos] = useState([])
@@ -78,11 +115,31 @@ export default function JobChecklist({ job, techName, onUpdate }) {
 
   // Determine current step based on job state
   const getCurrentStep = () => {
-    if (job.status === 'Completed') return 5 // All done
-    if (job.clockOut) return 5
-    if (afterPhotos.length > 0 || job.afterPhotos?.length > 0) return 4
-    if (beforePhotos.length > 0 || job.beforePhotos?.length > 0) return 3
-    if (job.clockIn) return 2
+    if (job.status === 'Completed') return STEPS.length
+    if (job.clockOut) return STEPS.length
+
+    // Find indices for steps
+    const afterPhotosIndex = STEPS.findIndex(s => s.id === 'after-photos')
+    const beforePhotosIndex = STEPS.findIndex(s => s.id === 'before-photos')
+    const complexityIndex = STEPS.findIndex(s => s.id === 'confirm-complexity')
+    const arrivalIndex = STEPS.findIndex(s => s.id === 'on-site-arrival')
+
+    if (afterPhotos.length > 0 || job.afterPhotos?.length > 0) return afterPhotosIndex
+    if (beforePhotos.length > 0 || job.beforePhotos?.length > 0) return beforePhotosIndex
+
+    // For complexity jobs, check if complexity has been confirmed
+    if (needsComplexity && complexityIndex !== -1) {
+      if (job.confirmedComplexity) {
+        return beforePhotosIndex // Complexity done, move to before photos
+      }
+      if (job.clockIn) {
+        return complexityIndex // Clocked in, need to confirm complexity
+      }
+    } else {
+      // Non-complexity jobs
+      if (job.clockIn) return beforePhotosIndex
+    }
+
     return 0
   }
 
@@ -104,6 +161,34 @@ export default function JobChecklist({ job, techName, onUpdate }) {
       ...prev,
       [stepId]: !prev[stepId]
     }))
+  }
+
+  // Handle Complexity Confirmation
+  const handleConfirmComplexity = async () => {
+    if (!selectedComplexity) {
+      alert('Please select a complexity level')
+      return
+    }
+
+    setIsSavingComplexity(true)
+    try {
+      const response = await fetch(`/api/jobs/${job.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          confirmedComplexity: selectedComplexity
+        })
+      })
+      if (!response.ok) throw new Error('Failed to save complexity')
+
+      setExpandedStep(null)
+      onUpdate?.()
+    } catch (error) {
+      console.error('Complexity save error:', error)
+      alert('Failed to save complexity. Please try again.')
+    } finally {
+      setIsSavingComplexity(false)
+    }
   }
 
   // Handle Clock In (also sends arrival text to customer)
@@ -247,7 +332,7 @@ export default function JobChecklist({ job, techName, onUpdate }) {
           padding: '2px 8px',
           borderRadius: '10px'
         }}>
-          Step {Math.min(currentStep + 1, 5)} of 5
+          Step {Math.min(currentStep + 1, STEPS.length)} of {STEPS.length}
         </span>
       </div>
 
@@ -324,6 +409,11 @@ export default function JobChecklist({ job, techName, onUpdate }) {
                       Clocked out at {formatTime(job.clockOut)}
                     </div>
                   )}
+                  {step.actionType === 'confirmComplexity' && job.confirmedComplexity && (
+                    <div style={{ fontSize: '12px', color: '#059669' }}>
+                      Confirmed: {job.confirmedComplexity}
+                    </div>
+                  )}
                 </div>
 
                 {/* Expand Arrow */}
@@ -354,6 +444,100 @@ export default function JobChecklist({ job, techName, onUpdate }) {
                     }}>
                       {step.instructions}
                     </p>
+                  )}
+
+                  {/* Complexity Confirmation UI */}
+                  {step.actionType === 'confirmComplexity' && !job.confirmedComplexity && (
+                    <div style={{ marginBottom: '16px' }}>
+                      {/* Show service detail */}
+                      {job.serviceDetail && (
+                        <div style={{
+                          marginBottom: '16px',
+                          padding: '12px',
+                          backgroundColor: '#F3F4F6',
+                          borderRadius: '8px'
+                        }}>
+                          <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '4px' }}>
+                            Service Detail
+                          </div>
+                          <div style={{ fontSize: '16px', fontWeight: '600', color: '#111827' }}>
+                            {job.serviceDetail}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Show quoted complexity if available */}
+                      {job.complexity && (
+                        <div style={{
+                          marginBottom: '16px',
+                          padding: '12px',
+                          backgroundColor: '#FEF3C7',
+                          borderRadius: '8px',
+                          border: '1px solid #F59E0B'
+                        }}>
+                          <div style={{ fontSize: '12px', color: '#92400E', marginBottom: '4px' }}>
+                            Quoted Complexity
+                          </div>
+                          <div style={{ fontSize: '16px', fontWeight: '600', color: '#92400E' }}>
+                            {job.complexity}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Complexity selection buttons */}
+                      <div style={{ marginBottom: '16px' }}>
+                        <div style={{
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          color: '#374151',
+                          marginBottom: '12px'
+                        }}>
+                          Select actual complexity:
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          {['Simple', 'Standard', 'Complex'].map((level) => (
+                            <button
+                              key={level}
+                              onClick={() => setSelectedComplexity(level)}
+                              style={{
+                                flex: 1,
+                                minWidth: '90px',
+                                padding: '14px 16px',
+                                fontSize: '15px',
+                                fontWeight: '600',
+                                border: '2px solid',
+                                borderColor: selectedComplexity === level ? '#2A54A1' : '#E5E7EB',
+                                borderRadius: '8px',
+                                backgroundColor: selectedComplexity === level ? '#EFF6FF' : 'white',
+                                color: selectedComplexity === level ? '#2A54A1' : '#374151',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              {selectedComplexity === level && '✓ '}{level}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Confirm button */}
+                      <button
+                        onClick={handleConfirmComplexity}
+                        disabled={!selectedComplexity || isSavingComplexity}
+                        style={{
+                          width: '100%',
+                          padding: '14px',
+                          fontSize: '16px',
+                          fontWeight: '700',
+                          border: 'none',
+                          borderRadius: '8px',
+                          backgroundColor: !selectedComplexity ? '#D1D5DB' : '#059669',
+                          color: 'white',
+                          cursor: !selectedComplexity ? 'not-allowed' : 'pointer'
+                        }}
+                      >
+                        {isSavingComplexity ? 'Saving...' : 'Confirm Complexity'}
+                      </button>
+                    </div>
                   )}
 
                   {/* Checklist Items as bullet points with single confirmation */}

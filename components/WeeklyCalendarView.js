@@ -996,7 +996,7 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
                               textOverflow: 'ellipsis',
                               lineHeight: '1.2'
                             }}>
-                              {job.serviceName}
+                              {job.serviceDetail ? `${job.serviceName}: ${job.serviceDetail}` : job.serviceName}
                             </div>
                             <div
                               title={job.address}
@@ -1105,7 +1105,7 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
                               gap: '3px'
                             }}>
                               <span style={{ fontSize: '9px' }}>✨</span>
-                              {job.serviceName}
+                              {job.serviceDetail ? `${job.serviceName}: ${job.serviceDetail}` : job.serviceName}
                             </div>
                             <div
                               title={Array.isArray(job.address) ? job.address[0] : job.address}
@@ -1216,7 +1216,7 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
                       fontSize: '13px',
                       marginBottom: '2px'
                     }}>
-                      {job.serviceName}
+                      {job.serviceDetail ? `${job.serviceName}: ${job.serviceDetail}` : job.serviceName}
                     </div>
                     <div style={{
                       color: '#374151',

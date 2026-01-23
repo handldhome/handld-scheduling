@@ -165,8 +165,19 @@ function JobCard({ job, index, isExpanded, onToggle, onJobUpdate, techName }) {
           fontWeight: '700',
           color: isCompleted ? '#065F46' : colors.text
         }}>
-          {job.serviceName}
+          {job.serviceDetail ? `${job.serviceName}: ${job.serviceDetail}` : job.serviceName}
         </h3>
+
+        {/* Complexity for plumbing/electrical */}
+        {(job.serviceName === 'Plumbing Repairs' || job.serviceName === 'Electrical Repairs') && (
+          <p style={{
+            margin: '0 0 6px 0',
+            fontSize: '13px',
+            color: '#6B7280'
+          }}>
+            Complexity: {job.confirmedComplexity || job.complexity || 'Not confirmed'}
+          </p>
+        )}
 
         {job.estimatedDuration && (
           <p style={{

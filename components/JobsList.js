@@ -300,7 +300,7 @@ export default function JobsList({ jobs, technicians }) {
                           color: '#2A54A1',
                           margin: 0
                         }}>
-                          {job.serviceName}
+                          {job.serviceDetail ? `${job.serviceName}: ${job.serviceDetail}` : job.serviceName}
                         </h3>
                         <span style={{
                           fontSize: '12px',
