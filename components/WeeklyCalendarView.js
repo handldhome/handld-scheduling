@@ -488,6 +488,77 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
     return status === 'unavailable'
   }
 
+  // Service name to rating field mapping
+  const SERVICE_RATING_FIELDS = {
+    'Window Washing': 'Window Washing Rating',
+    'Window Cleaning': 'Window Washing Rating',
+    'Handyman': 'Handyman Rating',
+    'Gutter Cleaning': 'Gutter Cleaning Rating',
+    'Pressure Washing': 'Pressure Washing Rating',
+    'Pest Control': 'Pest Control Rating',
+    'Trash Bin Cleaning': 'Trash Bin Cleaning Rating',
+    'Outdoor Furniture Cleaning': 'Outdoor Furniture Cleaning Rating',
+    'Holiday Lights': 'Holiday Lights Rating',
+    'Home TuneUp': 'Home TuneUp Rating',
+    'Plumbing Repairs': 'Plumbing Rating',
+    'Plumbing': 'Plumbing Rating',
+    'Electrical Repairs': 'Electrical Rating',
+    'Electrical': 'Electrical Rating'
+  }
+
+  // Get rating field for a service
+  const getRatingFieldForService = (serviceName) => {
+    if (!serviceName) return null
+    if (SERVICE_RATING_FIELDS[serviceName]) return SERVICE_RATING_FIELDS[serviceName]
+    for (const [key, field] of Object.entries(SERVICE_RATING_FIELDS)) {
+      if (serviceName.toLowerCase().includes(key.toLowerCase())) return field
+    }
+    return null
+  }
+
+  // Check if there's a better-rated available tech for this job/slot
+  const checkForBetterTech = (job, date, time) => {
+    if (!job || !job.assignedTech || !Array.isArray(job.assignedTech)) return null
+
+    const assignedTechId = job.assignedTech[0]
+    const assignedTech = technicians.find(t => t.id === assignedTechId)
+    if (!assignedTech) return null
+
+    const ratingField = getRatingFieldForService(job.serviceName)
+    if (!ratingField) return null
+
+    const assignedRating = assignedTech[ratingField] || 0
+    const hour = parseInt(time.split(':')[0])
+    const period = hour < 12 ? 'AM' : 'PM'
+
+    // Find available techs with higher rating
+    const betterTechs = technicians.filter(tech => {
+      if (tech.id === assignedTechId) return false
+      if (!tech.active) return false
+
+      const techRating = tech[ratingField] || 0
+      if (techRating <= assignedRating) return false
+
+      // Check availability
+      const avail = availability.find(a =>
+        a.technicianId === tech.id &&
+        a.date === date &&
+        a.timePeriod === period
+      )
+      return avail && avail.available === true
+    })
+
+    if (betterTechs.length === 0) return null
+
+    // Return the best one
+    const bestTech = betterTechs.sort((a, b) => (b[ratingField] || 0) - (a[ratingField] || 0))[0]
+    return {
+      name: `${bestTech.firstName} ${bestTech.lastName}`,
+      rating: bestTech[ratingField],
+      assignedRating: assignedRating
+    }
+  }
+
   return (
     <div>
       {/* Week Navigation */}
@@ -906,7 +977,8 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
                       onDragLeave={() => setDropTarget(null)}
                       onDrop={(e) => {
                         e.preventDefault()
-                        // Check for conflict and warn
+
+                        // Check for availability conflict
                         if (checkDropConflict(day.date, time)) {
                           const confirmed = window.confirm(
                             'Warning: The selected technician(s) may not be available at this time. Schedule anyway?'
@@ -916,6 +988,23 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
                             return
                           }
                         }
+
+                        // Check for better-rated available tech
+                        if (draggedJob) {
+                          const betterTech = checkForBetterTech(draggedJob, day.date, time)
+                          if (betterTech) {
+                            const confirmed = window.confirm(
+                              `Note: ${betterTech.name} has a higher rating (${betterTech.rating}/5) for this service and is available. ` +
+                              `Current tech is rated ${betterTech.assignedRating}/5.\n\n` +
+                              `Continue with current assignment?`
+                            )
+                            if (!confirmed) {
+                              setDropTarget(null)
+                              return
+                            }
+                          }
+                        }
+
                         handleDrop(day.date, time)
                       }}
                       style={{
