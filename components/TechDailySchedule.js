@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { format, parseISO, addDays, subDays, isToday, isTomorrow } from 'date-fns'
 import JobChecklist from './JobChecklist'
+import { t } from '@/lib/translations'
 
 // Color palette for dynamic service assignment (from WeeklyCalendarView)
 const COLOR_PALETTE = [
@@ -78,7 +79,7 @@ function DetailItem({ label, value }) {
 }
 
 // Job Card Component
-function JobCard({ job, index, isExpanded, onToggle, onJobUpdate, techName }) {
+function JobCard({ job, index, isExpanded, onToggle, onJobUpdate, techName, lang }) {
   const colors = getServiceColor(job.serviceName)
 
   // Google Maps link
@@ -145,7 +146,7 @@ function JobCard({ job, index, isExpanded, onToggle, onJobUpdate, techName }) {
                 fontSize: '11px',
                 fontWeight: '600'
               }}>
-                COMPLETED
+                {t(lang, 'completed').toUpperCase()}
               </span>
             )}
           </div>
@@ -175,7 +176,7 @@ function JobCard({ job, index, isExpanded, onToggle, onJobUpdate, techName }) {
             fontSize: '13px',
             color: '#6B7280'
           }}>
-            Complexity: {job.confirmedComplexity || job.complexity || 'Not confirmed'}
+            {t(lang, 'complexity')}: {job.confirmedComplexity || job.complexity || t(lang, 'notConfirmed')}
           </p>
         )}
 
@@ -185,7 +186,7 @@ function JobCard({ job, index, isExpanded, onToggle, onJobUpdate, techName }) {
             fontSize: '13px',
             color: '#6B7280'
           }}>
-            Time Expected: {job.estimatedDuration}
+            {t(lang, 'timeExpected')}: {job.estimatedDuration}
           </p>
         )}
 
@@ -246,7 +247,7 @@ function JobCard({ job, index, isExpanded, onToggle, onJobUpdate, techName }) {
           color: '#9CA3AF',
           fontSize: '12px'
         }}>
-          {isExpanded ? '▲ Tap to collapse' : '▼ Tap for details'}
+          {isExpanded ? `▲ ${t(lang, 'tapForDetails')}` : `▼ ${t(lang, 'tapForDetails')}`}
         </div>
       </div>
 
@@ -309,7 +310,7 @@ function JobCard({ job, index, isExpanded, onToggle, onJobUpdate, techName }) {
                 marginBottom: '8px',
                 textTransform: 'uppercase'
               }}>
-                Equipment Needed
+                {t(lang, 'equipment')}
               </div>
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                 {job.equipment.map((item, idx) => (
@@ -340,7 +341,7 @@ function JobCard({ job, index, isExpanded, onToggle, onJobUpdate, techName }) {
               marginBottom: '8px',
               textTransform: 'uppercase'
             }}>
-              Property Details
+              {t(lang, 'propertyDetails')}
             </div>
             <div style={{
               display: 'grid',
@@ -348,16 +349,16 @@ function JobCard({ job, index, isExpanded, onToggle, onJobUpdate, techName }) {
               gap: '12px'
             }}>
               {job.stories && (
-                <DetailItem label="Stories" value={job.stories} />
+                <DetailItem label={t(lang, 'stories')} value={job.stories} />
               )}
               {job.squareFootage && (
-                <DetailItem label="Sq Footage" value={job.squareFootage} />
+                <DetailItem label={t(lang, 'sqFt')} value={job.squareFootage} />
               )}
               {job.lotSize && (
-                <DetailItem label="Lot Size" value={job.lotSize} />
+                <DetailItem label={t(lang, 'lotSize')} value={job.lotSize} />
               )}
               {job.estimatedDuration && (
-                <DetailItem label="Time Expected" value={job.estimatedDuration} />
+                <DetailItem label={t(lang, 'timeExpected')} value={job.estimatedDuration} />
               )}
             </div>
           </div>
@@ -372,7 +373,7 @@ function JobCard({ job, index, isExpanded, onToggle, onJobUpdate, techName }) {
                 marginBottom: '8px',
                 textTransform: 'uppercase'
               }}>
-                Customer Notes
+                {t(lang, 'jobDetails')}
               </div>
               <div style={{
                 backgroundColor: '#F9FAFB',
@@ -383,22 +384,22 @@ function JobCard({ job, index, isExpanded, onToggle, onJobUpdate, techName }) {
               }}>
                 {job.vibe && (
                   <div style={{ marginBottom: '8px' }}>
-                    <strong>Vibe:</strong> {job.vibe}
+                    <strong>{t(lang, 'vibe')}:</strong> {job.vibe}
                   </div>
                 )}
                 {job.pets && (
                   <div style={{ marginBottom: '8px' }}>
-                    <strong>Pets:</strong> {job.pets}
+                    <strong>{t(lang, 'pets')}:</strong> {job.pets}
                   </div>
                 )}
                 {job.gateCode && (
                   <div style={{ marginBottom: '8px' }}>
-                    <strong>Access/Gate:</strong> {job.gateCode}
+                    <strong>{t(lang, 'gateCode')}:</strong> {job.gateCode}
                   </div>
                 )}
                 {job.electricWater && (
                   <div style={{ marginBottom: '8px' }}>
-                    <strong>Electric/Water:</strong> {job.electricWater}
+                    <strong>{t(lang, 'electricWater')}:</strong> {job.electricWater}
                   </div>
                 )}
                 {job.otherNotes && (
@@ -420,7 +421,7 @@ function JobCard({ job, index, isExpanded, onToggle, onJobUpdate, techName }) {
                 marginBottom: '8px',
                 textTransform: 'uppercase'
               }}>
-                Job Notes
+                {t(lang, 'notes')}
               </div>
               <div style={{
                 fontSize: '14px',
@@ -439,6 +440,7 @@ function JobCard({ job, index, isExpanded, onToggle, onJobUpdate, techName }) {
             job={job}
             techName={techName}
             onUpdate={onJobUpdate}
+            lang={lang}
           />
         </div>
       )}
@@ -447,6 +449,13 @@ function JobCard({ job, index, isExpanded, onToggle, onJobUpdate, techName }) {
 }
 
 export default function TechDailySchedule({ techId, techName, jobs: initialJobs, initialDate }) {
+  // Language state
+  const [lang, setLang] = useState('en')
+
+  const toggleLanguage = () => {
+    setLang(prev => prev === 'en' ? 'es' : 'en')
+  }
+
   // Calculate default date (tomorrow if no param provided)
   const getDefaultDate = () => {
     if (initialDate) return initialDate
@@ -527,11 +536,11 @@ export default function TechDailySchedule({ techId, techName, jobs: initialJobs,
 
     // Add "Today" or "Tomorrow" indicator
     let indicator = ''
-    if (isToday(date)) indicator = ' (Today)'
-    else if (isTomorrow(date)) indicator = ' (Tomorrow)'
+    if (isToday(date)) indicator = ` (${t(lang, 'today')})`
+    else if (isTomorrow(date)) indicator = ` (${t(lang, 'tomorrow')})`
 
     return `${dayName}, ${monthDay}${indicator}`
-  }, [selectedDate])
+  }, [selectedDate, lang])
 
   const isTodaySelected = isToday(parseISO(selectedDate))
 
@@ -551,8 +560,30 @@ export default function TechDailySchedule({ techId, techName, jobs: initialJobs,
           borderRadius: '16px',
           padding: '20px',
           boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-          marginBottom: '16px'
+          marginBottom: '16px',
+          position: 'relative'
         }}>
+          {/* Language Toggle Button */}
+          <button
+            onClick={toggleLanguage}
+            style={{
+              position: 'absolute',
+              top: '16px',
+              right: '16px',
+              padding: '8px 16px',
+              fontSize: '13px',
+              fontWeight: '600',
+              backgroundColor: '#EFF6FF',
+              color: '#2A54A1',
+              border: '1px solid #2A54A1',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+          >
+            {t(lang, 'languageToggle')}
+          </button>
+
           <div style={{ textAlign: 'center', marginBottom: '16px' }}>
             <img
               src="/logo-dark.png"
@@ -568,7 +599,7 @@ export default function TechDailySchedule({ techId, techName, jobs: initialJobs,
             fontWeight: '800',
             textAlign: 'center'
           }}>
-            Hi {techName}!
+            {t(lang, 'scheduleGreeting', techName)}
           </h1>
 
           <p style={{
@@ -577,7 +608,10 @@ export default function TechDailySchedule({ techId, techName, jobs: initialJobs,
             textAlign: 'center',
             margin: 0
           }}>
-            You have <strong>{todaysJobs.length}</strong> job{todaysJobs.length !== 1 ? 's' : ''} scheduled
+            {todaysJobs.length > 0
+              ? t(lang, 'youHaveJobs', todaysJobs.length)
+              : t(lang, 'noJobsScheduled')
+            }
           </p>
         </div>
 
@@ -639,7 +673,7 @@ export default function TechDailySchedule({ techId, techName, jobs: initialJobs,
                     cursor: 'pointer'
                   }}
                 >
-                  Go to Today
+                  {t(lang, 'goToToday')}
                 </button>
               )}
             </div>
@@ -685,14 +719,14 @@ export default function TechDailySchedule({ techId, techName, jobs: initialJobs,
               color: '#6B7280',
               margin: 0
             }}>
-              No jobs scheduled for this day
+              {t(lang, 'noJobsForDay')}
             </p>
             <p style={{
               fontSize: '14px',
               color: '#9CA3AF',
               marginTop: '8px'
             }}>
-              Use the arrows to check other days
+              {t(lang, 'checkOtherDays')}
             </p>
           </div>
         ) : (
@@ -708,6 +742,7 @@ export default function TechDailySchedule({ techId, techName, jobs: initialJobs,
                 )}
                 onJobUpdate={refreshJobs}
                 techName={techName}
+                lang={lang}
               />
             ))}
           </div>

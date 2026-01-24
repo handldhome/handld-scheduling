@@ -1,84 +1,86 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { t } from '@/lib/translations'
 
 // Base steps for all jobs
-const BASE_STEPS = [
+const getBaseSteps = (lang) => [
   {
     id: 'pre-departure',
-    title: 'Pre-Departure',
+    title: t(lang, 'preDeparture'),
     icon: '1',
     checklistItems: [
-      'Wearing Handld polo and hat',
-      'Phone fully charged',
-      'All equipment loaded for today\'s jobs'
+      t(lang, 'wearingUniform'),
+      t(lang, 'phoneCharged'),
+      t(lang, 'equipmentLoaded')
     ],
-    confirmText: 'Ready to Go',
+    confirmText: t(lang, 'readyToGo'),
     actionType: null
   },
   {
     id: 'on-site-arrival',
-    title: 'On-Site Arrival',
+    title: t(lang, 'onSiteArrival'),
     icon: '2',
     checklistItems: [
-      'Knock/ring and greet customer (if no answer, contact Brad)',
-      'Confirm scope: "Any specific areas of concern?"',
-      'Locate water/power hookups if needed'
+      t(lang, 'knockAndGreet'),
+      t(lang, 'confirmScope'),
+      t(lang, 'locateHookups')
     ],
-    confirmText: 'Clock In & Notify Customer',
+    confirmText: t(lang, 'clockInNotify'),
     actionType: 'clockIn'
   },
   {
     id: 'before-photos',
-    title: 'Before Photos',
+    title: t(lang, 'beforePhotos'),
     icon: '3',
-    instructions: 'Photograph key work areas before starting',
+    instructions: t(lang, 'photographBefore'),
     actionType: 'beforePhotos'
   },
   {
     id: 'after-photos',
-    title: 'After Photos',
+    title: t(lang, 'afterPhotos'),
     icon: '4',
-    instructions: 'Photograph same areas showing completed work',
+    instructions: t(lang, 'photographAfter'),
     actionType: 'afterPhotos'
   },
   {
     id: 'job-completion',
-    title: 'Job Completion',
+    title: t(lang, 'jobCompletion'),
     icon: '5',
     checklistItems: [
-      'Quality walk-through — check for missed spots',
-      'Clean up area and collect all equipment',
-      'Review work with customer (note any issues or upsell opportunities)'
+      t(lang, 'qualityWalkthrough'),
+      t(lang, 'cleanUpArea'),
+      t(lang, 'reviewWithCustomer')
     ],
-    confirmText: 'Clock Out & Complete Job',
+    confirmText: t(lang, 'clockOutComplete'),
     actionType: 'clockOut'
   }
 ]
 
 // Complexity confirmation step (inserted after On-Site Arrival for plumbing/electrical)
-const COMPLEXITY_STEP = {
+const getComplexityStep = (lang) => ({
   id: 'confirm-complexity',
-  title: 'Confirm Complexity',
+  title: t(lang, 'confirmComplexity'),
   icon: '3',
-  instructions: 'After evaluating the work, confirm the job complexity below.',
+  instructions: t(lang, 'afterEvaluating'),
   actionType: 'confirmComplexity'
-}
+})
 
 // Services that require complexity confirmation
 const COMPLEXITY_SERVICES = ['Plumbing Repairs', 'Electrical Repairs']
 
-export default function JobChecklist({ job, techName, onUpdate }) {
+export default function JobChecklist({ job, techName, onUpdate, lang = 'en' }) {
   // Determine if this job needs complexity confirmation
   const needsComplexity = COMPLEXITY_SERVICES.includes(job.serviceName)
 
   // Build steps based on job type
   const getSteps = () => {
-    if (!needsComplexity) return BASE_STEPS
+    const baseSteps = getBaseSteps(lang)
+    if (!needsComplexity) return baseSteps
 
     // Insert complexity step after on-site-arrival (index 1)
-    const steps = [...BASE_STEPS]
-    steps.splice(2, 0, COMPLEXITY_STEP)
+    const steps = [...baseSteps]
+    steps.splice(2, 0, getComplexityStep(lang))
 
     // Renumber icons
     return steps.map((step, index) => ({
@@ -323,7 +325,7 @@ export default function JobChecklist({ job, techName, onUpdate }) {
         alignItems: 'center',
         gap: '8px'
       }}>
-        <span>Job Checklist</span>
+        <span>{t(lang, 'jobChecklist')}</span>
         <span style={{
           fontSize: '11px',
           fontWeight: '500',
@@ -332,7 +334,7 @@ export default function JobChecklist({ job, techName, onUpdate }) {
           padding: '2px 8px',
           borderRadius: '10px'
         }}>
-          Step {Math.min(currentStep + 1, STEPS.length)} of {STEPS.length}
+          {t(lang, 'step')} {Math.min(currentStep + 1, STEPS.length)} {t(lang, 'of')} {STEPS.length}
         </span>
       </div>
 
@@ -401,17 +403,17 @@ export default function JobChecklist({ job, techName, onUpdate }) {
                   </div>
                   {step.actionType === 'clockIn' && job.clockIn && (
                     <div style={{ fontSize: '12px', color: '#059669' }}>
-                      Clocked in at {formatTime(job.clockIn)}
+                      {t(lang, 'clockedInAt')} {formatTime(job.clockIn)}
                     </div>
                   )}
                   {step.actionType === 'clockOut' && job.clockOut && (
                     <div style={{ fontSize: '12px', color: '#059669' }}>
-                      Clocked out at {formatTime(job.clockOut)}
+                      {t(lang, 'clockedOutAt')} {formatTime(job.clockOut)}
                     </div>
                   )}
                   {step.actionType === 'confirmComplexity' && job.confirmedComplexity && (
                     <div style={{ fontSize: '12px', color: '#059669' }}>
-                      Confirmed: {job.confirmedComplexity}
+                      {t(lang, 'confirmed')}: {job.confirmedComplexity}
                     </div>
                   )}
                 </div>
@@ -458,7 +460,7 @@ export default function JobChecklist({ job, techName, onUpdate }) {
                           borderRadius: '8px'
                         }}>
                           <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '4px' }}>
-                            Service Detail
+                            {t(lang, 'serviceDetail')}
                           </div>
                           <div style={{ fontSize: '16px', fontWeight: '600', color: '#111827' }}>
                             {job.serviceDetail}
@@ -476,7 +478,7 @@ export default function JobChecklist({ job, techName, onUpdate }) {
                           border: '1px solid #F59E0B'
                         }}>
                           <div style={{ fontSize: '12px', color: '#92400E', marginBottom: '4px' }}>
-                            Quoted Complexity
+                            {t(lang, 'quotedComplexity')}
                           </div>
                           <div style={{ fontSize: '16px', fontWeight: '600', color: '#92400E' }}>
                             {job.complexity}
@@ -492,13 +494,17 @@ export default function JobChecklist({ job, techName, onUpdate }) {
                           color: '#374151',
                           marginBottom: '12px'
                         }}>
-                          Select actual complexity:
+                          {t(lang, 'selectActualComplexity')}
                         </div>
                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                          {['Simple', 'Standard', 'Complex'].map((level) => (
+                          {[
+                            { key: 'Simple', label: t(lang, 'simple') },
+                            { key: 'Standard', label: t(lang, 'standard') },
+                            { key: 'Complex', label: t(lang, 'complex') }
+                          ].map(({ key, label }) => (
                             <button
-                              key={level}
-                              onClick={() => setSelectedComplexity(level)}
+                              key={key}
+                              onClick={() => setSelectedComplexity(key)}
                               style={{
                                 flex: 1,
                                 minWidth: '90px',
@@ -506,14 +512,14 @@ export default function JobChecklist({ job, techName, onUpdate }) {
                                 fontSize: '15px',
                                 fontWeight: '600',
                                 border: '2px solid',
-                                borderColor: selectedComplexity === level ? '#2A54A1' : '#E5E7EB',
+                                borderColor: selectedComplexity === key ? '#2A54A1' : '#E5E7EB',
                                 borderRadius: '8px',
-                                backgroundColor: selectedComplexity === level ? '#EFF6FF' : 'white',
-                                color: selectedComplexity === level ? '#2A54A1' : '#374151',
+                                backgroundColor: selectedComplexity === key ? '#EFF6FF' : 'white',
+                                color: selectedComplexity === key ? '#2A54A1' : '#374151',
                                 cursor: 'pointer'
                               }}
                             >
-                              {selectedComplexity === level && '✓ '}{level}
+                              {selectedComplexity === key && '✓ '}{label}
                             </button>
                           ))}
                         </div>
@@ -535,7 +541,7 @@ export default function JobChecklist({ job, techName, onUpdate }) {
                           cursor: !selectedComplexity ? 'not-allowed' : 'pointer'
                         }}
                       >
-                        {isSavingComplexity ? 'Saving...' : 'Confirm Complexity'}
+                        {isSavingComplexity ? t(lang, 'savingComplexity') : t(lang, 'confirmComplexityBtn')}
                       </button>
                     </div>
                   )}
@@ -585,7 +591,7 @@ export default function JobChecklist({ job, techName, onUpdate }) {
                             cursor: 'pointer'
                           }}
                         />
-                        <span>I confirm all items above are complete</span>
+                        <span>{t(lang, 'iConfirmComplete')}</span>
                       </label>
                     </div>
                   )}
@@ -607,7 +613,7 @@ export default function JobChecklist({ job, techName, onUpdate }) {
                         cursor: !isConfirmed ? 'not-allowed' : 'pointer'
                       }}
                     >
-                      {isClockingIn ? 'Clocking In...' : step.confirmText}
+                      {isClockingIn ? t(lang, 'clockingIn') : step.confirmText}
                     </button>
                   )}
 
@@ -693,7 +699,7 @@ export default function JobChecklist({ job, techName, onUpdate }) {
                         }}
                       >
                         <span style={{ fontSize: '20px' }}>📷</span>
-                        {isUploadingBefore ? 'Uploading...' : 'Take Before Photos'}
+                        {isUploadingBefore ? t(lang, 'uploading') : t(lang, 'takeBeforePhotos')}
                       </button>
                     </div>
                   )}
@@ -755,7 +761,7 @@ export default function JobChecklist({ job, techName, onUpdate }) {
                         }}
                       >
                         <span style={{ fontSize: '20px' }}>📷</span>
-                        {isUploadingAfter ? 'Uploading...' : 'Take After Photos'}
+                        {isUploadingAfter ? t(lang, 'uploading') : t(lang, 'takeAfterPhotos')}
                       </button>
                     </div>
                   )}
@@ -777,7 +783,7 @@ export default function JobChecklist({ job, techName, onUpdate }) {
                         cursor: !isConfirmed ? 'not-allowed' : 'pointer'
                       }}
                     >
-                      {isClockingOut ? 'Clocking Out...' : step.confirmText}
+                      {isClockingOut ? t(lang, 'clockingOut') : step.confirmText}
                     </button>
                   )}
 
@@ -795,10 +801,10 @@ export default function JobChecklist({ job, techName, onUpdate }) {
                         fontWeight: '700',
                         color: '#065F46'
                       }}>
-                        Job Complete!
+                        {t(lang, 'jobComplete')}
                       </div>
                       <div style={{ fontSize: '14px', color: '#059669' }}>
-                        Clocked out at {formatTime(job.clockOut)}
+                        {t(lang, 'clockedOutAt')} {formatTime(job.clockOut)}
                       </div>
                     </div>
                   )}

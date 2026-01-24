@@ -1,9 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { addDays, startOfWeek, format, addWeeks } from 'date-fns'
+import { addDays, format } from 'date-fns'
+import { t } from '@/lib/translations'
 
-export default function AvailabilityForm({ techId, techName }) {
+export default function AvailabilityForm({ techId, techName, lang = 'en' }) {
   const [availability, setAvailability] = useState({})
   const [dayNotes, setDayNotes] = useState({}) // Per-day notes
   const [expandedNotes, setExpandedNotes] = useState({}) // Track which note boxes are open
@@ -17,9 +18,13 @@ export default function AvailabilityForm({ techId, techName }) {
 
     for (let i = 0; i < 14; i++) {
       const date = addDays(today, i)
+      // Format date display based on language
+      const display = lang === 'es'
+        ? format(date, 'EEE, d MMM', { locale: undefined }) // Will show in default locale
+        : format(date, 'EEE, MMM d')
       days.push({
         date: format(date, 'yyyy-MM-dd'),
-        display: format(date, 'EEE, MMM d'),
+        display,
         dayName: format(date, 'EEEE')
       })
     }
@@ -78,7 +83,7 @@ export default function AvailabilityForm({ techId, techName }) {
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
     } catch (error) {
-      alert('Error saving availability. Please try again.')
+      alert(t(lang, 'errorSaving'))
     } finally {
       setLoading(false)
     }
@@ -126,7 +131,7 @@ export default function AvailabilityForm({ techId, techName }) {
                     cursor: 'pointer'
                   }}
                 />
-                Morning (8-12)
+                {t(lang, 'morningLabel')}
               </label>
 
               <label style={{
@@ -146,7 +151,7 @@ export default function AvailabilityForm({ techId, techName }) {
                     cursor: 'pointer'
                   }}
                 />
-                Afternoon (1-5)
+                {t(lang, 'afternoonLabel')}
               </label>
             </div>
 
@@ -167,7 +172,7 @@ export default function AvailabilityForm({ techId, techName }) {
                 gap: '4px'
               }}
             >
-              {expandedNotes[day.date] ? '− Hide note' : '+ Add note'}
+              {expandedNotes[day.date] ? t(lang, 'hideNote') : t(lang, 'addNote')}
             </button>
 
             {/* Collapsible note input */}
@@ -177,7 +182,7 @@ export default function AvailabilityForm({ techId, techName }) {
                   type="text"
                   value={dayNotes[day.date] || ''}
                   onChange={(e) => handleDayNote(day.date, e.target.value)}
-                  placeholder="e.g., Doctor appt at 2pm"
+                  placeholder={t(lang, 'notePlaceholder')}
                   style={{
                     width: '100%',
                     padding: '8px',
@@ -210,7 +215,7 @@ export default function AvailabilityForm({ techId, techName }) {
           boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
         }}
       >
-        {loading ? 'Saving...' : success ? '✓ Saved!' : 'Save Availability'}
+        {loading ? t(lang, 'saving') : success ? t(lang, 'saved') : t(lang, 'saveAvailability')}
       </button>
 
       {success && (
@@ -221,7 +226,7 @@ export default function AvailabilityForm({ techId, techName }) {
           fontSize: '15px',
           fontWeight: '600'
         }}>
-          Thanks {techName}! Your availability has been updated.
+          {t(lang, 'thankYouAvailability', techName)}
         </p>
       )}
     </form>
