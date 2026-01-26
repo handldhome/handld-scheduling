@@ -215,7 +215,11 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en' }) {
           status: 'In Progress'
         })
       })
-      if (!response.ok) throw new Error('Failed to clock in')
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        console.error('Clock in API error:', errorData)
+        throw new Error(errorData.details || 'Failed to clock in')
+      }
 
       // Send arrival text to customer
       if (job.phone) {
@@ -234,7 +238,7 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en' }) {
       onUpdate?.()
     } catch (error) {
       console.error('Clock in error:', error)
-      alert('Failed to clock in. Please try again.')
+      alert(`Failed to clock in: ${error.message}`)
     } finally {
       setIsClockingIn(false)
     }
