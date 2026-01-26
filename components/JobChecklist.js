@@ -3,93 +3,108 @@
 import { useState, useRef } from 'react'
 import { t } from '@/lib/translations'
 
-// Base steps for all jobs
-const getBaseSteps = (lang) => [
-  {
-    id: 'pre-departure',
-    title: t(lang, 'preDeparture'),
-    icon: '1',
-    checklistItems: [
-      t(lang, 'wearingUniform'),
-      t(lang, 'phoneCharged'),
-      t(lang, 'equipmentLoaded')
-    ],
-    confirmText: t(lang, 'readyToGo'),
-    actionType: null
-  },
-  {
-    id: 'on-site-arrival',
-    title: t(lang, 'onSiteArrival'),
-    icon: '2',
-    checklistItems: [
-      t(lang, 'knockAndGreet'),
-      t(lang, 'confirmScope'),
-      t(lang, 'locateHookups')
-    ],
-    confirmText: t(lang, 'clockInNotify'),
-    actionType: 'clockIn'
-  },
-  {
-    id: 'before-photos',
-    title: t(lang, 'beforePhotos'),
-    icon: '3',
-    instructions: t(lang, 'photographBefore'),
-    actionType: 'beforePhotos'
-  },
-  {
-    id: 'after-photos',
-    title: t(lang, 'afterPhotos'),
-    icon: '4',
-    instructions: t(lang, 'photographAfter'),
-    actionType: 'afterPhotos'
-  },
-  {
-    id: 'job-completion',
-    title: t(lang, 'jobCompletion'),
-    icon: '5',
-    checklistItems: [
-      t(lang, 'qualityWalkthrough'),
-      t(lang, 'cleanUpArea'),
-      t(lang, 'reviewWithCustomer')
-    ],
-    confirmText: t(lang, 'clockOutComplete'),
-    actionType: 'clockOut'
-  }
-]
+// Build steps dynamically based on job and language
+const getSteps = (job, lang) => {
+  const steps = [
+    {
+      id: 'pre-departure',
+      title: t(lang, 'preDeparture'),
+      icon: '1',
+      checklistItems: [
+        t(lang, 'wearingUniform'),
+        t(lang, 'phoneCharged'),
+        t(lang, 'equipmentLoaded')
+      ],
+      confirmText: t(lang, 'readyToGo'),
+      actionType: 'confirm'
+    },
+    {
+      id: 'navigate',
+      title: lang === 'es' ? 'Navegar al Sitio' : 'Navigate to Job',
+      icon: '2',
+      instructions: lang === 'es'
+        ? 'Usa el enlace de abajo para navegar a la ubicación del trabajo.'
+        : 'Use the link below to navigate to the job location.',
+      actionType: 'navigate',
+      confirmText: lang === 'es' ? 'He Llegado' : "I've Arrived"
+    },
+    {
+      id: 'clock-in',
+      title: lang === 'es' ? 'Registrar Entrada' : 'Clock In',
+      icon: '3',
+      instructions: lang === 'es'
+        ? 'Registra tu entrada para notificar al cliente que has llegado.'
+        : 'Clock in to notify the customer that you have arrived.',
+      actionType: 'clockIn',
+      confirmText: t(lang, 'clockInNotify')
+    },
+    {
+      id: 'on-site-checklist',
+      title: t(lang, 'onSiteArrival'),
+      icon: '4',
+      checklistItems: [
+        t(lang, 'knockAndGreet'),
+        t(lang, 'confirmScope'),
+        t(lang, 'locateHookups')
+      ],
+      confirmText: lang === 'es' ? 'Lista Completada' : 'Checklist Complete',
+      actionType: 'confirm'
+    },
+    {
+      id: 'before-photos',
+      title: t(lang, 'beforePhotos'),
+      icon: '5',
+      instructions: t(lang, 'photographBefore'),
+      actionType: 'beforePhotos'
+    },
+    {
+      id: 'after-photos',
+      title: t(lang, 'afterPhotos'),
+      icon: '6',
+      instructions: t(lang, 'photographAfter'),
+      actionType: 'afterPhotos'
+    },
+    {
+      id: 'job-completion',
+      title: t(lang, 'jobCompletion'),
+      icon: '7',
+      checklistItems: [
+        t(lang, 'qualityWalkthrough'),
+        t(lang, 'cleanUpArea'),
+        t(lang, 'reviewWithCustomer')
+      ],
+      confirmText: t(lang, 'clockOutComplete'),
+      actionType: 'clockOut'
+    }
+  ]
 
-// Complexity confirmation step (inserted after On-Site Arrival for plumbing/electrical)
-const getComplexityStep = (lang) => ({
-  id: 'confirm-complexity',
-  title: t(lang, 'confirmComplexity'),
-  icon: '3',
-  instructions: t(lang, 'afterEvaluating'),
-  actionType: 'confirmComplexity'
-})
+  // Insert complexity step after clock-in for plumbing/electrical
+  const needsComplexity = ['Plumbing Repairs', 'Electrical Repairs'].includes(job.serviceName)
+  if (needsComplexity) {
+    const complexityStep = {
+      id: 'confirm-complexity',
+      title: t(lang, 'confirmComplexity'),
+      icon: '4',
+      instructions: t(lang, 'afterEvaluating'),
+      actionType: 'confirmComplexity'
+    }
+    // Insert after clock-in (index 2)
+    steps.splice(3, 0, complexityStep)
+  }
+
+  // Renumber icons after any insertions
+  return steps.map((step, index) => ({
+    ...step,
+    icon: String(index + 1)
+  }))
+}
 
 // Services that require complexity confirmation
 const COMPLEXITY_SERVICES = ['Plumbing Repairs', 'Electrical Repairs']
 
 export default function JobChecklist({ job, techName, onUpdate, lang = 'en' }) {
-  // Determine if this job needs complexity confirmation
+  const STEPS = getSteps(job, lang)
   const needsComplexity = COMPLEXITY_SERVICES.includes(job.serviceName)
-
-  // Build steps based on job type
-  const getSteps = () => {
-    const baseSteps = getBaseSteps(lang)
-    if (!needsComplexity) return baseSteps
-
-    // Insert complexity step after on-site-arrival (index 1)
-    const steps = [...baseSteps]
-    steps.splice(2, 0, getComplexityStep(lang))
-
-    // Renumber icons
-    return steps.map((step, index) => ({
-      ...step,
-      icon: String(index + 1)
-    }))
-  }
-
-  const STEPS = getSteps()
 
   // Track which step is expanded
   const [expandedStep, setExpandedStep] = useState(null)
@@ -118,6 +133,13 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en' }) {
   const beforePhotoRef = useRef(null)
   const afterPhotoRef = useRef(null)
 
+  // Google Maps link for navigation
+  const mapsUrl = job.address
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+        job.address + (job.city ? ', ' + job.city : '')
+      )}`
+    : null
+
   // Determine current step based on job state and workflow progression
   const getCurrentStep = () => {
     if (job.status === 'Completed') return STEPS.length
@@ -125,30 +147,46 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en' }) {
 
     // Find indices for steps
     const preDepartureIndex = STEPS.findIndex(s => s.id === 'pre-departure')
-    const arrivalIndex = STEPS.findIndex(s => s.id === 'on-site-arrival')
-    const afterPhotosIndex = STEPS.findIndex(s => s.id === 'after-photos')
-    const beforePhotosIndex = STEPS.findIndex(s => s.id === 'before-photos')
+    const navigateIndex = STEPS.findIndex(s => s.id === 'navigate')
+    const clockInIndex = STEPS.findIndex(s => s.id === 'clock-in')
+    const onSiteIndex = STEPS.findIndex(s => s.id === 'on-site-checklist')
     const complexityIndex = STEPS.findIndex(s => s.id === 'confirm-complexity')
+    const beforePhotosIndex = STEPS.findIndex(s => s.id === 'before-photos')
+    const afterPhotosIndex = STEPS.findIndex(s => s.id === 'after-photos')
 
+    // Check photo states
     if (afterPhotos.length > 0 || job.afterPhotos?.length > 0) return afterPhotosIndex
     if (beforePhotos.length > 0 || job.beforePhotos?.length > 0) return beforePhotosIndex
 
     // For complexity jobs, check if complexity has been confirmed
     if (needsComplexity && complexityIndex !== -1) {
       if (job.confirmedComplexity) {
-        return beforePhotosIndex // Complexity done, move to before photos
+        // Complexity done, check on-site checklist
+        if (completedWorkflowSteps['on-site-checklist']) {
+          return beforePhotosIndex
+        }
+        return onSiteIndex
       }
       if (job.clockIn) {
         return complexityIndex // Clocked in, need to confirm complexity
       }
     } else {
       // Non-complexity jobs
-      if (job.clockIn) return beforePhotosIndex
+      if (job.clockIn) {
+        // Check if on-site checklist is done
+        if (completedWorkflowSteps['on-site-checklist']) {
+          return beforePhotosIndex
+        }
+        return onSiteIndex
+      }
     }
 
-    // Check if pre-departure was completed (allows progression to arrival step)
+    // Check workflow progression for early steps
+    if (completedWorkflowSteps['navigate']) {
+      return clockInIndex
+    }
     if (completedWorkflowSteps['pre-departure']) {
-      return arrivalIndex
+      return navigateIndex
     }
 
     return 0
@@ -172,6 +210,15 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en' }) {
       ...prev,
       [stepId]: !prev[stepId]
     }))
+  }
+
+  // Mark workflow step as complete
+  const completeWorkflowStep = (stepId) => {
+    setCompletedWorkflowSteps(prev => ({
+      ...prev,
+      [stepId]: true
+    }))
+    setExpandedStep(null)
   }
 
   // Handle Complexity Confirmation
@@ -235,6 +282,7 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en' }) {
         }
       }
 
+      setExpandedStep(null)
       onUpdate?.()
     } catch (error) {
       console.error('Clock in error:', error)
@@ -461,6 +509,87 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en' }) {
                     </p>
                   )}
 
+                  {/* Navigate Step - Show address link */}
+                  {step.actionType === 'navigate' && (
+                    <div style={{ marginBottom: '16px' }}>
+                      {mapsUrl ? (
+                        <a
+                          href={mapsUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            width: '100%',
+                            padding: '14px',
+                            backgroundColor: '#2A54A1',
+                            color: 'white',
+                            textDecoration: 'none',
+                            borderRadius: '8px',
+                            fontSize: '16px',
+                            fontWeight: '600',
+                            marginBottom: '12px'
+                          }}
+                        >
+                          <span style={{ fontSize: '20px' }}>📍</span>
+                          {lang === 'es' ? 'Abrir en Google Maps' : 'Open in Google Maps'}
+                        </a>
+                      ) : (
+                        <p style={{ color: '#6B7280', textAlign: 'center' }}>
+                          {lang === 'es' ? 'Dirección no disponible' : 'Address not available'}
+                        </p>
+                      )}
+                      <p style={{
+                        fontSize: '13px',
+                        color: '#6B7280',
+                        textAlign: 'center',
+                        marginBottom: '16px'
+                      }}>
+                        {job.address}{job.city ? `, ${job.city}` : ''}
+                      </p>
+                      <button
+                        onClick={() => completeWorkflowStep('navigate')}
+                        style={{
+                          width: '100%',
+                          padding: '14px',
+                          fontSize: '16px',
+                          fontWeight: '700',
+                          border: 'none',
+                          borderRadius: '8px',
+                          backgroundColor: '#059669',
+                          color: 'white',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {step.confirmText}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Clock In Step */}
+                  {step.actionType === 'clockIn' && !job.clockIn && (
+                    <button
+                      onClick={handleClockIn}
+                      disabled={isClockingIn}
+                      style={{
+                        width: '100%',
+                        padding: '14px',
+                        fontSize: '16px',
+                        fontWeight: '700',
+                        border: 'none',
+                        borderRadius: '8px',
+                        backgroundColor: '#059669',
+                        color: 'white',
+                        cursor: isClockingIn ? 'not-allowed' : 'pointer',
+                        opacity: isClockingIn ? 0.7 : 1
+                      }}
+                    >
+                      {isClockingIn ? t(lang, 'clockingIn') : step.confirmText}
+                    </button>
+                  )}
+
                   {/* Complexity Confirmation UI */}
                   {step.actionType === 'confirmComplexity' && !job.confirmedComplexity && (
                     <div style={{ marginBottom: '16px' }}>
@@ -609,38 +738,12 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en' }) {
                     </div>
                   )}
 
-                  {/* Clock In Button */}
-                  {step.actionType === 'clockIn' && !job.clockIn && (
-                    <button
-                      onClick={handleClockIn}
-                      disabled={isClockingIn || !isConfirmed}
-                      style={{
-                        width: '100%',
-                        padding: '14px',
-                        fontSize: '16px',
-                        fontWeight: '700',
-                        border: 'none',
-                        borderRadius: '8px',
-                        backgroundColor: !isConfirmed ? '#D1D5DB' : '#059669',
-                        color: 'white',
-                        cursor: !isConfirmed ? 'not-allowed' : 'pointer'
-                      }}
-                    >
-                      {isClockingIn ? t(lang, 'clockingIn') : step.confirmText}
-                    </button>
-                  )}
-
-                  {/* Pre-departure done button (no clock action) */}
-                  {step.actionType === null && step.checklistItems && (
+                  {/* Confirm button for checklist steps */}
+                  {step.actionType === 'confirm' && step.checklistItems && (
                     <button
                       onClick={() => {
                         if (isConfirmed) {
-                          // Mark this workflow step as complete to allow progression
-                          setCompletedWorkflowSteps(prev => ({
-                            ...prev,
-                            [step.id]: true
-                          }))
-                          setExpandedStep(null)
+                          completeWorkflowStep(step.id)
                         }
                       }}
                       disabled={!isConfirmed}
