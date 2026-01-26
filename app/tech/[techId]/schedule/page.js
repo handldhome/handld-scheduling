@@ -1,5 +1,5 @@
 import TechDailySchedule from '@/components/TechDailySchedule'
-import { getTechnician, getAllJobs } from '@/lib/airtable'
+import { getTechnician, getAllJobs, getPricingRules } from '@/lib/airtable'
 
 export const revalidate = 0 // Always fetch fresh data
 
@@ -9,6 +9,7 @@ export default async function TechSchedulePage({ params, searchParams }) {
 
   let technician
   let jobs = []
+  let pricingRules = []
   let errorMessage = null
 
   try {
@@ -17,7 +18,13 @@ export default async function TechSchedulePage({ params, searchParams }) {
     if (!technician.active) {
       errorMessage = 'This technician account is not active.'
     } else {
-      jobs = await getAllJobs()
+      // Fetch jobs and pricing rules in parallel
+      const [jobsData, pricingData] = await Promise.all([
+        getAllJobs(),
+        getPricingRules()
+      ])
+      jobs = jobsData
+      pricingRules = pricingData
     }
   } catch (error) {
     console.error('Error fetching technician schedule:', error)
@@ -76,6 +83,7 @@ export default async function TechSchedulePage({ params, searchParams }) {
       techId={techId}
       techName={technician.firstName}
       jobs={jobs}
+      pricingRules={pricingRules}
       initialDate={dateParam}
     />
   )

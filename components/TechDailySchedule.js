@@ -79,7 +79,7 @@ function DetailItem({ label, value }) {
 }
 
 // Job Card Component
-function JobCard({ job, index, isExpanded, onToggle, onJobUpdate, techName, lang }) {
+function JobCard({ job, index, isExpanded, onToggle, onJobUpdate, techName, lang, pricingRules }) {
   const colors = getServiceColor(job.serviceName)
 
   // Google Maps link
@@ -441,6 +441,7 @@ function JobCard({ job, index, isExpanded, onToggle, onJobUpdate, techName, lang
             techName={techName}
             onUpdate={onJobUpdate}
             lang={lang}
+            pricingRules={pricingRules}
           />
         </div>
       )}
@@ -448,7 +449,7 @@ function JobCard({ job, index, isExpanded, onToggle, onJobUpdate, techName, lang
   )
 }
 
-export default function TechDailySchedule({ techId, techName, jobs: initialJobs, initialDate }) {
+export default function TechDailySchedule({ techId, techName, jobs: initialJobs, pricingRules = [], initialDate }) {
   // Language state
   const [lang, setLang] = useState('en')
 
@@ -743,6 +744,7 @@ export default function TechDailySchedule({ techId, techName, jobs: initialJobs,
                 onJobUpdate={refreshJobs}
                 techName={techName}
                 lang={lang}
+                pricingRules={pricingRules}
               />
             ))}
           </div>

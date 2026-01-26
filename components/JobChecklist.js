@@ -102,9 +102,32 @@ const getSteps = (job, lang) => {
 // Services that require complexity confirmation
 const COMPLEXITY_SERVICES = ['Plumbing Repairs', 'Electrical Repairs']
 
-export default function JobChecklist({ job, techName, onUpdate, lang = 'en' }) {
+export default function JobChecklist({ job, techName, onUpdate, lang = 'en', pricingRules = [] }) {
   const STEPS = getSteps(job, lang)
   const needsComplexity = COMPLEXITY_SERVICES.includes(job.serviceName)
+
+  // Get estimated times for each complexity level from pricing rules
+  const getComplexityTimes = () => {
+    const times = { Simple: null, Standard: null, Complex: null }
+
+    if (!job.serviceDetail || pricingRules.length === 0) return times
+
+    // Find matching pricing rules for this service detail
+    pricingRules.forEach(rule => {
+      if (
+        rule.serviceName === job.serviceName &&
+        rule.serviceDetail === job.serviceDetail &&
+        rule.complexity &&
+        rule.estimatedTime
+      ) {
+        times[rule.complexity] = rule.estimatedTime
+      }
+    })
+
+    return times
+  }
+
+  const complexityTimes = getComplexityTimes()
 
   // Track which step is expanded
   const [expandedStep, setExpandedStep] = useState(null)
@@ -643,27 +666,49 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en' }) {
                             { key: 'Simple', label: t(lang, 'simple') },
                             { key: 'Standard', label: t(lang, 'standard') },
                             { key: 'Complex', label: t(lang, 'complex') }
-                          ].map(({ key, label }) => (
-                            <button
-                              key={key}
-                              onClick={() => setSelectedComplexity(key)}
-                              style={{
-                                flex: 1,
-                                minWidth: '90px',
-                                padding: '14px 16px',
-                                fontSize: '15px',
-                                fontWeight: '600',
-                                border: '2px solid',
-                                borderColor: selectedComplexity === key ? '#2A54A1' : '#E5E7EB',
-                                borderRadius: '8px',
-                                backgroundColor: selectedComplexity === key ? '#EFF6FF' : 'white',
-                                color: selectedComplexity === key ? '#2A54A1' : '#374151',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              {selectedComplexity === key && '✓ '}{label}
-                            </button>
-                          ))}
+                          ].map(({ key, label }) => {
+                            const estimatedTime = complexityTimes[key]
+                            const timeLabel = estimatedTime
+                              ? (lang === 'es'
+                                  ? `${estimatedTime} ${estimatedTime === 1 ? 'hora' : 'horas'}`
+                                  : `${estimatedTime} ${estimatedTime === 1 ? 'hour' : 'hours'}`)
+                              : null
+
+                            return (
+                              <button
+                                key={key}
+                                onClick={() => setSelectedComplexity(key)}
+                                style={{
+                                  flex: 1,
+                                  minWidth: '90px',
+                                  padding: '12px 16px',
+                                  fontSize: '15px',
+                                  fontWeight: '600',
+                                  border: '2px solid',
+                                  borderColor: selectedComplexity === key ? '#2A54A1' : '#E5E7EB',
+                                  borderRadius: '8px',
+                                  backgroundColor: selectedComplexity === key ? '#EFF6FF' : 'white',
+                                  color: selectedComplexity === key ? '#2A54A1' : '#374151',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }}
+                              >
+                                <span>{selectedComplexity === key && '✓ '}{label}</span>
+                                {timeLabel && (
+                                  <span style={{
+                                    fontSize: '12px',
+                                    fontWeight: '500',
+                                    color: selectedComplexity === key ? '#3B82F6' : '#6B7280'
+                                  }}>
+                                    {timeLabel}
+                                  </span>
+                                )}
+                              </button>
+                            )
+                          })}
                         </div>
                       </div>
 
