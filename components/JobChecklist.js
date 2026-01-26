@@ -94,6 +94,9 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en' }) {
   // Track which step is expanded
   const [expandedStep, setExpandedStep] = useState(null)
 
+  // Track completed workflow steps (allows progression through checklist)
+  const [completedWorkflowSteps, setCompletedWorkflowSteps] = useState({})
+
   // Track confirmed steps (single checkbox per step)
   const [confirmedSteps, setConfirmedSteps] = useState({})
 
@@ -115,16 +118,17 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en' }) {
   const beforePhotoRef = useRef(null)
   const afterPhotoRef = useRef(null)
 
-  // Determine current step based on job state
+  // Determine current step based on job state and workflow progression
   const getCurrentStep = () => {
     if (job.status === 'Completed') return STEPS.length
     if (job.clockOut) return STEPS.length
 
     // Find indices for steps
+    const preDepartureIndex = STEPS.findIndex(s => s.id === 'pre-departure')
+    const arrivalIndex = STEPS.findIndex(s => s.id === 'on-site-arrival')
     const afterPhotosIndex = STEPS.findIndex(s => s.id === 'after-photos')
     const beforePhotosIndex = STEPS.findIndex(s => s.id === 'before-photos')
     const complexityIndex = STEPS.findIndex(s => s.id === 'confirm-complexity')
-    const arrivalIndex = STEPS.findIndex(s => s.id === 'on-site-arrival')
 
     if (afterPhotos.length > 0 || job.afterPhotos?.length > 0) return afterPhotosIndex
     if (beforePhotos.length > 0 || job.beforePhotos?.length > 0) return beforePhotosIndex
@@ -140,6 +144,11 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en' }) {
     } else {
       // Non-complexity jobs
       if (job.clockIn) return beforePhotosIndex
+    }
+
+    // Check if pre-departure was completed (allows progression to arrival step)
+    if (completedWorkflowSteps['pre-departure']) {
+      return arrivalIndex
     }
 
     return 0
@@ -622,6 +631,11 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en' }) {
                     <button
                       onClick={() => {
                         if (isConfirmed) {
+                          // Mark this workflow step as complete to allow progression
+                          setCompletedWorkflowSteps(prev => ({
+                            ...prev,
+                            [step.id]: true
+                          }))
                           setExpandedStep(null)
                         }
                       }}
