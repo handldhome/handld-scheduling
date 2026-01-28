@@ -360,9 +360,11 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en', pri
         body: formData
       })
 
-      if (!response.ok) throw new Error('Failed to upload photos')
-
       const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || data.details || 'Failed to upload photos')
+      }
 
       // Add uploaded photos to local state for preview
       const newPhotos = Array.from(files).map(file => ({
@@ -374,7 +376,7 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en', pri
       onUpdate?.()
     } catch (error) {
       console.error('Photo upload error:', error)
-      alert('Failed to upload photos. Please try again.')
+      alert(`Failed to upload photos: ${error.message}`)
     } finally {
       setUploading(false)
     }

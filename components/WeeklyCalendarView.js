@@ -137,6 +137,18 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
     }
   }, [])
 
+  // Restore selected job after reload (to keep modal open)
+  useEffect(() => {
+    const savedJobId = sessionStorage.getItem('selectedJobId')
+    if (savedJobId && jobs.length > 0) {
+      sessionStorage.removeItem('selectedJobId')
+      const job = jobs.find(j => j.id === savedJobId)
+      if (job) {
+        setSelectedJob(job)
+      }
+    }
+  }, [jobs])
+
   // Fetch weather data
   useEffect(() => {
     const fetchWeather = async () => {
@@ -368,7 +380,7 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
     return Array.from(services).sort()
   }, [jobs])
 
-  // Get jobs for a specific time slot
+  // Get jobs for a specific time slot (only jobs that START in this slot)
   const getJobsForSlot = (date, slotTime) => {
     const dayJobs = scheduledJobsByDay[date] || []
     return dayJobs.filter(job => {
@@ -377,6 +389,40 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
       const slotHour = slotTime.split(':')[0]
       return jobHour === slotHour
     })
+  }
+
+  // Calculate job duration in hours
+  const getJobDurationHours = (job) => {
+    if (job.endTime && job.time) {
+      const startHour = parseInt(job.time.split(':')[0])
+      const startMin = parseInt(job.time.split(':')[1] || '0')
+      const endHour = parseInt(job.endTime.split(':')[0])
+      const endMin = parseInt(job.endTime.split(':')[1] || '0')
+      return (endHour - startHour) + (endMin - startMin) / 60
+    }
+    if (job.estimatedTime) {
+      return parseFloat(job.estimatedTime)
+    }
+    return 1 // Default 1 hour
+  }
+
+  // Get the pixel offset from top of time grid for a job
+  const getJobTopOffset = (job) => {
+    if (!job.time) return 0
+    const startHour = parseInt(job.time.split(':')[0])
+    const startMin = parseInt(job.time.split(':')[1] || '0')
+    const firstSlotHour = parseInt(TIME_SLOTS[0].split(':')[0])
+    return ((startHour - firstSlotHour) * SLOT_HEIGHT) + ((startMin / 60) * SLOT_HEIGHT)
+  }
+
+  // Get all jobs for a day (for duration rendering)
+  const getJobsForDay = (date) => {
+    return scheduledJobsByDay[date] || []
+  }
+
+  // Get suggested jobs for a day
+  const getSuggestedJobsForDay = (date) => {
+    return suggestedJobsByDay[date] || []
   }
 
   // Get suggested jobs for a specific time slot
@@ -926,305 +972,341 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
           {/* Time Slots Grid */}
           <div style={{
             maxHeight: '600px',
-            overflowY: 'auto'
+            overflowY: 'auto',
+            position: 'relative'
           }}>
-            {TIME_SLOTS.map((time, rowIndex) => (
-              <div
-                key={time}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '60px repeat(7, 1fr)',
-                  minHeight: `${SLOT_HEIGHT}px`,
-                  borderBottom: rowIndex < TIME_SLOTS.length - 1 ? '1px solid #E5E7EB' : 'none'
-                }}
-              >
-                {/* Time Label */}
-                <div style={{
-                  padding: '4px 8px',
-                  fontSize: '11px',
-                  fontWeight: '500',
-                  color: '#6B7280',
-                  borderRight: '1px solid #E5E7EB',
-                  textAlign: 'right'
-                }}>
-                  {formatTime(time)}
-                </div>
-
-                {/* Day Cells */}
-                {weekDays.map(day => {
-                  const slotJobs = getJobsForSlot(day.date, time)
-                  const suggestedJobs = getSuggestedJobsForSlot(day.date, time)
-                  const isDropTarget = dropTarget?.date === day.date && dropTarget?.time === time
-                  const availabilityStatus = getAvailabilityForSlot(day.date, time)
-
-                  // Determine background color based on availability
-                  let bgColor = 'transparent'
-                  if (isDropTarget) {
-                    bgColor = availabilityStatus === 'unavailable' ? '#FEE2E2' : '#DBEAFE'
-                  } else if (availabilityStatus === 'unavailable') {
-                    bgColor = '#FEF2F2' // Light red for unavailable
-                  } else if (day.isToday) {
-                    bgColor = '#FAFBFF'
-                  }
-
-                  return (
-                    <div
-                      key={`${day.date}-${time}`}
-                      onDragOver={(e) => {
-                        e.preventDefault()
-                        setDropTarget({ date: day.date, time })
-                      }}
-                      onDragLeave={() => setDropTarget(null)}
-                      onDrop={(e) => {
-                        e.preventDefault()
-
-                        // Check for availability conflict
-                        if (checkDropConflict(day.date, time)) {
-                          const confirmed = window.confirm(
-                            'Warning: The selected technician(s) may not be available at this time. Schedule anyway?'
-                          )
-                          if (!confirmed) {
-                            setDropTarget(null)
-                            return
-                          }
-                        }
-
-                        // Check for better-rated available tech
-                        if (draggedJob) {
-                          const betterTech = checkForBetterTech(draggedJob, day.date, time)
-                          if (betterTech) {
-                            const confirmed = window.confirm(
-                              `Note: ${betterTech.name} has a higher rating (${betterTech.rating}/5) for this service and is available. ` +
-                              `Current tech is rated ${betterTech.assignedRating}/5.\n\n` +
-                              `Continue with current assignment?`
-                            )
-                            if (!confirmed) {
-                              setDropTarget(null)
-                              return
-                            }
-                          }
-                        }
-
-                        handleDrop(day.date, time)
-                      }}
-                      style={{
-                        position: 'relative',
-                        borderRight: '1px solid #E5E7EB',
-                        backgroundColor: bgColor,
-                        height: `${SLOT_HEIGHT}px`,
-                        padding: '2px',
-                        transition: 'background-color 0.15s',
-                        display: 'flex',
-                        gap: '2px',
-                        overflow: 'hidden',
-                        boxSizing: 'border-box'
-                      }}
-                    >
-                      {slotJobs.map((job) => {
-                        const colors = getServiceColor(job.serviceName)
-                        const techName = getTechName(job.assignedTech)
-                        const isUnconfirmed = !job.confirmed
-                        const isDragging = draggedJob?.id === job.id
-                        const isSelected = selectedJobIds.has(job.id)
-
-                        return (
-                          <div
-                            key={job.id}
-                            draggable
-                            onDragStart={() => setDraggedJob(job)}
-                            onDragEnd={() => {
-                              setDraggedJob(null)
-                              setDropTarget(null)
-                            }}
-                            onClick={(e) => {
-                              if (e.shiftKey) {
-                                toggleJobSelection(job.id, e)
-                              } else {
-                                setSelectedJob(job)
-                              }
-                            }}
-                            style={{
-                              flex: '1 1 0',
-                              minWidth: 0,
-                              maxWidth: '100%',
-                              height: `${SLOT_HEIGHT - 4}px`,
-                              padding: '2px 3px',
-                              borderRadius: '4px',
-                              backgroundColor: isSelected ? '#DBEAFE' : colors.bg,
-                              border: isSelected
-                                ? '2px solid #2563EB'
-                                : isUnconfirmed
-                                  ? `2px dashed ${colors.border}`
-                                  : `1px solid ${colors.border}`,
-                              borderLeftWidth: '3px',
-                              borderLeftStyle: 'solid',
-                              borderLeftColor: isSelected ? '#2563EB' : colors.border,
-                              cursor: 'grab',
-                              overflow: 'hidden',
-                              fontSize: '10px',
-                              opacity: isDragging ? 0.5 : isUnconfirmed ? 0.85 : 1,
-                              transition: 'all 0.2s',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              justifyContent: 'center',
-                              boxSizing: 'border-box'
-                            }}
-                            onMouseEnter={(e) => {
-                              if (!isDragging) e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.15)'
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.boxShadow = 'none'
-                            }}
-                            title="Click to edit • Shift+click to select"
-                          >
-                            <div style={{
-                              fontWeight: '700',
-                              color: colors.text,
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              lineHeight: '1.2'
-                            }}>
-                              {job.serviceDetail ? `${job.serviceName}: ${job.serviceDetail}` : job.serviceName}
-                            </div>
-                            <div
-                              title={job.address}
-                              style={{
-                                color: '#6B7280',
-                                fontSize: '9px',
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                lineHeight: '1.2'
-                              }}
-                            >
-                              {job.address || job.customerName}
-                            </div>
-                            <div style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              lineHeight: '1.2'
-                            }}>
-                              {techName ? (
-                                <span style={{
-                                  color: '#059669',
-                                  fontSize: '9px',
-                                  fontWeight: '600'
-                                }}>
-                                  {techName}
-                                </span>
-                              ) : (
-                                <span style={{
-                                  color: '#DC2626',
-                                  fontSize: '9px',
-                                  fontWeight: '600'
-                                }}>
-                                  Unassigned
-                                </span>
-                              )}
-                              {job.equipment && job.equipment.length > 0 && (
-                                <span
-                                  title={job.equipment.join(', ')}
-                                  style={{
-                                    fontSize: '9px',
-                                    color: '#7C3AED'
-                                  }}
-                                >
-                                  🔧
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        )
-                      })}
-                      {/* AI Suggested Jobs - Purple Dotted Border */}
-                      {suggestedJobs.map((job) => {
-                        const colors = getServiceColor(job.serviceName)
-                        const isSelected = selectedJobIds.has(job.id)
-
-                        return (
-                          <div
-                            key={`suggested-${job.id}`}
-                            onClick={(e) => {
-                              if (e.shiftKey) {
-                                toggleJobSelection(job.id, e)
-                              } else {
-                                setSelectedJob(job)
-                              }
-                            }}
-                            style={{
-                              flex: '1 1 0',
-                              minWidth: 0,
-                              maxWidth: '100%',
-                              height: `${SLOT_HEIGHT - 4}px`,
-                              padding: '2px 3px',
-                              borderRadius: '4px',
-                              backgroundColor: isSelected ? '#DBEAFE' : '#FAF5FF',
-                              border: isSelected ? '2px solid #2563EB' : '2px dashed #7C3AED',
-                              cursor: 'pointer',
-                              overflow: 'hidden',
-                              fontSize: '10px',
-                              opacity: 0.9,
-                              transition: 'all 0.2s',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              justifyContent: 'center',
-                              boxSizing: 'border-box'
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.boxShadow = '0 2px 4px rgba(124,58,237,0.3)'
-                              e.currentTarget.style.opacity = '1'
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.boxShadow = 'none'
-                              e.currentTarget.style.opacity = '0.9'
-                            }}
-                            title="Click to review • Shift+click to select"
-                          >
-                            <div style={{
-                              fontWeight: '700',
-                              color: '#7C3AED',
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              lineHeight: '1.2',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '3px'
-                            }}>
-                              <span style={{ fontSize: '9px' }}>✨</span>
-                              {job.serviceDetail ? `${job.serviceName}: ${job.serviceDetail}` : job.serviceName}
-                            </div>
-                            <div
-                              title={Array.isArray(job.address) ? job.address[0] : job.address}
-                              style={{
-                                color: '#6B7280',
-                                fontSize: '9px',
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                lineHeight: '1.2'
-                              }}
-                            >
-                              {Array.isArray(job.address) ? job.address[0] : job.address || job.customerName}
-                            </div>
-                            <div style={{
-                              color: '#7C3AED',
-                              fontSize: '9px',
-                              fontWeight: '600',
-                              lineHeight: '1.2'
-                            }}>
-                              {job.suggestedTech}
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )
-                })}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '60px repeat(7, 1fr)'
+            }}>
+              {/* Time Labels Column */}
+              <div>
+                {TIME_SLOTS.map((time, rowIndex) => (
+                  <div
+                    key={time}
+                    style={{
+                      height: `${SLOT_HEIGHT}px`,
+                      padding: '4px 8px',
+                      fontSize: '11px',
+                      fontWeight: '500',
+                      color: '#6B7280',
+                      borderRight: '1px solid #E5E7EB',
+                      borderBottom: rowIndex < TIME_SLOTS.length - 1 ? '1px solid #E5E7EB' : 'none',
+                      textAlign: 'right',
+                      boxSizing: 'border-box'
+                    }}
+                  >
+                    {formatTime(time)}
+                  </div>
+                ))}
               </div>
-            ))}
+
+              {/* Day Columns - Each with positioned jobs */}
+              {weekDays.map(day => {
+                const dayJobs = getJobsForDay(day.date)
+                const daySuggestedJobs = getSuggestedJobsForDay(day.date)
+
+                return (
+                  <div
+                    key={day.date}
+                    style={{
+                      position: 'relative',
+                      borderRight: '1px solid #E5E7EB'
+                    }}
+                  >
+                    {/* Background time slots (for drop targets and availability) */}
+                    {TIME_SLOTS.map((time, rowIndex) => {
+                      const isDropTarget = dropTarget?.date === day.date && dropTarget?.time === time
+                      const availabilityStatus = getAvailabilityForSlot(day.date, time)
+
+                      let bgColor = 'transparent'
+                      if (isDropTarget) {
+                        bgColor = availabilityStatus === 'unavailable' ? '#FEE2E2' : '#DBEAFE'
+                      } else if (availabilityStatus === 'unavailable') {
+                        bgColor = '#FEF2F2'
+                      } else if (day.isToday) {
+                        bgColor = '#FAFBFF'
+                      }
+
+                      return (
+                        <div
+                          key={`${day.date}-${time}`}
+                          onDragOver={(e) => {
+                            e.preventDefault()
+                            setDropTarget({ date: day.date, time })
+                          }}
+                          onDragLeave={() => setDropTarget(null)}
+                          onDrop={(e) => {
+                            e.preventDefault()
+                            if (checkDropConflict(day.date, time)) {
+                              const confirmed = window.confirm(
+                                'Warning: The selected technician(s) may not be available at this time. Schedule anyway?'
+                              )
+                              if (!confirmed) {
+                                setDropTarget(null)
+                                return
+                              }
+                            }
+                            if (draggedJob) {
+                              const betterTech = checkForBetterTech(draggedJob, day.date, time)
+                              if (betterTech) {
+                                const confirmed = window.confirm(
+                                  `Note: ${betterTech.name} has a higher rating (${betterTech.rating}/5) for this service and is available. ` +
+                                  `Current tech is rated ${betterTech.assignedRating}/5.\n\n` +
+                                  `Continue with current assignment?`
+                                )
+                                if (!confirmed) {
+                                  setDropTarget(null)
+                                  return
+                                }
+                              }
+                            }
+                            handleDrop(day.date, time)
+                          }}
+                          style={{
+                            height: `${SLOT_HEIGHT}px`,
+                            backgroundColor: bgColor,
+                            borderBottom: rowIndex < TIME_SLOTS.length - 1 ? '1px solid #E5E7EB' : 'none',
+                            transition: 'background-color 0.15s',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      )
+                    })}
+
+                    {/* Positioned Jobs */}
+                    {dayJobs.map((job, jobIndex) => {
+                      const colors = getServiceColor(job.serviceName)
+                      const techName = getTechName(job.assignedTech)
+                      const isUnconfirmed = !job.confirmed
+                      const isDragging = draggedJob?.id === job.id
+                      const isSelected = selectedJobIds.has(job.id)
+                      const durationHours = getJobDurationHours(job)
+                      const topOffset = getJobTopOffset(job)
+                      const jobHeight = Math.max(durationHours * SLOT_HEIGHT - 4, SLOT_HEIGHT - 4)
+
+                      // Check for overlapping jobs and calculate width/position
+                      const overlappingJobs = dayJobs.filter((j, i) => {
+                        if (i >= jobIndex) return false
+                        const jTop = getJobTopOffset(j)
+                        const jHeight = getJobDurationHours(j) * SLOT_HEIGHT
+                        return (topOffset < jTop + jHeight) && (topOffset + jobHeight > jTop)
+                      })
+                      const overlapCount = overlappingJobs.length
+                      const jobWidth = overlapCount > 0 ? `calc((100% - 4px) / ${overlapCount + 1})` : 'calc(100% - 4px)'
+                      const leftOffset = overlapCount > 0 ? `calc(${overlapCount} * (100% - 4px) / ${overlapCount + 1} + 2px)` : '2px'
+
+                      return (
+                        <div
+                          key={job.id}
+                          draggable
+                          onDragStart={() => setDraggedJob(job)}
+                          onDragEnd={() => {
+                            setDraggedJob(null)
+                            setDropTarget(null)
+                          }}
+                          onClick={(e) => {
+                            if (e.shiftKey) {
+                              toggleJobSelection(job.id, e)
+                            } else {
+                              setSelectedJob(job)
+                            }
+                          }}
+                          style={{
+                            position: 'absolute',
+                            top: `${topOffset + 2}px`,
+                            left: leftOffset,
+                            width: jobWidth,
+                            height: `${jobHeight}px`,
+                            padding: '3px 4px',
+                            borderRadius: '4px',
+                            backgroundColor: isSelected ? '#DBEAFE' : colors.bg,
+                            border: isSelected
+                              ? '2px solid #2563EB'
+                              : isUnconfirmed
+                                ? `2px dashed ${colors.border}`
+                                : `1px solid ${colors.border}`,
+                            borderLeftWidth: '3px',
+                            borderLeftStyle: 'solid',
+                            borderLeftColor: isSelected ? '#2563EB' : colors.border,
+                            cursor: 'grab',
+                            overflow: 'hidden',
+                            fontSize: '10px',
+                            opacity: isDragging ? 0.5 : isUnconfirmed ? 0.85 : 1,
+                            transition: 'all 0.2s',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            boxSizing: 'border-box',
+                            zIndex: isSelected ? 10 : 1
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isDragging) e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.15)'
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.boxShadow = 'none'
+                          }}
+                          title={`Click to edit • Shift+click to select${durationHours > 1 ? ` • Duration: ${durationHours}h` : ''}`}
+                        >
+                          <div style={{
+                            fontWeight: '700',
+                            color: colors.text,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            lineHeight: '1.2'
+                          }}>
+                            {job.serviceDetail ? `${job.serviceName}: ${job.serviceDetail}` : job.serviceName}
+                          </div>
+                          <div
+                            title={job.address}
+                            style={{
+                              color: '#6B7280',
+                              fontSize: '9px',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              lineHeight: '1.2'
+                            }}
+                          >
+                            {job.address || job.customerName}
+                          </div>
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            lineHeight: '1.2'
+                          }}>
+                            {techName ? (
+                              <span style={{ color: '#059669', fontSize: '9px', fontWeight: '600' }}>
+                                {techName}
+                              </span>
+                            ) : (
+                              <span style={{ color: '#DC2626', fontSize: '9px', fontWeight: '600' }}>
+                                Unassigned
+                              </span>
+                            )}
+                            {job.equipment && job.equipment.length > 0 && (
+                              <span title={job.equipment.join(', ')} style={{ fontSize: '9px', color: '#7C3AED' }}>
+                                🔧
+                              </span>
+                            )}
+                          </div>
+                          {/* Show duration if job spans multiple hours */}
+                          {durationHours > 1 && (
+                            <div style={{
+                              marginTop: 'auto',
+                              paddingTop: '4px',
+                              fontSize: '9px',
+                              color: colors.text,
+                              opacity: 0.8
+                            }}>
+                              {formatTime(job.time)} - {job.endTime ? formatTime(job.endTime) : `~${formatTime(`${parseInt(job.time.split(':')[0]) + Math.ceil(durationHours)}:00`)}`}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+
+                    {/* Positioned Suggested Jobs */}
+                    {daySuggestedJobs.map((job) => {
+                      const isSelected = selectedJobIds.has(job.id)
+
+                      // Parse suggested time to get position
+                      let topOffset = 0
+                      if (job.suggestedTime) {
+                        const timeMatch = job.suggestedTime.match(/(\d{1,2}):?(\d{2})?\s*(AM|PM)?/i)
+                        if (timeMatch) {
+                          let suggestedHour = parseInt(timeMatch[1])
+                          const suggestedMin = parseInt(timeMatch[2] || '0')
+                          const isPM = timeMatch[3]?.toUpperCase() === 'PM'
+                          if (isPM && suggestedHour !== 12) suggestedHour += 12
+                          if (!isPM && suggestedHour === 12) suggestedHour = 0
+                          const firstSlotHour = parseInt(TIME_SLOTS[0].split(':')[0])
+                          topOffset = ((suggestedHour - firstSlotHour) * SLOT_HEIGHT) + ((suggestedMin / 60) * SLOT_HEIGHT)
+                        }
+                      }
+
+                      // Default duration for suggested jobs
+                      const durationHours = job.estimatedTime ? parseFloat(job.estimatedTime) : 1
+                      const jobHeight = Math.max(durationHours * SLOT_HEIGHT - 4, SLOT_HEIGHT - 4)
+
+                      return (
+                        <div
+                          key={`suggested-${job.id}`}
+                          onClick={(e) => {
+                            if (e.shiftKey) {
+                              toggleJobSelection(job.id, e)
+                            } else {
+                              setSelectedJob(job)
+                            }
+                          }}
+                          style={{
+                            position: 'absolute',
+                            top: `${topOffset + 2}px`,
+                            left: '2px',
+                            width: 'calc(100% - 4px)',
+                            height: `${jobHeight}px`,
+                            padding: '3px 4px',
+                            borderRadius: '4px',
+                            backgroundColor: isSelected ? '#DBEAFE' : '#FAF5FF',
+                            border: isSelected ? '2px solid #2563EB' : '2px dashed #7C3AED',
+                            cursor: 'pointer',
+                            overflow: 'hidden',
+                            fontSize: '10px',
+                            opacity: 0.9,
+                            transition: 'all 0.2s',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            boxSizing: 'border-box',
+                            zIndex: isSelected ? 10 : 1
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.boxShadow = '0 2px 4px rgba(124,58,237,0.3)'
+                            e.currentTarget.style.opacity = '1'
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.boxShadow = 'none'
+                            e.currentTarget.style.opacity = '0.9'
+                          }}
+                          title="Click to review • Shift+click to select"
+                        >
+                          <div style={{
+                            fontWeight: '700',
+                            color: '#7C3AED',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            lineHeight: '1.2',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '3px'
+                          }}>
+                            <span style={{ fontSize: '9px' }}>✨</span>
+                            {job.serviceDetail ? `${job.serviceName}: ${job.serviceDetail}` : job.serviceName}
+                          </div>
+                          <div
+                            title={Array.isArray(job.address) ? job.address[0] : job.address}
+                            style={{
+                              color: '#6B7280',
+                              fontSize: '9px',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              lineHeight: '1.2'
+                            }}
+                          >
+                            {Array.isArray(job.address) ? job.address[0] : job.address || job.customerName}
+                          </div>
+                          <div style={{ color: '#7C3AED', fontSize: '9px', fontWeight: '600', lineHeight: '1.2' }}>
+                            {job.suggestedTech}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              })}
+            </div>
           </div>
           </div>{/* Close minWidth wrapper */}
         </div>
@@ -1461,7 +1543,9 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
           technicians={technicians}
           onClose={() => setSelectedJob(null)}
           onUpdate={() => {
-            setSelectedJob(null)
+            // Refresh the page data but keep modal open
+            // Store the current job ID to re-select after reload
+            sessionStorage.setItem('selectedJobId', selectedJob.id)
             reloadPreservingWeek()
           }}
         />

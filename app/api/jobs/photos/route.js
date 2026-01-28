@@ -1,3 +1,4 @@
+import { put } from '@vercel/blob'
 import Airtable from 'airtable'
 
 const base = new Airtable({
@@ -6,6 +7,15 @@ const base = new Airtable({
 
 export async function POST(request) {
   try {
+    // Check for Vercel Blob token
+    if (!process.env.BLOB_READ_WRITE_TOKEN) {
+      console.error('BLOB_READ_WRITE_TOKEN is not configured')
+      return Response.json(
+        { error: 'Photo storage not configured. Please set up Vercel Blob storage.' },
+        { status: 500 }
+      )
+    }
+
     const formData = await request.formData()
     const jobId = formData.get('jobId')
     const type = formData.get('type') // 'before' or 'after'
@@ -18,27 +28,32 @@ export async function POST(request) {
       )
     }
 
-    // Convert files to base64 for Airtable
+    // Upload photos to Vercel Blob and collect URLs
     const attachments = []
 
     for (const photo of photos) {
       if (photo instanceof File) {
-        const bytes = await photo.arrayBuffer()
-        const buffer = Buffer.from(bytes)
-        const base64 = buffer.toString('base64')
-        const mimeType = photo.type || 'image/jpeg'
+        const filename = `jobs/${jobId}/${type}/${Date.now()}-${photo.name || 'photo.jpg'}`
 
-        // Airtable accepts attachments as URLs or as objects with url field
-        // For direct upload, we need to use a workaround - upload to a service first
-        // For now, we'll use the filename approach which requires the file to be accessible via URL
+        // Upload to Vercel Blob
+        const blob = await put(filename, photo, {
+          access: 'public',
+          contentType: photo.type || 'image/jpeg'
+        })
 
-        // Alternative: Use Airtable's attachment upload via base64
-        // This requires creating a temporary URL - let's use data URL approach
+        // Airtable needs the URL in a specific format
         attachments.push({
-          url: `data:${mimeType};base64,${base64}`,
+          url: blob.url,
           filename: photo.name || `${type}-photo-${Date.now()}.jpg`
         })
       }
+    }
+
+    if (attachments.length === 0) {
+      return Response.json(
+        { error: 'No valid photos to upload' },
+        { status: 400 }
+      )
     }
 
     // Determine field name based on type
@@ -48,8 +63,7 @@ export async function POST(request) {
     const existingRecord = await base(process.env.AIRTABLE_JOBS_TABLE).find(jobId)
     const existingPhotos = existingRecord.fields[fieldName] || []
 
-    // Update the job with photos
-    // Note: Airtable attachment fields expect an array of {url: string} objects
+    // Update the job with photos - Airtable attachment fields expect an array of {url: string} objects
     const record = await base(process.env.AIRTABLE_JOBS_TABLE).update(jobId, {
       [fieldName]: [...existingPhotos, ...attachments]
     })

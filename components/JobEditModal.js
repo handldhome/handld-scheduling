@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { format, parseISO } from 'date-fns'
 
 // Color palette for dynamic service assignment
@@ -61,6 +61,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
   const [formData, setFormData] = useState({
     assignedTech: job.assignedTech?.[0] || null,
     time: job.time || '',
+    endTime: job.endTime || '',
     confirmed: job.confirmed || false,
     date: job.date ? format(parseISO(job.date), 'yyyy-MM-dd') : '',
     equipment: job.equipment || [],
@@ -73,6 +74,18 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
   })
   const [equipmentOptions, setEquipmentOptions] = useState([])
   const [loadingEquipment, setLoadingEquipment] = useState(true)
+
+  // Handle Esc key to close modal
+  const handleKeyDown = useCallback((e) => {
+    if (e.key === 'Escape') {
+      onClose()
+    }
+  }, [onClose])
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [handleKeyDown])
 
   // Fetch equipment options on mount
   useEffect(() => {
@@ -107,9 +120,11 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
 
       if (!response.ok) throw new Error('Failed to update job')
 
+      // Call onUpdate to refresh data, but don't close modal
       onUpdate()
     } catch (err) {
       setError(err.message)
+    } finally {
       setIsUpdating(false)
     }
   }
@@ -125,6 +140,38 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
 
   const handleSaveTime = () => {
     handleUpdate({ time: formData.time })
+  }
+
+  const handleEndTimeChange = (endTime) => {
+    setFormData(prev => ({ ...prev, endTime }))
+  }
+
+  const handleSaveEndTime = () => {
+    handleUpdate({ endTime: formData.endTime })
+  }
+
+  // Calculate end time options based on start time
+  const getEndTimeOptions = () => {
+    if (!formData.time) return TIME_SLOTS
+    const startHour = parseInt(formData.time.split(':')[0])
+    // Only show times after the start time
+    return TIME_SLOTS.filter(slot => {
+      const slotHour = parseInt(slot.split(':')[0])
+      return slotHour > startHour
+    })
+  }
+
+  // Calculate estimated end time based on job's estimated time
+  const getEstimatedEndTime = () => {
+    if (!formData.time || !job.estimatedTime) return null
+    const startHour = parseInt(formData.time.split(':')[0])
+    const startMin = parseInt(formData.time.split(':')[1] || '0')
+    const durationHours = parseFloat(job.estimatedTime) || 1
+    const endHour = Math.floor(startHour + durationHours)
+    const endMin = Math.round((durationHours % 1) * 60 + startMin)
+    const adjustedHour = endHour + Math.floor(endMin / 60)
+    const adjustedMin = endMin % 60
+    return `${String(adjustedHour).padStart(2, '0')}:${String(adjustedMin).padStart(2, '0')}`
   }
 
   const handleDateChange = (date) => {
@@ -628,6 +675,83 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
                 Update
               </button>
             </div>
+          </div>
+
+          {/* End Time Selection */}
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '12px',
+              fontWeight: '600',
+              color: '#6B7280',
+              marginBottom: '8px',
+              textTransform: 'uppercase'
+            }}>
+              End Time
+              {job.estimatedTime && (
+                <span style={{
+                  marginLeft: '8px',
+                  fontWeight: '400',
+                  color: '#9CA3AF',
+                  textTransform: 'none'
+                }}>
+                  (Est: {job.estimatedTime}h)
+                </span>
+              )}
+            </label>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <select
+                value={formData.endTime}
+                onChange={(e) => handleEndTimeChange(e.target.value)}
+                disabled={!formData.time}
+                style={{
+                  padding: '10px 12px',
+                  fontSize: '14px',
+                  border: '1px solid #E5E7EB',
+                  borderRadius: '8px',
+                  flex: 1,
+                  backgroundColor: formData.time ? 'white' : '#F3F4F6',
+                  color: formData.time ? '#111827' : '#9CA3AF'
+                }}
+              >
+                <option value="">{formData.time ? 'Select end time...' : 'Set start time first'}</option>
+                {getEndTimeOptions().map(slot => {
+                  const estimatedEnd = getEstimatedEndTime()
+                  const isEstimated = estimatedEnd === slot
+                  return (
+                    <option key={slot} value={slot}>
+                      {formatTimeDisplay(slot)}{isEstimated ? ' (estimated)' : ''}
+                    </option>
+                  )
+                })}
+              </select>
+              <button
+                onClick={handleSaveEndTime}
+                disabled={isUpdating || !formData.time || formData.endTime === (job.endTime || '')}
+                style={{
+                  padding: '10px 16px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  border: 'none',
+                  borderRadius: '8px',
+                  backgroundColor: '#2A54A1',
+                  color: 'white',
+                  cursor: (isUpdating || !formData.time) ? 'not-allowed' : 'pointer',
+                  opacity: (isUpdating || !formData.time || formData.endTime === (job.endTime || '')) ? 0.5 : 1
+                }}
+              >
+                Update
+              </button>
+            </div>
+            {formData.time && !formData.endTime && job.estimatedTime && (
+              <p style={{
+                margin: '8px 0 0 0',
+                fontSize: '12px',
+                color: '#059669'
+              }}>
+                Estimated duration: {job.estimatedTime} hour{parseFloat(job.estimatedTime) !== 1 ? 's' : ''}
+              </p>
+            )}
           </div>
 
           {/* Technician Assignment */}
