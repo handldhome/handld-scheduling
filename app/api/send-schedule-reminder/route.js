@@ -41,6 +41,7 @@ export async function POST(request) {
     // Parse request body - date is optional, defaults to tomorrow
     let targetDate
     let isManualTrigger = false
+    let specificTechIds = null // If provided, only send to these techs
 
     try {
       const body = await request.json()
@@ -48,6 +49,9 @@ export async function POST(request) {
         targetDate = body.date
       }
       isManualTrigger = body.manual === true
+      if (body.techIds && Array.isArray(body.techIds) && body.techIds.length > 0) {
+        specificTechIds = body.techIds
+      }
     } catch {
       // No body or invalid JSON - use defaults
     }
@@ -98,6 +102,13 @@ export async function POST(request) {
       techMap[tech.id] = tech
     })
 
+    // Determine which techs to send to
+    let techIdsToSend = Object.keys(jobsByTech)
+    if (specificTechIds) {
+      // Filter to only include specified techs that also have jobs
+      techIdsToSend = specificTechIds.filter(id => jobsByTech[id])
+    }
+
     const results = {
       date: targetDate,
       techsWithJobs: Object.keys(jobsByTech).length,
@@ -107,8 +118,9 @@ export async function POST(request) {
       details: []
     }
 
-    // Send text to each tech with jobs
-    for (const [techId, techJobs] of Object.entries(jobsByTech)) {
+    // Send text to each tech
+    for (const techId of techIdsToSend) {
+      const techJobs = jobsByTech[techId] || []
       const tech = techMap[techId]
 
       if (!tech) {

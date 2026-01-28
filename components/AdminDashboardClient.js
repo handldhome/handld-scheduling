@@ -7,13 +7,14 @@ import AddJobModal from './AddJobModal'
 import WeeklyCalendarView from './WeeklyCalendarView'
 import TechScheduleView from './TechScheduleView'
 import TextTechsModal from './TextTechsModal'
+import ScheduleReminderModal from './ScheduleReminderModal'
 
 export default function AdminDashboardClient({ technicians, availability, jobs }) {
   const [activeTab, setActiveTab] = useState('schedule')
   const [showAddJobModal, setShowAddJobModal] = useState(false)
   const [showTextTechsModal, setShowTextTechsModal] = useState(false)
+  const [showScheduleReminderModal, setShowScheduleReminderModal] = useState(false)
   const [isRunningAI, setIsRunningAI] = useState(false)
-  const [isSendingReminders, setIsSendingReminders] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
 
   // Detect mobile viewport
@@ -40,46 +41,6 @@ export default function AdminDashboardClient({ technicians, availability, jobs }
       alert('Error running AI Scheduler: ' + error.message)
     } finally {
       setIsRunningAI(false)
-    }
-  }
-
-  const sendScheduleReminders = async () => {
-    // Get tomorrow's date
-    const tomorrow = new Date()
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    const dateStr = tomorrow.toISOString().split('T')[0]
-    const dateDisplay = tomorrow.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
-
-    const confirmed = window.confirm(
-      `Send schedule reminder texts to all technicians with jobs scheduled for ${dateDisplay}?\n\nOnly techs with jobs tomorrow will receive a text.`
-    )
-
-    if (!confirmed) return
-
-    setIsSendingReminders(true)
-    try {
-      const response = await fetch('/api/send-schedule-reminder', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date: dateStr, manual: true })
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to send reminders')
-      }
-
-      const message = data.techsWithJobs === 0
-        ? `No technicians have jobs scheduled for ${dateDisplay}.`
-        : `Schedule reminders sent!\n\nDate: ${dateDisplay}\nTechs with jobs: ${data.techsWithJobs}\nSuccessfully sent: ${data.successCount}\nFailed: ${data.failedCount}\nSkipped: ${data.skippedCount}`
-
-      alert(message)
-    } catch (error) {
-      console.error('Send reminders error:', error)
-      alert('Error sending schedule reminders: ' + error.message)
-    } finally {
-      setIsSendingReminders(false)
     }
   }
 
@@ -218,19 +179,17 @@ export default function AdminDashboardClient({ technicians, availability, jobs }
 
             {activeTab === 'tech-schedules' && (
               <button
-                onClick={sendScheduleReminders}
-                disabled={isSendingReminders}
+                onClick={() => setShowScheduleReminderModal(true)}
                 style={{
                   ...actionButtonStyle,
-                  backgroundColor: isSendingReminders ? '#9CA3AF' : '#059669',
-                  cursor: isSendingReminders ? 'not-allowed' : 'pointer',
+                  backgroundColor: '#059669',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px'
                 }}
               >
                 <span style={{ fontSize: isMobile ? '14px' : '16px' }}>📱</span>
-                {isSendingReminders ? 'Sending...' : (isMobile ? 'Send Reminders' : 'Send Schedule Reminders')}
+                {isMobile ? 'Send Reminders' : 'Send Schedule Reminders'}
               </button>
             )}
 
@@ -299,6 +258,15 @@ export default function AdminDashboardClient({ technicians, availability, jobs }
         <TextTechsModal
           technicians={technicians}
           onClose={() => setShowTextTechsModal(false)}
+        />
+      )}
+
+      {/* Schedule Reminder Modal */}
+      {showScheduleReminderModal && (
+        <ScheduleReminderModal
+          technicians={technicians}
+          jobs={jobs}
+          onClose={() => setShowScheduleReminderModal(false)}
         />
       )}
     </div>
