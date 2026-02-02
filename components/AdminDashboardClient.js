@@ -44,10 +44,16 @@ export default function AdminDashboardClient({ technicians, availability, jobs }
     }
   }, [searchParams])
 
-  // Update URL when tab changes
+  // Update URL when tab changes (preserve the key param for auth)
   const handleTabChange = (tabId) => {
     setActiveTab(tabId)
-    const newUrl = tabId === 'schedule' ? '/admin' : `/admin?tab=${tabId}`
+    const key = searchParams.get('key')
+    let newUrl = '/admin'
+    const params = new URLSearchParams()
+    if (key) params.set('key', key)
+    if (tabId !== 'schedule') params.set('tab', tabId)
+    const queryString = params.toString()
+    if (queryString) newUrl += '?' + queryString
     router.push(newUrl, { scroll: false })
   }
 
