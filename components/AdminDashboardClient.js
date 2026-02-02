@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import AvailabilityCalendar from './AvailabilityCalendar'
 import JobsList from './JobsList'
 import AddJobModal from './AddJobModal'
@@ -9,8 +10,17 @@ import TechScheduleView from './TechScheduleView'
 import TextTechsModal from './TextTechsModal'
 import ScheduleReminderModal from './ScheduleReminderModal'
 
+const VALID_TABS = ['schedule', 'tech-schedules', 'jobs', 'availability']
+
 export default function AdminDashboardClient({ technicians, availability, jobs }) {
-  const [activeTab, setActiveTab] = useState('schedule')
+  const searchParams = useSearchParams()
+  const router = useRouter()
+
+  // Get initial tab from URL or default to 'schedule'
+  const tabFromUrl = searchParams.get('tab')
+  const initialTab = VALID_TABS.includes(tabFromUrl) ? tabFromUrl : 'schedule'
+
+  const [activeTab, setActiveTab] = useState(initialTab)
   const [showAddJobModal, setShowAddJobModal] = useState(false)
   const [showTextTechsModal, setShowTextTechsModal] = useState(false)
   const [showScheduleReminderModal, setShowScheduleReminderModal] = useState(false)
@@ -24,6 +34,22 @@ export default function AdminDashboardClient({ technicians, availability, jobs }
     window.addEventListener('resize', checkMobile)
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
+
+  // Sync tab state with URL changes (browser back/forward)
+  useEffect(() => {
+    const tabFromUrl = searchParams.get('tab')
+    const validTab = VALID_TABS.includes(tabFromUrl) ? tabFromUrl : 'schedule'
+    if (validTab !== activeTab) {
+      setActiveTab(validTab)
+    }
+  }, [searchParams])
+
+  // Update URL when tab changes
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId)
+    const newUrl = tabId === 'schedule' ? '/admin' : `/admin?tab=${tabId}`
+    router.push(newUrl, { scroll: false })
+  }
 
   const runAIScheduler = async () => {
     setIsRunningAI(true)
@@ -143,7 +169,7 @@ export default function AdminDashboardClient({ technicians, availability, jobs }
             {tabs.map(tab => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
                 style={tabButtonStyle(activeTab === tab.id)}
               >
                 {isMobile && <span>{tab.icon}</span>}

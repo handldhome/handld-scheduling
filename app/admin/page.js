@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import AdminDashboardClient from '@/components/AdminDashboardClient'
 import { getAllTechnicians, getAllAvailability, getAllJobs } from '@/lib/airtable'
 
@@ -36,10 +37,12 @@ export default async function AdminDashboard() {
   }
 
   return (
-    <AdminDashboardClient
-      technicians={technicians}
-      availability={availability}
-      jobs={jobs}
-    />
+    <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>Loading...</div>}>
+      <AdminDashboardClient
+        technicians={technicians}
+        availability={availability}
+        jobs={jobs}
+      />
+    </Suspense>
   )
 }
