@@ -149,6 +149,42 @@ export default function AdminDashboardClient({ technicians, availability, jobs }
           }}>
             {isMobile ? 'Dashboard' : 'Scheduling Dashboard'}
           </h1>
+          <a
+            href="https://commandcenter.handldhome.com/?key=alia"
+            style={{
+              marginLeft: 'auto',
+              padding: isMobile ? '8px 12px' : '10px 16px',
+              backgroundColor: '#374151',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: isMobile ? '12px' : '14px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              textDecoration: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+            }}
+          >
+            <svg
+              width={isMobile ? "16" : "18"}
+              height={isMobile ? "16" : "18"}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="3" y="3" width="7" height="7" />
+              <rect x="14" y="3" width="7" height="7" />
+              <rect x="3" y="14" width="7" height="7" />
+              <rect x="14" y="14" width="7" height="7" />
+            </svg>
+            {isMobile ? 'Command' : 'Command Center'}
+          </a>
         </div>
 
         {/* Tabs */}
