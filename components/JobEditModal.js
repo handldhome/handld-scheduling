@@ -138,8 +138,28 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
     setFormData(prev => ({ ...prev, time }))
   }
 
-  const handleSaveTime = () => {
+  const handleSaveTime = async () => {
     handleUpdate({ time: formData.time })
+
+    // If job is already confirmed, send reschedule notification
+    if (job.confirmed) {
+      try {
+        await fetch('/api/send-reschedule-notification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            job: {
+              ...job,
+              date: formData.date || job.date,
+              time: formData.time
+            },
+            techIds: job.assignedTech || []
+          })
+        })
+      } catch (err) {
+        console.error('Reschedule notification error:', err)
+      }
+    }
   }
 
   const handleEndTimeChange = (endTime) => {
@@ -178,8 +198,28 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
     setFormData(prev => ({ ...prev, date }))
   }
 
-  const handleSaveDate = () => {
+  const handleSaveDate = async () => {
     handleUpdate({ date: formData.date })
+
+    // If job is already confirmed, send reschedule notification
+    if (job.confirmed) {
+      try {
+        await fetch('/api/send-reschedule-notification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            job: {
+              ...job,
+              date: formData.date,
+              time: formData.time || job.time
+            },
+            techIds: job.assignedTech || []
+          })
+        })
+      } catch (err) {
+        console.error('Reschedule notification error:', err)
+      }
+    }
   }
 
   const handleConfirmToggle = async () => {
