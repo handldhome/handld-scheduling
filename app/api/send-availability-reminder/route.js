@@ -128,7 +128,7 @@ export async function POST(request) {
       }
 
       try {
-        const availabilityLink = `${baseUrl}/tech/${tech.id}/availability`
+        const availabilityLink = `https://availability.handldhome.com/tech/${tech.id}/availability`
         const fullMessage = `${messageText}\n\n${availabilityLink}`
 
         const result = await client.messages.create({

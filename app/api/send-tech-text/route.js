@@ -62,11 +62,6 @@ export async function POST(request) {
       return Response.json({ error: 'Message is required' }, { status: 400 })
     }
 
-    // Get base URL from request headers or environment
-    const host = request.headers.get('host')
-    const protocol = request.headers.get('x-forwarded-proto') || 'https'
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `${protocol}://${host}`
-
     const results = {
       successCount: 0,
       failedCount: 0,
@@ -93,11 +88,11 @@ export async function POST(request) {
         // Build the message with optional links
         let finalMessage = message.trim()
         if (includeAvailabilityLink) {
-          const availabilityLink = `${baseUrl}/tech/${techId}/availability`
+          const availabilityLink = `https://availability.handldhome.com/tech/${techId}/availability`
           finalMessage = `${finalMessage}\n\n${availabilityLink}`
         }
         if (includeOnboardingLink) {
-          const onboardingLink = `${baseUrl}/tech/onboarding`
+          const onboardingLink = `https://schedule.handldhome.com/tech/onboarding`
           finalMessage = `${finalMessage}\n\n${onboardingLink}`
         }
 
@@ -143,7 +138,7 @@ export async function POST(request) {
         // Build the message with optional links
         let finalMessage = message.trim()
         if (includeOnboardingLink) {
-          const onboardingLink = `${baseUrl}/tech/onboarding`
+          const onboardingLink = `https://schedule.handldhome.com/tech/onboarding`
           finalMessage = `${finalMessage}\n\n${onboardingLink}`
         }
 

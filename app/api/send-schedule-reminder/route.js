@@ -62,11 +62,6 @@ export async function POST(request) {
       targetDate = format(tomorrow, 'yyyy-MM-dd')
     }
 
-    // Get base URL
-    const host = request.headers.get('host')
-    const protocol = request.headers.get('x-forwarded-proto') || 'https'
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `${protocol}://${host}`
-
     // Fetch all jobs and technicians
     const [jobs, technicians] = await Promise.all([
       getAllJobs(),
@@ -159,7 +154,7 @@ export async function POST(request) {
       try {
         const jobCount = techJobs.length
         const dateDisplay = format(parseISO(targetDate), 'EEEE, MMMM d')
-        const scheduleLink = `${baseUrl}/tech/${techId}/schedule?date=${targetDate}`
+        const scheduleLink = `https://work.handldhome.com/tech/${techId}/schedule?date=${targetDate}`
 
         // Sort jobs by time
         const sortedJobs = techJobs.sort((a, b) => {
