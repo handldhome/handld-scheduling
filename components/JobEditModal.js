@@ -213,6 +213,32 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
       }
     }
 
+    // If confirming the job, send notification to assigned technician(s)
+    const assignedTechIds = job.assignedTech || []
+    if (newConfirmed && assignedTechIds.length > 0) {
+      try {
+        const techSmsResponse = await fetch('/api/send-tech-job-notification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            job: {
+              ...job,
+              date: formData.date || job.date,
+              time: formData.time || job.time
+            },
+            techIds: assignedTechIds
+          })
+        })
+
+        if (!techSmsResponse.ok) {
+          const techSmsError = await techSmsResponse.json()
+          console.error('Tech SMS error:', techSmsError)
+        }
+      } catch (techSmsErr) {
+        console.error('Tech SMS send error:', techSmsErr)
+      }
+    }
+
     // Update confirmed status and change status to Scheduled if confirming
     if (newConfirmed) {
       handleUpdate({ confirmed: newConfirmed, status: 'Scheduled' })
