@@ -141,8 +141,8 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
   const handleSaveTime = async () => {
     handleUpdate({ time: formData.time })
 
-    // If job is already confirmed, send reschedule notification
-    if (job.confirmed) {
+    // If job is confirmed, send reschedule notification
+    if (formData.confirmed || job.confirmed) {
       try {
         await fetch('/api/send-reschedule-notification', {
           method: 'POST',
@@ -201,8 +201,8 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
   const handleSaveDate = async () => {
     handleUpdate({ date: formData.date })
 
-    // If job is already confirmed, send reschedule notification
-    if (job.confirmed) {
+    // If job is confirmed, send reschedule notification
+    if (formData.confirmed || job.confirmed) {
       try {
         await fetch('/api/send-reschedule-notification', {
           method: 'POST',
