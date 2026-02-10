@@ -600,6 +600,47 @@ export default function TechScheduleView({ jobs, technicians }) {
           </p>
         </div>
       )}
+
+      {/* Text Automation Footnote */}
+      <div style={{
+        marginTop: '40px',
+        padding: '20px',
+        backgroundColor: '#F9FAFB',
+        borderRadius: '12px',
+        border: '1px solid #E5E7EB'
+      }}>
+        <div style={{
+          fontSize: '14px',
+          fontWeight: '700',
+          color: '#374151',
+          marginBottom: '12px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          <span>📱</span> Text Automations for Technicians
+        </div>
+        <div style={{ fontSize: '13px', color: '#6B7280', lineHeight: '1.6' }}>
+          <div style={{ marginBottom: '12px' }}>
+            <strong style={{ color: '#374151' }}>1. Job Confirmation</strong><br />
+            <em>Trigger:</em> When a job is marked as "Confirmed"<br />
+            <em>Recipients:</em> All assigned technician(s)<br />
+            <em>Message:</em> "New job confirmed! [Service Type] [Date] at [Time] [Address] View your schedule: [link to work.handldhome.com]"
+          </div>
+          <div style={{ marginBottom: '12px' }}>
+            <strong style={{ color: '#374151' }}>2. Job Rescheduled</strong><br />
+            <em>Trigger:</em> When a confirmed job's date OR time is changed<br />
+            <em>Recipients:</em> All assigned technician(s)<br />
+            <em>Message:</em> "Job rescheduled! [Service Type] [New Date] at [New Time] [Address] View your schedule: [link to work.handldhome.com]"
+          </div>
+          <div>
+            <strong style={{ color: '#374151' }}>3. Schedule Reminder (Manual)</strong><br />
+            <em>Trigger:</em> "Send Schedule Reminders" button above<br />
+            <em>Recipients:</em> Selected technician(s) with jobs on selected date<br />
+            <em>Message:</em> "Hi [First Name]! You have [X] jobs scheduled for [Date]: [Job summaries] View full schedule: [link to work.handldhome.com]"
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

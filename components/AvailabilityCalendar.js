@@ -239,6 +239,42 @@ export default function AvailabilityCalendar({ technicians, availability }) {
           ))}
         </tbody>
       </table>
+
+      {/* Text Automation Footnote */}
+      <div style={{
+        marginTop: '24px',
+        padding: '20px',
+        backgroundColor: '#F9FAFB',
+        borderRadius: '12px',
+        border: '1px solid #E5E7EB'
+      }}>
+        <div style={{
+          fontSize: '14px',
+          fontWeight: '700',
+          color: '#374151',
+          marginBottom: '12px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          <span>📱</span> Text Automations for Availability
+        </div>
+        <div style={{ fontSize: '13px', color: '#6B7280', lineHeight: '1.6' }}>
+          <div style={{ marginBottom: '12px' }}>
+            <strong style={{ color: '#374151' }}>1. Weekly Availability Reminder (Automated)</strong><br />
+            <em>Trigger:</em> Runs automatically every Thursday at 9:00 AM PT<br />
+            <em>Recipients:</em> All active technicians<br />
+            <em>Message:</em> "Hi [First Name]! Please submit your availability for next week. [link to availability.handldhome.com]"
+          </div>
+          <div>
+            <strong style={{ color: '#374151' }}>2. Text Technician(s) (Manual)</strong><br />
+            <em>Trigger:</em> "Text Technician(s)" button above<br />
+            <em>Recipients:</em> Selected technician(s) or new phone numbers<br />
+            <em>Options:</em> Custom message with optional availability link or onboarding link<br />
+            <em>Links:</em> Availability → availability.handldhome.com | Onboarding → schedule.handldhome.com/tech/onboarding
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
