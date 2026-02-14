@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { format, parseISO, addDays, subDays, isToday, isTomorrow } from 'date-fns'
+import { format, parseISO, addDays, subDays, startOfWeek, endOfWeek, isToday, isTomorrow, isSameDay } from 'date-fns'
 import JobChecklist from './JobChecklist'
 import { t } from '@/lib/translations'
 
@@ -457,6 +457,9 @@ export default function TechDailySchedule({ techId, techName, jobs: initialJobs,
     setLang(prev => prev === 'en' ? 'es' : 'en')
   }
 
+  // View mode: 'week' or 'day'
+  const [viewMode, setViewMode] = useState('week')
+
   // Calculate default date (tomorrow if no param provided)
   const getDefaultDate = () => {
     if (initialDate) return initialDate
@@ -511,6 +514,61 @@ export default function TechDailySchedule({ techId, techName, jobs: initialJobs,
       })
   }, [jobs, techId, selectedDate])
 
+  // Get week boundaries for week view
+  const weekStart = useMemo(() => {
+    return startOfWeek(parseISO(selectedDate), { weekStartsOn: 0 }) // Sunday
+  }, [selectedDate])
+
+  const weekEnd = useMemo(() => {
+    return endOfWeek(parseISO(selectedDate), { weekStartsOn: 0 }) // Saturday
+  }, [selectedDate])
+
+  // Generate array of days in the week
+  const weekDays = useMemo(() => {
+    const days = []
+    let current = weekStart
+    while (current <= weekEnd) {
+      days.push(current)
+      current = addDays(current, 1)
+    }
+    return days
+  }, [weekStart, weekEnd])
+
+  // Filter jobs for this tech for the entire week
+  const weekJobs = useMemo(() => {
+    return jobs
+      .filter(job => {
+        if (!job.assignedTech || !Array.isArray(job.assignedTech)) return false
+        if (!job.assignedTech.includes(techId)) return false
+        if (!job.date) return false
+
+        const jobDate = parseISO(job.date)
+        return jobDate >= weekStart && jobDate <= weekEnd
+      })
+      .sort((a, b) => {
+        // Sort by date first, then time
+        const dateCompare = a.date.localeCompare(b.date)
+        if (dateCompare !== 0) return dateCompare
+        if (!a.time && !b.time) return 0
+        if (!a.time) return 1
+        if (!b.time) return -1
+        return a.time.localeCompare(b.time)
+      })
+  }, [jobs, techId, weekStart, weekEnd])
+
+  // Group week jobs by date
+  const jobsByDate = useMemo(() => {
+    const grouped = {}
+    weekDays.forEach(day => {
+      const dateKey = format(day, 'yyyy-MM-dd')
+      grouped[dateKey] = weekJobs.filter(job => {
+        const jobDate = format(parseISO(job.date), 'yyyy-MM-dd')
+        return jobDate === dateKey
+      })
+    })
+    return grouped
+  }, [weekJobs, weekDays])
+
   // Navigation handlers
   const goToPreviousDay = () => {
     const current = parseISO(selectedDate)
@@ -524,8 +582,27 @@ export default function TechDailySchedule({ techId, techName, jobs: initialJobs,
     setExpandedJobId(null)
   }
 
+  const goToPreviousWeek = () => {
+    const current = parseISO(selectedDate)
+    setSelectedDate(format(subDays(current, 7), 'yyyy-MM-dd'))
+    setExpandedJobId(null)
+  }
+
+  const goToNextWeek = () => {
+    const current = parseISO(selectedDate)
+    setSelectedDate(format(addDays(current, 7), 'yyyy-MM-dd'))
+    setExpandedJobId(null)
+  }
+
   const goToToday = () => {
     setSelectedDate(format(new Date(), 'yyyy-MM-dd'))
+    setExpandedJobId(null)
+  }
+
+  // Switch to day view for a specific date
+  const viewDaySchedule = (date) => {
+    setSelectedDate(format(date, 'yyyy-MM-dd'))
+    setViewMode('day')
     setExpandedJobId(null)
   }
 
@@ -609,14 +686,64 @@ export default function TechDailySchedule({ techId, techName, jobs: initialJobs,
             textAlign: 'center',
             margin: 0
           }}>
-            {todaysJobs.length > 0
-              ? t(lang, 'youHaveJobs', todaysJobs.length)
-              : t(lang, 'noJobsScheduled')
+            {viewMode === 'day'
+              ? (todaysJobs.length > 0
+                  ? t(lang, 'youHaveJobs', todaysJobs.length)
+                  : t(lang, 'noJobsScheduled'))
+              : (weekJobs.length > 0
+                  ? `You have ${weekJobs.length} job${weekJobs.length !== 1 ? 's' : ''} this week`
+                  : 'No jobs scheduled this week')
             }
           </p>
         </div>
 
-        {/* Day Navigation */}
+        {/* View Mode Toggle */}
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '16px',
+          padding: '8px',
+          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
+          marginBottom: '16px',
+          display: 'flex',
+          gap: '8px'
+        }}>
+          <button
+            onClick={() => setViewMode('week')}
+            style={{
+              flex: 1,
+              padding: '12px 16px',
+              fontSize: '14px',
+              fontWeight: '700',
+              border: 'none',
+              borderRadius: '10px',
+              backgroundColor: viewMode === 'week' ? '#2A54A1' : 'transparent',
+              color: viewMode === 'week' ? 'white' : '#6B7280',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+          >
+            Week View
+          </button>
+          <button
+            onClick={() => setViewMode('day')}
+            style={{
+              flex: 1,
+              padding: '12px 16px',
+              fontSize: '14px',
+              fontWeight: '700',
+              border: 'none',
+              borderRadius: '10px',
+              backgroundColor: viewMode === 'day' ? '#2A54A1' : 'transparent',
+              color: viewMode === 'day' ? 'white' : '#6B7280',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+          >
+            Day View
+          </button>
+        </div>
+
+        {/* Navigation */}
         <div style={{
           backgroundColor: 'white',
           borderRadius: '16px',
@@ -630,9 +757,9 @@ export default function TechDailySchedule({ techId, techName, jobs: initialJobs,
             justifyContent: 'space-between',
             gap: '12px'
           }}>
-            {/* Previous Day Button */}
+            {/* Previous Button */}
             <button
-              onClick={goToPreviousDay}
+              onClick={viewMode === 'week' ? goToPreviousWeek : goToPreviousDay}
               style={{
                 width: '48px',
                 height: '48px',
@@ -658,7 +785,10 @@ export default function TechDailySchedule({ techId, techName, jobs: initialJobs,
                 color: '#2A54A1',
                 marginBottom: '4px'
               }}>
-                {formattedDate}
+                {viewMode === 'week'
+                  ? `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d, yyyy')}`
+                  : formattedDate
+                }
               </div>
               {!isTodaySelected && (
                 <button
@@ -674,14 +804,14 @@ export default function TechDailySchedule({ techId, techName, jobs: initialJobs,
                     cursor: 'pointer'
                   }}
                 >
-                  {t(lang, 'goToToday')}
+                  {viewMode === 'week' ? 'This Week' : t(lang, 'goToToday')}
                 </button>
               )}
             </div>
 
-            {/* Next Day Button */}
+            {/* Next Button */}
             <button
-              onClick={goToNextDay}
+              onClick={viewMode === 'week' ? goToNextWeek : goToNextDay}
               style={{
                 width: '48px',
                 height: '48px',
@@ -701,53 +831,191 @@ export default function TechDailySchedule({ techId, techName, jobs: initialJobs,
           </div>
         </div>
 
-        {/* Jobs List */}
-        {todaysJobs.length === 0 ? (
-          // Empty State
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '16px',
-            padding: '40px 20px',
-            textAlign: 'center',
-            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)'
-          }}>
-            <div style={{ fontSize: '48px', marginBottom: '12px' }}>
-              📋
-            </div>
-            <p style={{
-              fontSize: '16px',
-              fontWeight: '600',
-              color: '#6B7280',
-              margin: 0
-            }}>
-              {t(lang, 'noJobsForDay')}
-            </p>
-            <p style={{
-              fontSize: '14px',
-              color: '#9CA3AF',
-              marginTop: '8px'
-            }}>
-              {t(lang, 'checkOtherDays')}
-            </p>
-          </div>
-        ) : (
+        {/* Week View */}
+        {viewMode === 'week' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {todaysJobs.map((job, index) => (
-              <JobCard
-                key={job.id}
-                job={job}
-                index={index}
-                isExpanded={expandedJobId === job.id}
-                onToggle={() => setExpandedJobId(
-                  expandedJobId === job.id ? null : job.id
-                )}
-                onJobUpdate={refreshJobs}
-                techName={techName}
-                lang={lang}
-                pricingRules={pricingRules}
-              />
-            ))}
+            {weekDays.map(day => {
+              const dateKey = format(day, 'yyyy-MM-dd')
+              const dayJobs = jobsByDate[dateKey] || []
+              const isPastDay = day < new Date() && !isToday(day)
+              const isTodayDay = isToday(day)
+
+              return (
+                <div
+                  key={dateKey}
+                  style={{
+                    backgroundColor: 'white',
+                    borderRadius: '12px',
+                    overflow: 'hidden',
+                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
+                    opacity: isPastDay ? 0.6 : 1,
+                    border: isTodayDay ? '2px solid #2A54A1' : '1px solid #E5E7EB'
+                  }}
+                >
+                  {/* Day Header */}
+                  <div
+                    onClick={() => viewDaySchedule(day)}
+                    style={{
+                      padding: '12px 16px',
+                      backgroundColor: isTodayDay ? '#EFF6FF' : '#F9FAFB',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}
+                  >
+                    <div>
+                      <div style={{
+                        fontSize: '16px',
+                        fontWeight: '700',
+                        color: isTodayDay ? '#2A54A1' : '#374151'
+                      }}>
+                        {format(day, 'EEEE')}
+                        {isTodayDay && <span style={{ marginLeft: '8px', fontSize: '12px', color: '#059669' }}>(Today)</span>}
+                      </div>
+                      <div style={{
+                        fontSize: '13px',
+                        color: '#6B7280'
+                      }}>
+                        {format(day, 'MMMM d')}
+                      </div>
+                    </div>
+                    <div style={{
+                      padding: '6px 12px',
+                      backgroundColor: dayJobs.length > 0 ? '#2A54A1' : '#E5E7EB',
+                      color: dayJobs.length > 0 ? 'white' : '#6B7280',
+                      borderRadius: '20px',
+                      fontSize: '13px',
+                      fontWeight: '600'
+                    }}>
+                      {dayJobs.length} job{dayJobs.length !== 1 ? 's' : ''}
+                    </div>
+                  </div>
+
+                  {/* Jobs Preview */}
+                  {dayJobs.length > 0 && (
+                    <div style={{ padding: '12px 16px' }}>
+                      {dayJobs.map((job, idx) => {
+                        const colors = getServiceColor(job.serviceName)
+                        const isCompleted = job.status === 'Completed'
+
+                        return (
+                          <div
+                            key={job.id}
+                            onClick={() => viewDaySchedule(day)}
+                            style={{
+                              padding: '10px 12px',
+                              marginBottom: idx < dayJobs.length - 1 ? '8px' : 0,
+                              backgroundColor: isCompleted ? '#D1FAE5' : colors.bg,
+                              borderLeft: `4px solid ${isCompleted ? '#10B981' : colors.border}`,
+                              borderRadius: '8px',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <div style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'flex-start',
+                              gap: '8px'
+                            }}>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{
+                                  fontSize: '14px',
+                                  fontWeight: '600',
+                                  color: isCompleted ? '#065F46' : colors.text,
+                                  marginBottom: '2px'
+                                }}>
+                                  {job.serviceName}
+                                </div>
+                                <div style={{
+                                  fontSize: '12px',
+                                  color: '#6B7280',
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis'
+                                }}>
+                                  {job.address || 'No address'}
+                                </div>
+                              </div>
+                              <div style={{
+                                fontSize: '13px',
+                                fontWeight: '600',
+                                color: isCompleted ? '#065F46' : colors.text,
+                                whiteSpace: 'nowrap'
+                              }}>
+                                {formatTimeDisplay(job.time)}
+                              </div>
+                            </div>
+                            {isCompleted && (
+                              <div style={{
+                                marginTop: '4px',
+                                fontSize: '11px',
+                                color: '#059669',
+                                fontWeight: '600'
+                              }}>
+                                ✓ COMPLETED
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
+        )}
+
+        {/* Day View - Jobs List */}
+        {viewMode === 'day' && (
+          todaysJobs.length === 0 ? (
+            // Empty State
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '16px',
+              padding: '40px 20px',
+              textAlign: 'center',
+              boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)'
+            }}>
+              <div style={{ fontSize: '48px', marginBottom: '12px' }}>
+                📋
+              </div>
+              <p style={{
+                fontSize: '16px',
+                fontWeight: '600',
+                color: '#6B7280',
+                margin: 0
+              }}>
+                {t(lang, 'noJobsForDay')}
+              </p>
+              <p style={{
+                fontSize: '14px',
+                color: '#9CA3AF',
+                marginTop: '8px'
+              }}>
+                {t(lang, 'checkOtherDays')}
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {todaysJobs.map((job, index) => (
+                <JobCard
+                  key={job.id}
+                  job={job}
+                  index={index}
+                  isExpanded={expandedJobId === job.id}
+                  onToggle={() => setExpandedJobId(
+                    expandedJobId === job.id ? null : job.id
+                  )}
+                  onJobUpdate={refreshJobs}
+                  techName={techName}
+                  lang={lang}
+                  pricingRules={pricingRules}
+                />
+              ))}
+            </div>
+          )
         )}
 
         {/* Footer */}
