@@ -1173,10 +1173,76 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
                 borderRadius: '8px',
                 fontSize: '14px',
                 color: '#111827',
-                lineHeight: 1.5
+                lineHeight: 1.5,
+                whiteSpace: 'pre-wrap'
               }}>
                 {job.notes}
               </div>
+            </div>
+          )}
+
+          {/* Continue Tomorrow - for multi-day jobs */}
+          {job.date && (
+            <div style={{
+              marginTop: '16px',
+              padding: '16px',
+              backgroundColor: '#FEF3C7',
+              borderRadius: '12px',
+              border: '1px solid #F59E0B'
+            }}>
+              <label style={{
+                display: 'block',
+                fontSize: '12px',
+                fontWeight: '600',
+                color: '#92400E',
+                marginBottom: '8px',
+                textTransform: 'uppercase'
+              }}>
+                Multi-Day Job
+              </label>
+              <p style={{
+                fontSize: '13px',
+                color: '#78350F',
+                marginBottom: '12px'
+              }}>
+                Need to continue this job on another day? This will create a follow-up job with the same details.
+              </p>
+              <button
+                onClick={async () => {
+                  if (!confirm('Create a continuation job for tomorrow with the same customer and details?')) return
+                  try {
+                    const response = await fetch('/api/jobs/continue', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ jobId: job.id })
+                    })
+                    const data = await response.json()
+                    if (response.ok) {
+                      alert(data.message || 'Continuation job created!')
+                      onUpdate()
+                    } else {
+                      alert('Error: ' + (data.error || 'Failed to create continuation'))
+                    }
+                  } catch (err) {
+                    alert('Error: ' + err.message)
+                  }
+                }}
+                style={{
+                  padding: '10px 20px',
+                  fontSize: '14px',
+                  fontWeight: '700',
+                  border: 'none',
+                  borderRadius: '8px',
+                  backgroundColor: '#F59E0B',
+                  color: 'white',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                + Continue Tomorrow
+              </button>
             </div>
           )}
         </div>
