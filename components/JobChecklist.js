@@ -223,7 +223,11 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en', pri
   }
 
   // Check if step can be accessed
+  // Once clocked in, all steps become accessible (unlocked)
   const canAccessStep = (stepIndex) => {
+    // If clocked in, all steps are accessible
+    if (job.clockIn) return true
+    // Before clock-in, only allow steps up to current
     return stepIndex <= currentStep
   }
 
@@ -843,7 +847,6 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en', pri
                         type="file"
                         accept="image/*"
                         multiple
-                        capture="environment"
                         onChange={(e) => handlePhotoUpload(e.target.files, 'before')}
                         style={{ display: 'none' }}
                       />
@@ -867,7 +870,9 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en', pri
                         }}
                       >
                         <span style={{ fontSize: '20px' }}>📷</span>
-                        {isUploadingBefore ? t(lang, 'uploading') : t(lang, 'takeBeforePhotos')}
+                        {isUploadingBefore
+                          ? t(lang, 'uploading')
+                          : (lang === 'es' ? 'Tomar o Subir Fotos' : 'Take or Upload Photos')}
                       </button>
                     </div>
                   )}
@@ -905,7 +910,6 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en', pri
                         type="file"
                         accept="image/*"
                         multiple
-                        capture="environment"
                         onChange={(e) => handlePhotoUpload(e.target.files, 'after')}
                         style={{ display: 'none' }}
                       />
@@ -929,7 +933,9 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en', pri
                         }}
                       >
                         <span style={{ fontSize: '20px' }}>📷</span>
-                        {isUploadingAfter ? t(lang, 'uploading') : t(lang, 'takeAfterPhotos')}
+                        {isUploadingAfter
+                          ? t(lang, 'uploading')
+                          : (lang === 'es' ? 'Tomar o Subir Fotos' : 'Take or Upload Photos')}
                       </button>
                     </div>
                   )}
@@ -938,7 +944,7 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en', pri
                   {step.actionType === 'clockOut' && !job.clockOut && (
                     <button
                       onClick={handleClockOut}
-                      disabled={isClockingOut || !isConfirmed}
+                      disabled={isClockingOut}
                       style={{
                         width: '100%',
                         padding: '14px',
@@ -946,9 +952,10 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en', pri
                         fontWeight: '700',
                         border: 'none',
                         borderRadius: '8px',
-                        backgroundColor: !isConfirmed ? '#D1D5DB' : '#DC2626',
+                        backgroundColor: '#DC2626',
                         color: 'white',
-                        cursor: !isConfirmed ? 'not-allowed' : 'pointer'
+                        cursor: isClockingOut ? 'not-allowed' : 'pointer',
+                        opacity: isClockingOut ? 0.7 : 1
                       }}
                     >
                       {isClockingOut ? t(lang, 'clockingOut') : step.confirmText}
