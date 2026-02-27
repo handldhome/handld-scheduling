@@ -301,6 +301,11 @@ export default function JobsList({ jobs, technicians }) {
                           margin: 0
                         }}>
                           {job.serviceDetail ? `${job.serviceName}: ${job.serviceDetail}` : job.serviceName}
+                          {job.additionalServices?.length > 0 && (
+                            <span style={{ fontWeight: '500', fontSize: '14px', color: '#6B7280' }}>
+                              {' '}+ {job.additionalServices.join(', ')}
+                            </span>
+                          )}
                         </h3>
                         <span style={{
                           fontSize: '12px',

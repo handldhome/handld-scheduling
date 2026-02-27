@@ -79,6 +79,9 @@ export async function POST(request) {
     if (original['Electric / Water']) fields['Electric / Water'] = original['Electric / Water']
     if (original['Other Notes']) fields['Other Notes'] = original['Other Notes']
 
+    // Copy add-ons/change orders
+    if (original['Add-ons']) fields['Add-ons'] = original['Add-ons']
+
     // Create the new job
     const newRecord = await base(process.env.AIRTABLE_JOBS_TABLE).create(fields)
 

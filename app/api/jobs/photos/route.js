@@ -57,7 +57,19 @@ export async function POST(request) {
     }
 
     // Determine field name based on type
-    const fieldName = type === 'before' ? 'Before Photos' : 'After Photos'
+    let fieldName
+    if (type === 'before') {
+      fieldName = 'Before Photos'
+    } else if (type === 'after') {
+      fieldName = 'After Photos'
+    } else if (type === 'receipt') {
+      fieldName = 'Material Receipts'
+    } else {
+      return Response.json(
+        { error: 'Invalid photo type. Must be: before, after, or receipt' },
+        { status: 400 }
+      )
+    }
 
     // Get existing photos first to append
     const existingRecord = await base(process.env.AIRTABLE_JOBS_TABLE).find(jobId)

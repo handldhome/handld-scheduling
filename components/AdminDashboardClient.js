@@ -313,6 +313,7 @@ export default function AdminDashboardClient({ technicians, availability, jobs }
       {/* Add Job Modal */}
       {showAddJobModal && (
         <AddJobModal
+          jobs={jobs}
           onClose={() => setShowAddJobModal(false)}
           onJobAdded={() => {
             setShowAddJobModal(false)

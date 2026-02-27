@@ -70,8 +70,11 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
     pets: job.pets || '',
     gateCode: job.gateCode || '',
     electricWater: job.electricWater || '',
-    otherNotes: job.otherNotes || ''
+    otherNotes: job.otherNotes || '',
+    // Add-ons / Change Orders
+    addOns: job.addOns || []
   })
+  const [newAddOn, setNewAddOn] = useState({ description: '', price: '' })
   const [equipmentOptions, setEquipmentOptions] = useState([])
   const [loadingEquipment, setLoadingEquipment] = useState(true)
 
@@ -312,6 +315,33 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
     })
   }
 
+  const handleAddAddOn = () => {
+    if (!newAddOn.description.trim() || !newAddOn.price) return
+    const addOn = {
+      id: Date.now(), // Simple unique ID
+      description: newAddOn.description.trim(),
+      price: parseFloat(newAddOn.price)
+    }
+    setFormData(prev => ({
+      ...prev,
+      addOns: [...prev.addOns, addOn]
+    }))
+    setNewAddOn({ description: '', price: '' })
+  }
+
+  const handleRemoveAddOn = (addOnId) => {
+    setFormData(prev => ({
+      ...prev,
+      addOns: prev.addOns.filter(a => a.id !== addOnId)
+    }))
+  }
+
+  const handleSaveAddOns = () => {
+    handleUpdate({ addOns: formData.addOns })
+  }
+
+  const addOnsChanged = JSON.stringify(formData.addOns) !== JSON.stringify(job.addOns || [])
+
   const getTechName = (techId) => {
     if (!techId) return 'Unassigned'
     const tech = technicians.find(t => t.id === techId)
@@ -358,6 +388,11 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
               color: colors.text
             }}>
               {job.serviceName}
+              {job.additionalServices?.length > 0 && (
+                <span style={{ fontWeight: '500', fontSize: '16px' }}>
+                  {' '}+ {job.additionalServices.join(', ')}
+                </span>
+              )}
             </h2>
             {job.address && (
               <a
@@ -1151,6 +1186,165 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
               }}
             >
               Save Job Details
+            </button>
+          </div>
+
+          {/* Add-ons / Change Orders */}
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '12px',
+              fontWeight: '600',
+              color: '#6B7280',
+              marginBottom: '12px',
+              textTransform: 'uppercase'
+            }}>
+              Add-ons / Change Orders
+            </label>
+
+            {/* Existing Add-ons */}
+            {formData.addOns.length > 0 && (
+              <div style={{ marginBottom: '12px' }}>
+                {formData.addOns.map(addOn => (
+                  <div key={addOn.id} style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '10px 12px',
+                    backgroundColor: '#F0FDF4',
+                    border: '1px solid #86EFAC',
+                    borderRadius: '8px',
+                    marginBottom: '8px'
+                  }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '14px', fontWeight: '500', color: '#166534' }}>
+                        {addOn.description}
+                      </div>
+                    </div>
+                    <div style={{
+                      fontSize: '14px',
+                      fontWeight: '700',
+                      color: '#166534'
+                    }}>
+                      ${addOn.price.toFixed(2)}
+                    </div>
+                    <button
+                      onClick={() => handleRemoveAddOn(addOn.id)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        fontSize: '18px',
+                        color: '#DC2626',
+                        cursor: 'pointer',
+                        padding: '0 4px',
+                        lineHeight: 1
+                      }}
+                      title="Remove add-on"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                ))}
+                {formData.addOns.length > 0 && (
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'flex-end',
+                    paddingTop: '8px',
+                    borderTop: '1px solid #E5E7EB',
+                    marginTop: '8px'
+                  }}>
+                    <div style={{ fontSize: '14px', fontWeight: '700', color: '#111827' }}>
+                      Add-ons Total: ${formData.addOns.reduce((sum, a) => sum + a.price, 0).toFixed(2)}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Add New Add-on */}
+            <div style={{
+              display: 'flex',
+              gap: '8px',
+              alignItems: 'flex-end',
+              marginBottom: '12px'
+            }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '11px', color: '#9CA3AF', marginBottom: '4px' }}>
+                  Description
+                </div>
+                <input
+                  type="text"
+                  value={newAddOn.description}
+                  onChange={(e) => setNewAddOn(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="e.g., Roof cleaning"
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    fontSize: '14px',
+                    border: '1px solid #E5E7EB',
+                    borderRadius: '6px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+              <div style={{ width: '100px' }}>
+                <div style={{ fontSize: '11px', color: '#9CA3AF', marginBottom: '4px' }}>
+                  Price ($)
+                </div>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={newAddOn.price}
+                  onChange={(e) => setNewAddOn(prev => ({ ...prev, price: e.target.value }))}
+                  placeholder="0.00"
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    fontSize: '14px',
+                    border: '1px solid #E5E7EB',
+                    borderRadius: '6px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+              <button
+                onClick={handleAddAddOn}
+                disabled={!newAddOn.description.trim() || !newAddOn.price}
+                style={{
+                  padding: '8px 16px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  border: 'none',
+                  borderRadius: '6px',
+                  backgroundColor: '#2A54A1',
+                  color: 'white',
+                  cursor: (!newAddOn.description.trim() || !newAddOn.price) ? 'not-allowed' : 'pointer',
+                  opacity: (!newAddOn.description.trim() || !newAddOn.price) ? 0.5 : 1,
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                + Add
+              </button>
+            </div>
+
+            {/* Save Add-ons Button */}
+            <button
+              onClick={handleSaveAddOns}
+              disabled={isUpdating || !addOnsChanged}
+              style={{
+                padding: '8px 16px',
+                fontSize: '14px',
+                fontWeight: '600',
+                border: 'none',
+                borderRadius: '8px',
+                backgroundColor: '#059669',
+                color: 'white',
+                cursor: (isUpdating || !addOnsChanged) ? 'not-allowed' : 'pointer',
+                opacity: (isUpdating || !addOnsChanged) ? 0.5 : 1
+              }}
+            >
+              Save Add-ons
             </button>
           </div>
 

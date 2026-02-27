@@ -167,6 +167,11 @@ function JobCard({ job, index, isExpanded, onToggle, onJobUpdate, techName, lang
           color: isCompleted ? '#065F46' : colors.text
         }}>
           {job.serviceDetail ? `${job.serviceName}: ${job.serviceDetail}` : job.serviceName}
+          {job.additionalServices?.length > 0 && (
+            <span style={{ fontWeight: '500', fontSize: '15px' }}>
+              {' '}+ {job.additionalServices.join(', ')}
+            </span>
+          )}
         </h3>
 
         {/* Complexity for plumbing/electrical */}
@@ -407,6 +412,77 @@ function JobCard({ job, index, isExpanded, onToggle, onJobUpdate, techName, lang
                     <strong>Other:</strong> {job.otherNotes}
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Add-ons / Change Orders Section */}
+          {job.addOns && job.addOns.length > 0 && (
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{
+                fontSize: '12px',
+                fontWeight: '700',
+                color: '#6B7280',
+                marginBottom: '8px',
+                textTransform: 'uppercase'
+              }}>
+                Add-ons / Change Orders
+              </div>
+              <div style={{
+                backgroundColor: '#F0FDF4',
+                border: '1px solid #86EFAC',
+                borderRadius: '8px',
+                overflow: 'hidden'
+              }}>
+                {job.addOns.map((addOn, idx) => (
+                  <div
+                    key={addOn.id || idx}
+                    style={{
+                      padding: '10px 12px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      borderBottom: idx < job.addOns.length - 1 ? '1px solid #BBF7D0' : 'none'
+                    }}
+                  >
+                    <span style={{
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      color: '#166534'
+                    }}>
+                      {addOn.description}
+                    </span>
+                    <span style={{
+                      fontSize: '14px',
+                      fontWeight: '700',
+                      color: '#166534'
+                    }}>
+                      ${addOn.price.toFixed(2)}
+                    </span>
+                  </div>
+                ))}
+                <div style={{
+                  padding: '10px 12px',
+                  backgroundColor: '#DCFCE7',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}>
+                  <span style={{
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    color: '#166534'
+                  }}>
+                    Add-ons Total
+                  </span>
+                  <span style={{
+                    fontSize: '15px',
+                    fontWeight: '700',
+                    color: '#166534'
+                  }}>
+                    ${job.addOns.reduce((sum, a) => sum + a.price, 0).toFixed(2)}
+                  </span>
+                </div>
               </div>
             </div>
           )}
@@ -926,6 +1002,11 @@ export default function TechDailySchedule({ techId, techName, jobs: initialJobs,
                                   marginBottom: '2px'
                                 }}>
                                   {job.serviceName}
+                                  {job.additionalServices?.length > 0 && (
+                                    <span style={{ fontWeight: '400', fontSize: '12px' }}>
+                                      {' '}+{job.additionalServices.length}
+                                    </span>
+                                  )}
                                 </div>
                                 <div style={{
                                   fontSize: '12px',

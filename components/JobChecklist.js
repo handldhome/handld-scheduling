@@ -146,6 +146,14 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en', pri
   const [beforePhotos, setBeforePhotos] = useState([])
   const [afterPhotos, setAfterPhotos] = useState([])
 
+  // Track job materials
+  const [materials, setMaterials] = useState(job.materials || [])
+  const [newMaterial, setNewMaterial] = useState({ vendor: '', amount: '', description: '' })
+  const [materialReceipts, setMaterialReceipts] = useState([])
+  const [isSavingMaterials, setIsSavingMaterials] = useState(false)
+  const [isUploadingReceipt, setIsUploadingReceipt] = useState(false)
+  const materialReceiptRef = useRef(null)
+
   // Loading states
   const [isClockingIn, setIsClockingIn] = useState(false)
   const [isClockingOut, setIsClockingOut] = useState(false)
@@ -396,6 +404,91 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en', pri
       hour12: true
     })
   }
+
+  // Handle adding a new material entry
+  const handleAddMaterial = () => {
+    if (!newMaterial.vendor.trim() || !newMaterial.amount) return
+    const material = {
+      id: Date.now(),
+      vendor: newMaterial.vendor.trim(),
+      amount: parseFloat(newMaterial.amount),
+      description: newMaterial.description.trim()
+    }
+    setMaterials(prev => [...prev, material])
+    setNewMaterial({ vendor: '', amount: '', description: '' })
+  }
+
+  // Handle removing a material entry
+  const handleRemoveMaterial = (materialId) => {
+    setMaterials(prev => prev.filter(m => m.id !== materialId))
+  }
+
+  // Handle saving materials to Airtable
+  const handleSaveMaterials = async () => {
+    setIsSavingMaterials(true)
+    try {
+      const response = await fetch(`/api/jobs/${job.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ materials })
+      })
+      if (!response.ok) throw new Error('Failed to save materials')
+      onUpdate?.()
+    } catch (error) {
+      console.error('Materials save error:', error)
+      alert('Failed to save materials. Please try again.')
+    } finally {
+      setIsSavingMaterials(false)
+    }
+  }
+
+  // Handle receipt photo upload
+  const handleReceiptUpload = async (files) => {
+    if (!files || files.length === 0) return
+
+    setIsUploadingReceipt(true)
+
+    try {
+      const formData = new FormData()
+      formData.append('jobId', job.id)
+      formData.append('type', 'receipt')
+
+      for (let i = 0; i < files.length; i++) {
+        formData.append('photos', files[i])
+      }
+
+      const response = await fetch('/api/jobs/photos', {
+        method: 'POST',
+        body: formData
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || data.details || 'Failed to upload receipt')
+      }
+
+      // Add uploaded receipts to local state for preview
+      const newReceipts = Array.from(files).map(file => ({
+        url: URL.createObjectURL(file),
+        name: file.name
+      }))
+
+      setMaterialReceipts(prev => [...prev, ...newReceipts])
+      onUpdate?.()
+    } catch (error) {
+      console.error('Receipt upload error:', error)
+      alert(`Failed to upload receipt: ${error.message}`)
+    } finally {
+      setIsUploadingReceipt(false)
+    }
+  }
+
+  // Calculate materials total
+  const materialsTotal = materials.reduce((sum, m) => sum + (m.amount || 0), 0)
+
+  // Check if materials have changed from original
+  const materialsChanged = JSON.stringify(materials) !== JSON.stringify(job.materials || [])
 
   return (
     <div
@@ -989,6 +1082,297 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en', pri
           )
         })}
       </div>
+
+      {/* Job Materials Section - visible once clocked in */}
+      {job.clockIn && (
+        <div style={{
+          marginTop: '24px',
+          padding: '16px',
+          backgroundColor: '#FFFBEB',
+          border: '1px solid #F59E0B',
+          borderRadius: '12px'
+        }}>
+          <div style={{
+            fontSize: '14px',
+            fontWeight: '700',
+            color: '#92400E',
+            marginBottom: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <span style={{ fontSize: '18px' }}>🛒</span>
+            {lang === 'es' ? 'Materiales del Trabajo' : 'Job Materials'}
+          </div>
+
+          <p style={{
+            fontSize: '13px',
+            color: '#78350F',
+            marginBottom: '16px'
+          }}>
+            {lang === 'es'
+              ? 'Registra cualquier material comprado para este trabajo.'
+              : 'Record any materials purchased for this job.'}
+          </p>
+
+          {/* Existing Materials List */}
+          {materials.length > 0 && (
+            <div style={{ marginBottom: '16px' }}>
+              {materials.map(material => (
+                <div key={material.id} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '10px 12px',
+                  backgroundColor: 'white',
+                  border: '1px solid #FCD34D',
+                  borderRadius: '8px',
+                  marginBottom: '8px'
+                }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#92400E' }}>
+                      {material.vendor}
+                    </div>
+                    {material.description && (
+                      <div style={{ fontSize: '12px', color: '#A16207' }}>
+                        {material.description}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{
+                    fontSize: '14px',
+                    fontWeight: '700',
+                    color: '#92400E'
+                  }}>
+                    ${material.amount.toFixed(2)}
+                  </div>
+                  <button
+                    onClick={() => handleRemoveMaterial(material.id)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      fontSize: '18px',
+                      color: '#DC2626',
+                      cursor: 'pointer',
+                      padding: '0 4px',
+                      lineHeight: 1
+                    }}
+                    title={lang === 'es' ? 'Eliminar' : 'Remove'}
+                  >
+                    &times;
+                  </button>
+                </div>
+              ))}
+
+              {/* Materials Total */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                padding: '10px 12px',
+                backgroundColor: '#FEF3C7',
+                borderRadius: '8px',
+                marginTop: '8px'
+              }}>
+                <span style={{ fontSize: '14px', fontWeight: '600', color: '#92400E' }}>
+                  {lang === 'es' ? 'Total de Materiales' : 'Materials Total'}
+                </span>
+                <span style={{ fontSize: '15px', fontWeight: '700', color: '#92400E' }}>
+                  ${materialsTotal.toFixed(2)}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Add New Material Form */}
+          <div style={{
+            padding: '12px',
+            backgroundColor: 'white',
+            border: '1px solid #E5E7EB',
+            borderRadius: '8px',
+            marginBottom: '12px'
+          }}>
+            <div style={{ marginBottom: '10px' }}>
+              <label style={{ fontSize: '12px', color: '#6B7280', display: 'block', marginBottom: '4px' }}>
+                {lang === 'es' ? 'Tienda / Proveedor' : 'Vendor / Store'} *
+              </label>
+              <input
+                type="text"
+                value={newMaterial.vendor}
+                onChange={(e) => setNewMaterial(prev => ({ ...prev, vendor: e.target.value }))}
+                placeholder={lang === 'es' ? 'ej. Home Depot' : 'e.g. Home Depot'}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  fontSize: '14px',
+                  border: '1px solid #E5E7EB',
+                  borderRadius: '6px',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '10px' }}>
+              <label style={{ fontSize: '12px', color: '#6B7280', display: 'block', marginBottom: '4px' }}>
+                {lang === 'es' ? 'Monto ($)' : 'Amount ($)'} *
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={newMaterial.amount}
+                onChange={(e) => setNewMaterial(prev => ({ ...prev, amount: e.target.value }))}
+                placeholder="0.00"
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  fontSize: '14px',
+                  border: '1px solid #E5E7EB',
+                  borderRadius: '6px',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '12px' }}>
+              <label style={{ fontSize: '12px', color: '#6B7280', display: 'block', marginBottom: '4px' }}>
+                {lang === 'es' ? 'Descripción (opcional)' : 'Description (optional)'}
+              </label>
+              <input
+                type="text"
+                value={newMaterial.description}
+                onChange={(e) => setNewMaterial(prev => ({ ...prev, description: e.target.value }))}
+                placeholder={lang === 'es' ? 'ej. tubería PVC, tornillos' : 'e.g. PVC pipes, screws'}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  fontSize: '14px',
+                  border: '1px solid #E5E7EB',
+                  borderRadius: '6px',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            <button
+              onClick={handleAddMaterial}
+              disabled={!newMaterial.vendor.trim() || !newMaterial.amount}
+              style={{
+                width: '100%',
+                padding: '12px',
+                fontSize: '14px',
+                fontWeight: '600',
+                border: 'none',
+                borderRadius: '6px',
+                backgroundColor: (!newMaterial.vendor.trim() || !newMaterial.amount) ? '#D1D5DB' : '#F59E0B',
+                color: 'white',
+                cursor: (!newMaterial.vendor.trim() || !newMaterial.amount) ? 'not-allowed' : 'pointer'
+              }}
+            >
+              + {lang === 'es' ? 'Agregar Material' : 'Add Material'}
+            </button>
+          </div>
+
+          {/* Receipt Upload */}
+          <div style={{ marginBottom: '12px' }}>
+            <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '8px' }}>
+              {lang === 'es' ? 'Fotos del Recibo' : 'Receipt Photos'}
+            </div>
+
+            {/* Receipt Previews */}
+            {(materialReceipts.length > 0 || job.materialReceipts?.length > 0) && (
+              <div style={{
+                display: 'flex',
+                gap: '8px',
+                flexWrap: 'wrap',
+                marginBottom: '8px'
+              }}>
+                {materialReceipts.map((receipt, i) => (
+                  <img
+                    key={i}
+                    src={receipt.url}
+                    alt={`Receipt ${i + 1}`}
+                    style={{
+                      width: '60px',
+                      height: '60px',
+                      objectFit: 'cover',
+                      borderRadius: '6px',
+                      border: '1px solid #FCD34D'
+                    }}
+                  />
+                ))}
+                {job.materialReceipts?.map((receipt, i) => (
+                  <img
+                    key={`existing-${i}`}
+                    src={receipt.url}
+                    alt={`Receipt ${i + 1}`}
+                    style={{
+                      width: '60px',
+                      height: '60px',
+                      objectFit: 'cover',
+                      borderRadius: '6px',
+                      border: '1px solid #FCD34D'
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+
+            <input
+              ref={materialReceiptRef}
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(e) => handleReceiptUpload(e.target.files)}
+              style={{ display: 'none' }}
+            />
+            <button
+              onClick={() => materialReceiptRef.current?.click()}
+              disabled={isUploadingReceipt}
+              style={{
+                width: '100%',
+                padding: '12px',
+                fontSize: '14px',
+                fontWeight: '600',
+                border: '2px dashed #F59E0B',
+                borderRadius: '8px',
+                backgroundColor: 'white',
+                color: '#92400E',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+            >
+              <span style={{ fontSize: '18px' }}>🧾</span>
+              {isUploadingReceipt
+                ? (lang === 'es' ? 'Subiendo...' : 'Uploading...')
+                : (lang === 'es' ? 'Subir Foto del Recibo' : 'Upload Receipt Photo')}
+            </button>
+          </div>
+
+          {/* Save Materials Button */}
+          <button
+            onClick={handleSaveMaterials}
+            disabled={isSavingMaterials || !materialsChanged}
+            style={{
+              width: '100%',
+              padding: '14px',
+              fontSize: '16px',
+              fontWeight: '700',
+              border: 'none',
+              borderRadius: '8px',
+              backgroundColor: (isSavingMaterials || !materialsChanged) ? '#D1D5DB' : '#059669',
+              color: 'white',
+              cursor: (isSavingMaterials || !materialsChanged) ? 'not-allowed' : 'pointer'
+            }}
+          >
+            {isSavingMaterials
+              ? (lang === 'es' ? 'Guardando...' : 'Saving...')
+              : (lang === 'es' ? 'Guardar Materiales' : 'Save Materials')}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
