@@ -176,7 +176,7 @@ export async function POST(request) {
 
 // GET handler for cron job (Vercel cron uses GET requests)
 export async function GET(request) {
-  // Check if this is a reminder-only request (Thursday)
+  // Check if this is a reminder-only request (Tuesday)
   const url = new URL(request.url)
   const reminderOnly = url.searchParams.get('reminderOnly') === 'true'
 
