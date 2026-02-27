@@ -671,7 +671,7 @@ export default function AddJobModal({ jobs = [], onClose, onJobAdded }) {
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate={addToExistingJob}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
             {/* Service Selection */}
