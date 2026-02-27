@@ -342,6 +342,77 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
 
   const addOnsChanged = JSON.stringify(formData.addOns) !== JSON.stringify(job.addOns || [])
 
+  // Check if any fields have changed
+  const hasChanges =
+    formData.date !== (job.date ? format(parseISO(job.date), 'yyyy-MM-dd') : '') ||
+    formData.time !== (job.time || '') ||
+    formData.endTime !== (job.endTime || '') ||
+    JSON.stringify(formData.equipment.sort()) !== JSON.stringify((job.equipment || []).sort()) ||
+    formData.vibe !== (job.vibe || '') ||
+    formData.pets !== (job.pets || '') ||
+    formData.gateCode !== (job.gateCode || '') ||
+    formData.electricWater !== (job.electricWater || '') ||
+    formData.otherNotes !== (job.otherNotes || '') ||
+    addOnsChanged
+
+  // Save all changes at once
+  const handleSaveAllChanges = async () => {
+    setIsUpdating(true)
+    setError(null)
+
+    try {
+      const updates = {
+        date: formData.date,
+        time: formData.time,
+        endTime: formData.endTime,
+        equipment: formData.equipment,
+        vibe: formData.vibe,
+        pets: formData.pets,
+        gateCode: formData.gateCode,
+        electricWater: formData.electricWater,
+        otherNotes: formData.otherNotes,
+        addOns: formData.addOns
+      }
+
+      const response = await fetch(`/api/jobs/${job.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      })
+
+      if (!response.ok) throw new Error('Failed to update job')
+
+      // If job is confirmed and date/time changed, send reschedule notification
+      const dateChanged = formData.date !== (job.date ? format(parseISO(job.date), 'yyyy-MM-dd') : '')
+      const timeChanged = formData.time !== (job.time || '')
+
+      if ((formData.confirmed || job.confirmed) && (dateChanged || timeChanged)) {
+        try {
+          await fetch('/api/send-reschedule-notification', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              job: {
+                ...job,
+                date: formData.date,
+                time: formData.time
+              },
+              techIds: job.assignedTech || []
+            })
+          })
+        } catch (err) {
+          console.error('Reschedule notification error:', err)
+        }
+      }
+
+      onUpdate()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
   const getTechName = (techId) => {
     if (!techId) return 'Unassigned'
     const tech = technicians.find(t => t.id === techId)
@@ -428,20 +499,41 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
               </p>
             )}
           </div>
-          <button
-            onClick={onClose}
-            style={{
-              background: 'none',
-              border: 'none',
-              fontSize: '24px',
-              cursor: 'pointer',
-              color: '#6B7280',
-              padding: '0',
-              lineHeight: 1
-            }}
-          >
-            &times;
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {hasChanges && (
+              <button
+                onClick={handleSaveAllChanges}
+                disabled={isUpdating}
+                style={{
+                  padding: '8px 16px',
+                  fontSize: '14px',
+                  fontWeight: '700',
+                  border: 'none',
+                  borderRadius: '8px',
+                  backgroundColor: '#059669',
+                  color: 'white',
+                  cursor: isUpdating ? 'not-allowed' : 'pointer',
+                  opacity: isUpdating ? 0.7 : 1
+                }}
+              >
+                {isUpdating ? 'Saving...' : 'Save Changes'}
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              style={{
+                background: 'none',
+                border: 'none',
+                fontSize: '24px',
+                cursor: 'pointer',
+                color: '#6B7280',
+                padding: '0',
+                lineHeight: 1
+              }}
+            >
+              &times;
+            </button>
+          </div>
         </div>
 
         {/* Content */}
@@ -677,31 +769,14 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
                   flex: 1
                 }}
               />
-              <button
-                onClick={handleSaveDate}
-                disabled={isUpdating || formData.date === (job.date ? format(parseISO(job.date), 'yyyy-MM-dd') : '')}
-                style={{
-                  padding: '10px 16px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  border: 'none',
-                  borderRadius: '8px',
-                  backgroundColor: '#2A54A1',
-                  color: 'white',
-                  cursor: isUpdating ? 'not-allowed' : 'pointer',
-                  opacity: (isUpdating || formData.date === (job.date ? format(parseISO(job.date), 'yyyy-MM-dd') : '')) ? 0.5 : 1
-                }}
-              >
-                Update
-              </button>
               {(job.date || job.time) && (
                 <button
                   onClick={() => {
+                    setFormData(prev => ({ ...prev, date: '', time: '' }))
                     handleUpdate({
                       date: null,
                       time: null,
                       confirmed: false,
-                      // Also clear any AI suggestions (use null for single select fields)
                       suggestedTech: null,
                       suggestedDate: null,
                       suggestedTime: null,
@@ -738,44 +813,25 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
             }}>
               Scheduled Time
             </label>
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-              <select
-                value={formData.time}
-                onChange={(e) => handleTimeChange(e.target.value)}
-                style={{
-                  padding: '10px 12px',
-                  fontSize: '14px',
-                  border: '1px solid #E5E7EB',
-                  borderRadius: '8px',
-                  flex: 1,
-                  backgroundColor: 'white'
-                }}
-              >
-                <option value="">Select time...</option>
-                {TIME_SLOTS.map(slot => (
-                  <option key={slot} value={slot}>
-                    {formatTimeDisplay(slot)}
-                  </option>
-                ))}
-              </select>
-              <button
-                onClick={handleSaveTime}
-                disabled={isUpdating || formData.time === (job.time || '')}
-                style={{
-                  padding: '10px 16px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  border: 'none',
-                  borderRadius: '8px',
-                  backgroundColor: '#2A54A1',
-                  color: 'white',
-                  cursor: isUpdating ? 'not-allowed' : 'pointer',
-                  opacity: (isUpdating || formData.time === (job.time || '')) ? 0.5 : 1
-                }}
-              >
-                Update
-              </button>
-            </div>
+            <select
+              value={formData.time}
+              onChange={(e) => handleTimeChange(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                fontSize: '14px',
+                border: '1px solid #E5E7EB',
+                borderRadius: '8px',
+                backgroundColor: 'white'
+              }}
+            >
+              <option value="">Select time...</option>
+              {TIME_SLOTS.map(slot => (
+                <option key={slot} value={slot}>
+                  {formatTimeDisplay(slot)}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* End Time Selection */}
@@ -800,50 +856,31 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
                 </span>
               )}
             </label>
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-              <select
-                value={formData.endTime}
-                onChange={(e) => handleEndTimeChange(e.target.value)}
-                disabled={!formData.time}
-                style={{
-                  padding: '10px 12px',
-                  fontSize: '14px',
-                  border: '1px solid #E5E7EB',
-                  borderRadius: '8px',
-                  flex: 1,
-                  backgroundColor: formData.time ? 'white' : '#F3F4F6',
-                  color: formData.time ? '#111827' : '#9CA3AF'
-                }}
-              >
-                <option value="">{formData.time ? 'Select end time...' : 'Set start time first'}</option>
-                {getEndTimeOptions().map(slot => {
-                  const estimatedEnd = getEstimatedEndTime()
-                  const isEstimated = estimatedEnd === slot
-                  return (
-                    <option key={slot} value={slot}>
-                      {formatTimeDisplay(slot)}{isEstimated ? ' (estimated)' : ''}
-                    </option>
-                  )
-                })}
-              </select>
-              <button
-                onClick={handleSaveEndTime}
-                disabled={isUpdating || !formData.time || formData.endTime === (job.endTime || '')}
-                style={{
-                  padding: '10px 16px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  border: 'none',
-                  borderRadius: '8px',
-                  backgroundColor: '#2A54A1',
-                  color: 'white',
-                  cursor: (isUpdating || !formData.time) ? 'not-allowed' : 'pointer',
-                  opacity: (isUpdating || !formData.time || formData.endTime === (job.endTime || '')) ? 0.5 : 1
-                }}
-              >
-                Update
-              </button>
-            </div>
+            <select
+              value={formData.endTime}
+              onChange={(e) => handleEndTimeChange(e.target.value)}
+              disabled={!formData.time}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                fontSize: '14px',
+                border: '1px solid #E5E7EB',
+                borderRadius: '8px',
+                backgroundColor: formData.time ? 'white' : '#F3F4F6',
+                color: formData.time ? '#111827' : '#9CA3AF'
+              }}
+            >
+              <option value="">{formData.time ? 'Select end time...' : 'Set start time first'}</option>
+              {getEndTimeOptions().map(slot => {
+                const estimatedEnd = getEstimatedEndTime()
+                const isEstimated = estimatedEnd === slot
+                return (
+                  <option key={slot} value={slot}>
+                    {formatTimeDisplay(slot)}{isEstimated ? ' (estimated)' : ''}
+                  </option>
+                )
+              })}
+            </select>
             {formData.time && !formData.endTime && job.estimatedTime && (
               <p style={{
                 margin: '8px 0 0 0',
@@ -928,51 +965,32 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
             ) : equipmentOptions.length === 0 ? (
               <div style={{ fontSize: '14px', color: '#6B7280' }}>No equipment options available</div>
             ) : (
-              <>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
-                  {equipmentOptions.map(option => {
-                    const isSelected = formData.equipment.includes(option.name)
-                    return (
-                      <button
-                        key={option.id || option.name}
-                        onClick={() => handleEquipmentToggle(option.name)}
-                        disabled={isUpdating}
-                        style={{
-                          padding: '8px 12px',
-                          fontSize: '13px',
-                          fontWeight: '500',
-                          border: '1px solid',
-                          borderColor: isSelected ? '#7C3AED' : '#E5E7EB',
-                          borderRadius: '6px',
-                          backgroundColor: isSelected ? 'rgba(124, 58, 237, 0.1)' : 'white',
-                          color: isSelected ? '#7C3AED' : '#374151',
-                          cursor: isUpdating ? 'not-allowed' : 'pointer',
-                          transition: 'all 0.15s'
-                        }}
-                      >
-                        {isSelected && '✓ '}{option.name}
-                      </button>
-                    )
-                  })}
-                </div>
-                <button
-                  onClick={handleSaveEquipment}
-                  disabled={isUpdating || JSON.stringify(formData.equipment.sort()) === JSON.stringify((job.equipment || []).sort())}
-                  style={{
-                    padding: '8px 16px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    border: 'none',
-                    borderRadius: '8px',
-                    backgroundColor: '#7C3AED',
-                    color: 'white',
-                    cursor: isUpdating ? 'not-allowed' : 'pointer',
-                    opacity: (isUpdating || JSON.stringify(formData.equipment.sort()) === JSON.stringify((job.equipment || []).sort())) ? 0.5 : 1
-                  }}
-                >
-                  Save Equipment
-                </button>
-              </>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {equipmentOptions.map(option => {
+                  const isSelected = formData.equipment.includes(option.name)
+                  return (
+                    <button
+                      key={option.id || option.name}
+                      onClick={() => handleEquipmentToggle(option.name)}
+                      disabled={isUpdating}
+                      style={{
+                        padding: '8px 12px',
+                        fontSize: '13px',
+                        fontWeight: '500',
+                        border: '1px solid',
+                        borderColor: isSelected ? '#7C3AED' : '#E5E7EB',
+                        borderRadius: '6px',
+                        backgroundColor: isSelected ? 'rgba(124, 58, 237, 0.1)' : 'white',
+                        color: isSelected ? '#7C3AED' : '#374151',
+                        cursor: isUpdating ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      {isSelected && '✓ '}{option.name}
+                    </button>
+                  )
+                })}
+              </div>
             )}
           </div>
 
@@ -1158,35 +1176,6 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
                 }}
               />
             </div>
-            <button
-              onClick={handleSaveJobDetails}
-              disabled={isUpdating || (
-                formData.vibe === (job.vibe || '') &&
-                formData.pets === (job.pets || '') &&
-                formData.gateCode === (job.gateCode || '') &&
-                formData.electricWater === (job.electricWater || '') &&
-                formData.otherNotes === (job.otherNotes || '')
-              )}
-              style={{
-                padding: '8px 16px',
-                fontSize: '14px',
-                fontWeight: '600',
-                border: 'none',
-                borderRadius: '8px',
-                backgroundColor: '#059669',
-                color: 'white',
-                cursor: isUpdating ? 'not-allowed' : 'pointer',
-                opacity: (isUpdating || (
-                  formData.vibe === (job.vibe || '') &&
-                  formData.pets === (job.pets || '') &&
-                  formData.gateCode === (job.gateCode || '') &&
-                  formData.electricWater === (job.electricWater || '') &&
-                  formData.otherNotes === (job.otherNotes || '')
-                )) ? 0.5 : 1
-              }}
-            >
-              Save Job Details
-            </button>
           </div>
 
           {/* Add-ons / Change Orders */}
@@ -1328,24 +1317,6 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
               </button>
             </div>
 
-            {/* Save Add-ons Button */}
-            <button
-              onClick={handleSaveAddOns}
-              disabled={isUpdating || !addOnsChanged}
-              style={{
-                padding: '8px 16px',
-                fontSize: '14px',
-                fontWeight: '600',
-                border: 'none',
-                borderRadius: '8px',
-                backgroundColor: '#059669',
-                color: 'white',
-                cursor: (isUpdating || !addOnsChanged) ? 'not-allowed' : 'pointer',
-                opacity: (isUpdating || !addOnsChanged) ? 0.5 : 1
-              }}
-            >
-              Save Add-ons
-            </button>
           </div>
 
           {/* Notes */}
