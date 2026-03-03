@@ -105,18 +105,32 @@ export default function JobsList({ jobs, technicians }) {
     transition: 'all 0.2s'
   })
 
-  const getTechName = (techId) => {
-    if (!techId || !Array.isArray(techId) || techId.length === 0) return 'Unassigned'
-    const tech = technicians.find(t => t.id === techId[0])
-    return tech ? `${tech.firstName} ${tech.lastName}` : 'Unknown'
+  const getTechName = (techIds) => {
+    if (!techIds || !Array.isArray(techIds) || techIds.length === 0) return 'Unassigned'
+    return techIds.map(id => {
+      const tech = technicians.find(t => t.id === id)
+      return tech ? `${tech.firstName} ${tech.lastName}` : 'Unknown'
+    }).join(', ')
   }
 
-  const handleAssignTech = async (jobId, techId) => {
+  const handleAssignTech = async (job, techId) => {
     try {
-      const response = await fetch(`/api/jobs/${jobId}`, {
+      let newAssigned
+      if (!techId) {
+        // Unassign all
+        newAssigned = []
+      } else {
+        // Toggle tech in/out of array
+        const current = job.assignedTech || []
+        newAssigned = current.includes(techId)
+          ? current.filter(id => id !== techId)
+          : [...current, techId]
+      }
+
+      const response = await fetch(`/api/jobs/${job.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ assignedTech: techId ? [techId] : [] })
+        body: JSON.stringify({ assignedTech: newAssigned })
       })
 
       if (!response.ok) {
@@ -638,7 +652,7 @@ export default function JobsList({ jobs, technicians }) {
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
-                              handleAssignTech(job.id, null)
+                              handleAssignTech(job, null)
                             }}
                             style={{
                               padding: '8px 12px',
@@ -654,13 +668,13 @@ export default function JobsList({ jobs, technicians }) {
                             Unassign
                           </button>
                           {technicians.map(tech => {
-                            const isAssigned = job.assignedTech?.[0] === tech.id
+                            const isAssigned = job.assignedTech?.includes(tech.id)
                             return (
                               <button
                                 key={tech.id}
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  handleAssignTech(job.id, tech.id)
+                                  handleAssignTech(job, tech.id)
                                 }}
                                 style={{
                                   padding: '8px 12px',

@@ -86,10 +86,13 @@ export default function JobsCalendar({ jobs, technicians }) {
   // Count unassigned jobs
   const unassignedCount = jobs.filter(j => !j.assignedTech || j.assignedTech.length === 0).length
 
-  const getTechName = (techId) => {
-    if (!techId || !Array.isArray(techId) || techId.length === 0) return null
-    const tech = technicians.find(t => t.id === techId[0])
-    return tech ? `${tech.firstName} ${tech.lastName}` : null
+  const getTechName = (techIds) => {
+    if (!techIds || !Array.isArray(techIds) || techIds.length === 0) return null
+    const names = techIds.map(id => {
+      const tech = technicians.find(t => t.id === id)
+      return tech ? `${tech.firstName} ${tech.lastName}` : null
+    }).filter(Boolean)
+    return names.length > 0 ? names.join(', ') : null
   }
 
   return (

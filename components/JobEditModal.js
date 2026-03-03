@@ -59,7 +59,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
   const [isUpdating, setIsUpdating] = useState(false)
   const [error, setError] = useState(null)
   const [formData, setFormData] = useState({
-    assignedTech: job.assignedTech?.[0] || null,
+    assignedTech: job.assignedTech || [],
     time: job.time || '',
     endTime: job.endTime || '',
     confirmed: job.confirmed || false,
@@ -133,8 +133,21 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
   }
 
   const handleTechAssign = (techId) => {
-    setFormData(prev => ({ ...prev, assignedTech: techId }))
-    handleUpdate({ assignedTech: techId ? [techId] : [] })
+    if (!techId) {
+      // Unassign all
+      setFormData(prev => ({ ...prev, assignedTech: [] }))
+      handleUpdate({ assignedTech: [] })
+    } else {
+      // Toggle tech in/out of array
+      setFormData(prev => {
+        const current = prev.assignedTech || []
+        const newAssigned = current.includes(techId)
+          ? current.filter(id => id !== techId)
+          : [...current, techId]
+        handleUpdate({ assignedTech: newAssigned })
+        return { ...prev, assignedTech: newAssigned }
+      })
+    }
   }
 
   const handleTimeChange = (time) => {
@@ -413,10 +426,12 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
     }
   }
 
-  const getTechName = (techId) => {
-    if (!techId) return 'Unassigned'
-    const tech = technicians.find(t => t.id === techId)
-    return tech ? `${tech.firstName} ${tech.lastName}` : 'Unknown'
+  const getTechName = (techIds) => {
+    if (!techIds || !Array.isArray(techIds) || techIds.length === 0) return 'Unassigned'
+    return techIds.map(id => {
+      const tech = technicians.find(t => t.id === id)
+      return tech ? `${tech.firstName} ${tech.lastName}` : 'Unknown'
+    }).join(', ')
   }
 
   return (
@@ -902,7 +917,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
               marginBottom: '8px',
               textTransform: 'uppercase'
             }}>
-              Assigned Technician
+              Assigned Technician(s)
             </label>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               <button
@@ -913,17 +928,17 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
                   fontSize: '14px',
                   fontWeight: '600',
                   border: '1px solid',
-                  borderColor: !formData.assignedTech ? '#DC2626' : '#E5E7EB',
+                  borderColor: formData.assignedTech.length === 0 ? '#DC2626' : '#E5E7EB',
                   borderRadius: '8px',
-                  backgroundColor: !formData.assignedTech ? '#FEE2E2' : 'white',
-                  color: !formData.assignedTech ? '#991B1B' : '#6B7280',
+                  backgroundColor: formData.assignedTech.length === 0 ? '#FEE2E2' : 'white',
+                  color: formData.assignedTech.length === 0 ? '#991B1B' : '#6B7280',
                   cursor: isUpdating ? 'not-allowed' : 'pointer'
                 }}
               >
                 Unassign
               </button>
               {technicians.map(tech => {
-                const isAssigned = formData.assignedTech === tech.id
+                const isAssigned = formData.assignedTech.includes(tech.id)
                 return (
                   <button
                     key={tech.id}
