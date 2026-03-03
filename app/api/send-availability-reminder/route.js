@@ -1,6 +1,6 @@
 import twilio from 'twilio'
 import { getAllTechnicians, getAllAvailability } from '@/lib/airtable'
-import { format, addDays, parseISO, isAfter, isBefore } from 'date-fns'
+import { format, addDays, parseISO } from 'date-fns'
 
 const client = twilio(
   process.env.TWILIO_ACCOUNT_SID,
@@ -59,55 +59,60 @@ export async function POST(request) {
       getAllAvailability()
     ])
 
-    // Calculate the date range we're checking for (next 2 weeks starting from tomorrow)
-    const tomorrow = addDays(new Date(), 1)
-    const twoWeeksOut = addDays(new Date(), 14)
+    // Calculate the date range we're checking for (next 7 days starting from tomorrow)
+    const today = new Date()
+    const next7Days = []
+    for (let i = 1; i <= 7; i++) {
+      next7Days.push(format(addDays(today, i), 'yyyy-MM-dd'))
+    }
 
-    // Group availability by tech to see who has submitted
-    const availabilityByTech = {}
+    // Group availability dates by tech to see who has submitted
+    const availabilityDatesByTech = {}
     availability.forEach(record => {
       if (!record.technicianId || !record.date) return
 
       try {
-        const recordDate = parseISO(record.date)
-        // Check if this availability record is within the next 2 weeks
-        if (isAfter(recordDate, tomorrow) || format(recordDate, 'yyyy-MM-dd') === format(tomorrow, 'yyyy-MM-dd')) {
-          if (isBefore(recordDate, twoWeeksOut) || format(recordDate, 'yyyy-MM-dd') === format(twoWeeksOut, 'yyyy-MM-dd')) {
-            if (!availabilityByTech[record.technicianId]) {
-              availabilityByTech[record.technicianId] = []
-            }
-            availabilityByTech[record.technicianId].push(record)
+        const recordDateStr = format(parseISO(record.date), 'yyyy-MM-dd')
+        // Check if this availability record is within the next 7 days
+        if (next7Days.includes(recordDateStr)) {
+          if (!availabilityDatesByTech[record.technicianId]) {
+            availabilityDatesByTech[record.technicianId] = new Set()
           }
+          availabilityDatesByTech[record.technicianId].add(recordDateStr)
         }
       } catch {
         // Skip invalid dates
       }
     })
 
-    // Filter active technicians with phone numbers
-    let techsToText = technicians.filter(tech => tech.active && tech.phone)
-
-    // If reminderOnly, filter to only techs who haven't submitted availability
-    if (reminderOnly) {
-      techsToText = techsToText.filter(tech => {
-        const techAvailability = availabilityByTech[tech.id] || []
-        // Consider "submitted" if they have at least 4 availability records (2 days worth of AM/PM)
-        return techAvailability.length < 4
-      })
+    // Helper to check if tech has complete 7-day coverage
+    const hasComplete7DayCoverage = (techId) => {
+      const techDates = availabilityDatesByTech[techId]
+      if (!techDates) return false
+      // Check if they have an entry for each of the next 7 days
+      return next7Days.every(date => techDates.has(date))
     }
+
+    // Filter active technicians with phone numbers
+    const activeTechsWithPhone = technicians.filter(tech => tech.active && tech.phone)
+
+    // Skip techs who have already submitted availability for all of the next 7 days
+    const techsWithCompleteCoverage = activeTechsWithPhone.filter(tech => hasComplete7DayCoverage(tech.id))
+    const techsToText = activeTechsWithPhone.filter(tech => !hasComplete7DayCoverage(tech.id))
 
     const results = {
       reminderOnly,
       totalActiveTechs: technicians.filter(t => t.active).length,
+      techsWithCompleteCoverage: techsWithCompleteCoverage.length,
       techsToText: techsToText.length,
       successCount: 0,
       failedCount: 0,
       skippedCount: 0,
-      details: []
+      details: [],
+      skippedForCoverage: techsWithCompleteCoverage.map(t => `${t.firstName} ${t.lastName}`)
     }
 
     // Build message based on type
-    const messageType = reminderOnly ? 'reminder' : 'initial'
     const messageText = reminderOnly
       ? `Hey! Just a reminder - please submit your availability for the next two weeks. We need this to schedule your jobs. Thanks!`
       : `Hey! Please submit your availability for the next two weeks using the link below. Thanks!`
@@ -158,9 +163,7 @@ export async function POST(request) {
 
     return Response.json({
       success: true,
-      message: reminderOnly
-        ? `Availability reminders sent to techs who haven't submitted`
-        : `Availability requests sent to all active techs`,
+      message: `Availability ${reminderOnly ? 'reminders' : 'requests'} sent to ${results.successCount} tech(s). ${results.techsWithCompleteCoverage} tech(s) skipped (already submitted for next 7 days).`,
       ...results
     })
 
