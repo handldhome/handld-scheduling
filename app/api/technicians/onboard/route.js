@@ -1,4 +1,4 @@
-import { createTechnician } from '@/lib/airtable'
+import { createTechnician } from '@/lib/db'
 
 export async function POST(request) {
   try {

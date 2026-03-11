@@ -1,4 +1,4 @@
-import { getAllJobs, createJob } from '@/lib/airtable'
+import { getAllJobs, createJob } from '@/lib/db'
 
 // Disable caching
 export const revalidate = 0

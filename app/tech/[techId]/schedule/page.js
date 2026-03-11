@@ -1,5 +1,5 @@
 import TechDailySchedule from '@/components/TechDailySchedule'
-import { getTechnician, getAllJobs, getPricingRules } from '@/lib/airtable'
+import { getTechnician, getAllJobs, getPricingRules } from '@/lib/db'
 
 export const revalidate = 0 // Always fetch fresh data
 

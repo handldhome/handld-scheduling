@@ -1,5 +1,5 @@
 import twilio from 'twilio'
-import { getAllTechnicians, getAllAvailability } from '@/lib/airtable'
+import { getAllTechnicians, getAllAvailability } from '@/lib/db'
 import { format, addDays, parseISO } from 'date-fns'
 
 const client = twilio(

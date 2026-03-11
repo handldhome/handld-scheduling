@@ -1,9 +1,5 @@
 import { put } from '@vercel/blob'
-import Airtable from 'airtable'
-
-const base = new Airtable({
-  apiKey: process.env.AIRTABLE_API_KEY
-}).base(process.env.AIRTABLE_BASE_ID)
+import { getDb } from '@/lib/supabase'
 
 export async function POST(request) {
   try {
@@ -18,7 +14,7 @@ export async function POST(request) {
 
     const formData = await request.formData()
     const jobId = formData.get('jobId')
-    const type = formData.get('type') // 'before' or 'after'
+    const type = formData.get('type') // 'before', 'after', or 'receipt'
     const photos = formData.getAll('photos')
 
     if (!jobId || !type || photos.length === 0) {
@@ -29,41 +25,36 @@ export async function POST(request) {
     }
 
     // Upload photos to Vercel Blob and collect URLs
-    const attachments = []
+    const urls = []
 
     for (const photo of photos) {
       if (photo instanceof File) {
         const filename = `jobs/${jobId}/${type}/${Date.now()}-${photo.name || 'photo.jpg'}`
 
-        // Upload to Vercel Blob
         const blob = await put(filename, photo, {
           access: 'public',
           contentType: photo.type || 'image/jpeg'
         })
 
-        // Airtable needs the URL in a specific format
-        attachments.push({
-          url: blob.url,
-          filename: photo.name || `${type}-photo-${Date.now()}.jpg`
-        })
+        urls.push(blob.url)
       }
     }
 
-    if (attachments.length === 0) {
+    if (urls.length === 0) {
       return Response.json(
         { error: 'No valid photos to upload' },
         { status: 400 }
       )
     }
 
-    // Determine field name based on type
-    let fieldName
+    // Determine column name based on type
+    let columnName
     if (type === 'before') {
-      fieldName = 'Before Photos'
+      columnName = 'before_photos'
     } else if (type === 'after') {
-      fieldName = 'After Photos'
+      columnName = 'after_photos'
     } else if (type === 'receipt') {
-      fieldName = 'Material Receipts'
+      columnName = 'material_receipts'
     } else {
       return Response.json(
         { error: 'Invalid photo type. Must be: before, after, or receipt' },
@@ -71,19 +62,40 @@ export async function POST(request) {
       )
     }
 
-    // Get existing photos first to append
-    const existingRecord = await base(process.env.AIRTABLE_JOBS_TABLE).find(jobId)
-    const existingPhotos = existingRecord.fields[fieldName] || []
+    const db = getDb()
 
-    // Update the job with photos - Airtable attachment fields expect an array of {url: string} objects
-    const record = await base(process.env.AIRTABLE_JOBS_TABLE).update(jobId, {
-      [fieldName]: [...existingPhotos, ...attachments]
-    })
+    // Get existing photos to append
+    const { data: existing } = await db
+      .from('jobs')
+      .select(columnName)
+      .eq('id', jobId)
+      .single()
+
+    let allPhotos
+    if (columnName === 'material_receipts') {
+      // material_receipts is text, not array — store as comma-separated
+      const existingReceipts = existing?.[columnName] || ''
+      allPhotos = existingReceipts ? `${existingReceipts},${urls.join(',')}` : urls.join(',')
+    } else {
+      // before_photos and after_photos are text[] arrays
+      const existingArr = existing?.[columnName] || []
+      allPhotos = [...existingArr, ...urls]
+    }
+
+    const { error } = await db
+      .from('jobs')
+      .update({ [columnName]: allPhotos })
+      .eq('id', jobId)
+
+    if (error) {
+      console.error('Error updating job photos:', error)
+      throw error
+    }
 
     return Response.json({
       success: true,
-      photosAdded: attachments.length,
-      totalPhotos: record.fields[fieldName]?.length || 0
+      photosAdded: urls.length,
+      totalPhotos: Array.isArray(allPhotos) ? allPhotos.length : urls.length
     })
   } catch (error) {
     console.error('Error uploading photos:', error)

@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.99.1",
     "@vercel/blob": "^2.0.0",
     "airtable": "^0.12.2",
     "date-fns": "^3.0.0",

@@ -1,5 +1,5 @@
 import TechAvailabilityClient from '@/components/TechAvailabilityClient'
-import { getTechnician } from '@/lib/airtable'
+import { getTechnician } from '@/lib/db'
 import { t } from '@/lib/translations'
 
 export default async function AvailabilityPage({ params }) {

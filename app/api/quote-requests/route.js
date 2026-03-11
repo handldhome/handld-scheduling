@@ -1,4 +1,4 @@
-import { createQuoteRequest } from '@/lib/airtable'
+import { createQuoteRequest } from '@/lib/db'
 
 export async function POST(request) {
   try {

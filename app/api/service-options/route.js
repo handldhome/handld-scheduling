@@ -1,4 +1,4 @@
-import { getServiceOptions } from '@/lib/airtable'
+import { getServiceOptions } from '@/lib/db'
 
 // Cache for 5 minutes since service options rarely change
 export const revalidate = 300

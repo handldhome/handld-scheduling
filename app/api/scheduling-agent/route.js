@@ -1,4 +1,4 @@
-import { getAllJobs, getAllTechnicians, getAllAvailability, getPricingRules, updateJob } from '@/lib/airtable'
+import { getAllJobs, getAllTechnicians, getAllAvailability, getPricingRules, updateJob } from '@/lib/db'
 import { generateSchedulingSuggestions, saveSuggestionsToJobs } from '@/lib/scheduling-agent'
 
 // Disable caching

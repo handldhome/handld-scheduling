@@ -1,5 +1,5 @@
 import twilio from 'twilio'
-import { getTechnician } from '@/lib/airtable'
+import { getTechnician } from '@/lib/db'
 
 const client = twilio(
   process.env.TWILIO_ACCOUNT_SID,

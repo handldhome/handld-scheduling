@@ -1,4 +1,4 @@
-import { getEquipmentOptions } from '@/lib/airtable'
+import { getEquipmentOptions } from '@/lib/db'
 
 // Cache for 5 minutes since equipment options rarely change
 export const revalidate = 300

@@ -1,9 +1,5 @@
-import Airtable from 'airtable'
 import { format, addDays, parseISO } from 'date-fns'
-
-const base = new Airtable({
-  apiKey: process.env.AIRTABLE_API_KEY
-}).base(process.env.AIRTABLE_BASE_ID)
+import { getDb } from '@/lib/supabase'
 
 export async function POST(request) {
   try {
@@ -13,89 +9,87 @@ export async function POST(request) {
       return Response.json({ error: 'Job ID is required' }, { status: 400 })
     }
 
+    const db = getDb()
+
     // Fetch the original job
-    const originalRecord = await base(process.env.AIRTABLE_JOBS_TABLE).find(jobId)
-    const original = originalRecord.fields
+    const { data: original, error: fetchError } = await db
+      .from('jobs')
+      .select('*')
+      .eq('id', jobId)
+      .single()
+
+    if (fetchError || !original) {
+      return Response.json({ error: 'Job not found' }, { status: 404 })
+    }
 
     // Calculate the continue date (default to next day after original)
     let targetDate
     if (continueDate) {
       targetDate = continueDate
-    } else if (original['Target Date']) {
-      targetDate = format(addDays(parseISO(original['Target Date']), 1), 'yyyy-MM-dd')
+    } else if (original.target_date) {
+      targetDate = format(addDays(parseISO(original.target_date), 1), 'yyyy-MM-dd')
     } else {
       targetDate = format(addDays(new Date(), 1), 'yyyy-MM-dd')
     }
 
     // Format original date for the note
-    const originalDateDisplay = original['Target Date']
-      ? format(parseISO(original['Target Date']), 'MMM d')
+    const originalDateDisplay = original.target_date
+      ? format(parseISO(original.target_date), 'MMM d')
       : 'previous day'
 
     // Build continuation notes
     const continuationNote = `Continuation from ${originalDateDisplay}`
-    const existingNotes = original['Notes'] || ''
+    const existingNotes = original.other_notes || ''
     const newNotes = existingNotes
       ? `${continuationNote}\n\n${existingNotes}`
       : continuationNote
 
     // Create the continuation job with same details
-    const fields = {
-      'Service': original['Service'],
-      'Customer': original['Customer'],
-      'Status': 'Planned',
-      'Target Date': targetDate,
-      'City': original['City'],
-      'Customer Phone': original['Customer Phone'],
-      'Customer Email': original['Customer Email'],
-      'Notes': newNotes,
-      'Confirmed': false
+    const newJob = {
+      service: original.service,
+      name: original.name,
+      status: 'Planned',
+      target_date: targetDate,
+      other_notes: newNotes,
+      confirmed: false,
     }
 
-    // Copy assigned technician if exists
-    if (original['Assigned Technician'] && original['Assigned Technician'].length > 0) {
-      fields['Assigned Technician'] = original['Assigned Technician']
+    // Copy optional fields
+    if (original.technician_id) newJob.technician_id = original.technician_id
+    if (original.scheduled_time) newJob.scheduled_time = original.scheduled_time
+    if (original.service_detail) newJob.service_detail = original.service_detail
+    if (original.requires_equipment) newJob.requires_equipment = original.requires_equipment
+    if (original.vibe) newJob.vibe = original.vibe
+    if (original.pets) newJob.pets = original.pets
+    if (original.gate_code_access) newJob.gate_code_access = original.gate_code_access
+    if (original.electric_water) newJob.electric_water = original.electric_water
+    if (original.add_ons) newJob.add_ons = original.add_ons
+    if (original.quote_request_id) newJob.quote_request_id = original.quote_request_id
+    if (original.quote_line_item_id) newJob.quote_line_item_id = original.quote_line_item_id
+
+    const { data: newRecord, error: createError } = await db
+      .from('jobs')
+      .insert(newJob)
+      .select('id')
+      .single()
+
+    if (createError) {
+      console.error('Error creating continuation job:', createError)
+      throw createError
     }
-
-    // Copy scheduled time if exists
-    if (original['Scheduled Time']) {
-      fields['Scheduled Time'] = original['Scheduled Time']
-    }
-
-    // Copy service detail for plumbing/electrical
-    if (original['Service Detail']) {
-      fields['Service Detail'] = original['Service Detail']
-    }
-
-    // Copy equipment requirements
-    if (original['Requires Equipment'] && original['Requires Equipment'].length > 0) {
-      fields['Requires Equipment'] = original['Requires Equipment']
-    }
-
-    // Copy editable job details
-    if (original['Vibe']) fields['Vibe'] = original['Vibe']
-    if (original['Pets?']) fields['Pets?'] = original['Pets?']
-    if (original['Gate Code / Access']) fields['Gate Code / Access'] = original['Gate Code / Access']
-    if (original['Electric / Water']) fields['Electric / Water'] = original['Electric / Water']
-    if (original['Other Notes']) fields['Other Notes'] = original['Other Notes']
-
-    // Copy add-ons/change orders
-    if (original['Add-ons']) fields['Add-ons'] = original['Add-ons']
-
-    // Create the new job
-    const newRecord = await base(process.env.AIRTABLE_JOBS_TABLE).create(fields)
 
     // Update original job notes to indicate it has a continuation
-    const originalNotes = original['Notes'] || ''
+    const originalNotes = original.other_notes || ''
     const continuesToNote = `Continues on ${format(parseISO(targetDate), 'MMM d')}`
     if (!originalNotes.includes('Continues on')) {
       const updatedOriginalNotes = originalNotes
         ? `${originalNotes}\n\n${continuesToNote}`
         : continuesToNote
 
-      await base(process.env.AIRTABLE_JOBS_TABLE).update(jobId, {
-        'Notes': updatedOriginalNotes
-      })
+      await db
+        .from('jobs')
+        .update({ other_notes: updatedOriginalNotes })
+        .eq('id', jobId)
     }
 
     return Response.json({

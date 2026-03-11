@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 import AdminDashboardClient from '@/components/AdminDashboardClient'
-import { getAllTechnicians, getAllAvailability, getAllJobs } from '@/lib/airtable'
+import { getAllTechnicians, getAllAvailability, getAllJobs } from '@/lib/db'
 
 // Disable caching - always fetch fresh data
 export const revalidate = 0

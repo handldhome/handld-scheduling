@@ -1,4 +1,4 @@
-import { saveAvailability } from '@/lib/airtable'
+import { saveAvailability } from '@/lib/db'
 import { NextResponse } from 'next/server'
 
 export async function POST(request) {

@@ -1,9 +1,5 @@
-import Airtable from 'airtable'
 import { put } from '@vercel/blob'
-
-const base = new Airtable({
-  apiKey: process.env.AIRTABLE_API_KEY
-}).base(process.env.AIRTABLE_BASE_ID)
+import { getDb } from '@/lib/supabase'
 
 export async function POST(request) {
   try {
@@ -32,17 +28,19 @@ export async function POST(request) {
     })
     console.log('W9 upload: Blob URL =', blob.url)
 
-    // Create attachment object for Airtable using the public blob URL
-    const attachment = {
-      url: blob.url,
-      filename: w9File.name || 'W9-form.pdf'
-    }
+    // Resolve tech ID (might be airtable_id or UUID)
+    const db = getDb()
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(techId)
 
-    // Update technician record with W9 attachment
-    console.log('W9 upload: Updating Airtable record', techId)
-    await base(process.env.AIRTABLE_TECHNICIANS_TABLE).update(techId, {
-      'W9': [attachment]
-    })
+    const { error } = await db
+      .from('technicians')
+      .update({ notes: `W9: ${blob.url}` })
+      .eq(isUUID ? 'id' : 'airtable_id', techId)
+
+    if (error) {
+      console.error('W9 upload: DB error:', error)
+      throw error
+    }
     console.log('W9 upload: Success!')
 
     return Response.json({

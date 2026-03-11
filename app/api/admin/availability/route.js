@@ -1,4 +1,4 @@
-import { getAllTechnicians, getAllAvailability } from '@/lib/airtable'
+import { getAllTechnicians, getAllAvailability } from '@/lib/db'
 
 export async function GET() {
   try {

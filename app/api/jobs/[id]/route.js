@@ -1,4 +1,4 @@
-import { updateJob } from '@/lib/airtable'
+import { updateJob } from '@/lib/db'
 
 export const revalidate = 0
 
