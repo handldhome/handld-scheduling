@@ -72,7 +72,8 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
     electricWater: job.electricWater || '',
     otherNotes: job.otherNotes || '',
     // Add-ons / Change Orders
-    addOns: job.addOns || []
+    addOns: job.addOns || [],
+    allowTechTexting: job.allowTechTexting || false
   })
   const [newAddOn, setNewAddOn] = useState({ description: '', price: '' })
   const [equipmentOptions, setEquipmentOptions] = useState([])
@@ -757,6 +758,47 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
                 Job will display with dashed border until confirmed
               </p>
             )}
+          </div>
+
+          {/* Allow Tech Texting */}
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              cursor: 'pointer'
+            }}>
+              <input
+                type="checkbox"
+                checked={formData.allowTechTexting}
+                onChange={(e) => {
+                  const newValue = e.target.checked
+                  setFormData(prev => ({ ...prev, allowTechTexting: newValue }))
+                  handleUpdate({ allowTechTexting: newValue })
+                }}
+                disabled={isUpdating}
+                style={{
+                  width: '20px',
+                  height: '20px',
+                  cursor: isUpdating ? 'not-allowed' : 'pointer',
+                  accentColor: '#2A54A1'
+                }}
+              />
+              <span style={{
+                fontSize: '14px',
+                fontWeight: '600',
+                color: '#374151'
+              }}>
+                Allow Tech to Text Customer
+              </span>
+            </label>
+            <p style={{
+              margin: '6px 0 0 30px',
+              fontSize: '12px',
+              color: '#6B7280'
+            }}>
+              When enabled, technicians will see a "Text Customer" button on their schedule
+            </p>
           </div>
 
           {/* Date Selection */}

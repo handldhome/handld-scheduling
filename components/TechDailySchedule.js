@@ -283,7 +283,7 @@ function JobCard({ job, index, isExpanded, onToggle, onJobUpdate, techName, lang
               <DetailItem label="Name" value={job.customerName || 'N/A'} />
               <DetailItem label="Phone" value={job.phone || 'N/A'} />
             </div>
-            {smsUrl && (
+            {smsUrl && job.allowTechTexting && (
               <a
                 href={smsUrl}
                 style={{
