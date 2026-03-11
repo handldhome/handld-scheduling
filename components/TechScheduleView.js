@@ -191,6 +191,52 @@ export default function TechScheduleView({ jobs, technicians }) {
             </option>
           ))}
         </select>
+
+        {/* Allow Texting Toggle */}
+        {selectedTech && (
+          <label style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            cursor: 'pointer',
+            marginLeft: '8px'
+          }}>
+            <input
+              type="checkbox"
+              checked={selectedTech.allowTexting}
+              onChange={async (e) => {
+                const newValue = e.target.checked
+                try {
+                  const res = await fetch(`/api/technicians/${selectedTech.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ allowTexting: newValue })
+                  })
+                  if (res.ok) {
+                    selectedTech.allowTexting = newValue
+                    // Force re-render
+                    setSelectedTechId(prev => prev)
+                  }
+                } catch (err) {
+                  console.error('Failed to update tech texting:', err)
+                }
+              }}
+              style={{
+                width: '18px',
+                height: '18px',
+                cursor: 'pointer',
+                accentColor: '#2A54A1'
+              }}
+            />
+            <span style={{
+              fontSize: '13px',
+              fontWeight: '600',
+              color: '#374151'
+            }}>
+              Can text customers
+            </span>
+          </label>
+        )}
       </div>
 
       {/* Day Navigation */}

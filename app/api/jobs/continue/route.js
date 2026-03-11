@@ -79,11 +79,21 @@ export async function POST(request) {
     }
 
     // Update original job notes to indicate it has a continuation
-    const originalNotes = original.other_notes || ''
-    const continuesToNote = `Continues on ${format(parseISO(targetDate), 'MMM d')}`
-    if (!originalNotes.includes('Continues on')) {
-      const updatedOriginalNotes = originalNotes
-        ? `${originalNotes}\n\n${continuesToNote}`
+    // Re-fetch to get latest notes (may have been updated by a prior continuation call)
+    const { data: freshOriginal } = await db
+      .from('jobs')
+      .select('other_notes')
+      .eq('id', jobId)
+      .single()
+
+    const currentNotes = freshOriginal?.other_notes || ''
+    const dateLabel = format(parseISO(targetDate), 'MMM d')
+
+    // Don't add duplicate date references
+    if (!currentNotes.includes(dateLabel)) {
+      const continuesToNote = `Continues on ${dateLabel}`
+      const updatedOriginalNotes = currentNotes
+        ? `${currentNotes}\n${continuesToNote}`
         : continuesToNote
 
       await db

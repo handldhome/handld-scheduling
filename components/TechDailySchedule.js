@@ -79,7 +79,7 @@ function DetailItem({ label, value }) {
 }
 
 // Job Card Component
-function JobCard({ job, index, isExpanded, onToggle, onJobUpdate, techName, lang, pricingRules }) {
+function JobCard({ job, index, isExpanded, onToggle, onJobUpdate, techName, techAllowTexting, lang, pricingRules }) {
   const colors = getServiceColor(job.serviceName)
 
   // Google Maps link
@@ -283,7 +283,7 @@ function JobCard({ job, index, isExpanded, onToggle, onJobUpdate, techName, lang
               <DetailItem label="Name" value={job.customerName || 'N/A'} />
               <DetailItem label="Phone" value={job.phone || 'N/A'} />
             </div>
-            {smsUrl && job.allowTechTexting && (
+            {smsUrl && job.allowTechTexting && techAllowTexting && (
               <a
                 href={smsUrl}
                 style={{
@@ -525,7 +525,7 @@ function JobCard({ job, index, isExpanded, onToggle, onJobUpdate, techName, lang
   )
 }
 
-export default function TechDailySchedule({ techId, techName, jobs: initialJobs, pricingRules = [], initialDate }) {
+export default function TechDailySchedule({ techId, techName, techAllowTexting = true, jobs: initialJobs, pricingRules = [], initialDate }) {
   // Language state
   const [lang, setLang] = useState('en')
 
@@ -1091,6 +1091,7 @@ export default function TechDailySchedule({ techId, techName, jobs: initialJobs,
                   )}
                   onJobUpdate={refreshJobs}
                   techName={techName}
+                  techAllowTexting={techAllowTexting}
                   lang={lang}
                   pricingRules={pricingRules}
                 />

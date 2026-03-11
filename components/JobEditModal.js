@@ -55,6 +55,164 @@ const formatTimeDisplay = (time24) => {
   return `${h12}:${minutes} ${suffix}`
 }
 
+function MultiDayContinue({ jobId, onUpdate }) {
+  const [selectedDates, setSelectedDates] = useState([])
+  const [isCreating, setIsCreating] = useState(false)
+  const [results, setResults] = useState([])
+
+  const toggleDate = (dateStr) => {
+    setSelectedDates(prev =>
+      prev.includes(dateStr)
+        ? prev.filter(d => d !== dateStr)
+        : [...prev, dateStr].sort()
+    )
+  }
+
+  // Generate next 14 days for picking
+  const today = new Date()
+  const dateOptions = Array.from({ length: 14 }, (_, i) => {
+    const d = new Date(today)
+    d.setDate(d.getDate() + i)
+    return {
+      value: format(d, 'yyyy-MM-dd'),
+      label: format(d, 'EEE, MMM d'),
+      isToday: i === 0
+    }
+  })
+
+  const handleCreate = async () => {
+    if (selectedDates.length === 0) return
+    const count = selectedDates.length
+    if (!confirm(`Create ${count} continuation job${count > 1 ? 's' : ''} for the selected date${count > 1 ? 's' : ''}?`)) return
+
+    setIsCreating(true)
+    const newResults = []
+
+    for (const date of selectedDates) {
+      try {
+        const response = await fetch('/api/jobs/continue', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ jobId, continueDate: date })
+        })
+        const data = await response.json()
+        if (response.ok) {
+          newResults.push({ date, success: true, message: data.message })
+        } else {
+          newResults.push({ date, success: false, message: data.error || 'Failed' })
+        }
+      } catch (err) {
+        newResults.push({ date, success: false, message: err.message })
+      }
+    }
+
+    setResults(newResults)
+    setIsCreating(false)
+    setSelectedDates([])
+    onUpdate()
+  }
+
+  return (
+    <div style={{
+      marginTop: '16px',
+      padding: '16px',
+      backgroundColor: '#FEF3C7',
+      borderRadius: '12px',
+      border: '1px solid #F59E0B'
+    }}>
+      <label style={{
+        display: 'block',
+        fontSize: '12px',
+        fontWeight: '600',
+        color: '#92400E',
+        marginBottom: '8px',
+        textTransform: 'uppercase'
+      }}>
+        Multi-Day Job
+      </label>
+      <p style={{
+        fontSize: '13px',
+        color: '#78350F',
+        marginBottom: '12px'
+      }}>
+        Select the day(s) to continue this job. Each creates a follow-up with the same customer and details.
+      </p>
+
+      {/* Date Grid */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(2, 1fr)',
+        gap: '6px',
+        marginBottom: '12px'
+      }}>
+        {dateOptions.map(opt => {
+          const isSelected = selectedDates.includes(opt.value)
+          return (
+            <button
+              key={opt.value}
+              onClick={() => toggleDate(opt.value)}
+              disabled={isCreating}
+              style={{
+                padding: '8px 10px',
+                fontSize: '13px',
+                fontWeight: isSelected ? '700' : '500',
+                border: isSelected ? '2px solid #D97706' : '1px solid #E5E7EB',
+                borderRadius: '8px',
+                backgroundColor: isSelected ? '#FDE68A' : 'white',
+                color: isSelected ? '#78350F' : '#374151',
+                cursor: isCreating ? 'not-allowed' : 'pointer',
+                textAlign: 'left',
+                transition: 'all 0.15s'
+              }}
+            >
+              {isSelected ? '\u2713 ' : ''}{opt.label}{opt.isToday ? ' (Today)' : ''}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Create Button */}
+      <button
+        onClick={handleCreate}
+        disabled={selectedDates.length === 0 || isCreating}
+        style={{
+          width: '100%',
+          padding: '10px 20px',
+          fontSize: '14px',
+          fontWeight: '700',
+          border: 'none',
+          borderRadius: '8px',
+          backgroundColor: (selectedDates.length === 0 || isCreating) ? '#D1D5DB' : '#F59E0B',
+          color: (selectedDates.length === 0 || isCreating) ? '#6B7280' : 'white',
+          cursor: (selectedDates.length === 0 || isCreating) ? 'not-allowed' : 'pointer'
+        }}
+      >
+        {isCreating
+          ? 'Creating...'
+          : selectedDates.length === 0
+            ? 'Select dates to continue'
+            : `+ Continue on ${selectedDates.length} day${selectedDates.length > 1 ? 's' : ''}`
+        }
+      </button>
+
+      {/* Results */}
+      {results.length > 0 && (
+        <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          {results.map((r, i) => (
+            <div key={i} style={{
+              fontSize: '12px',
+              color: r.success ? '#059669' : '#DC2626',
+              fontWeight: '600'
+            }}>
+              {r.success ? '\u2713' : '\u2717'} {r.message}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
   const [isUpdating, setIsUpdating] = useState(false)
   const [error, setError] = useState(null)
@@ -1403,69 +1561,9 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
             </div>
           )}
 
-          {/* Continue Tomorrow - for multi-day jobs */}
+          {/* Multi-Day Job - continue on specific dates */}
           {job.date && (
-            <div style={{
-              marginTop: '16px',
-              padding: '16px',
-              backgroundColor: '#FEF3C7',
-              borderRadius: '12px',
-              border: '1px solid #F59E0B'
-            }}>
-              <label style={{
-                display: 'block',
-                fontSize: '12px',
-                fontWeight: '600',
-                color: '#92400E',
-                marginBottom: '8px',
-                textTransform: 'uppercase'
-              }}>
-                Multi-Day Job
-              </label>
-              <p style={{
-                fontSize: '13px',
-                color: '#78350F',
-                marginBottom: '12px'
-              }}>
-                Need to continue this job on another day? This will create a follow-up job with the same details.
-              </p>
-              <button
-                onClick={async () => {
-                  if (!confirm('Create a continuation job for tomorrow with the same customer and details?')) return
-                  try {
-                    const response = await fetch('/api/jobs/continue', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ jobId: job.id })
-                    })
-                    const data = await response.json()
-                    if (response.ok) {
-                      alert(data.message || 'Continuation job created!')
-                      onUpdate()
-                    } else {
-                      alert('Error: ' + (data.error || 'Failed to create continuation'))
-                    }
-                  } catch (err) {
-                    alert('Error: ' + err.message)
-                  }
-                }}
-                style={{
-                  padding: '10px 20px',
-                  fontSize: '14px',
-                  fontWeight: '700',
-                  border: 'none',
-                  borderRadius: '8px',
-                  backgroundColor: '#F59E0B',
-                  color: 'white',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}
-              >
-                + Continue Tomorrow
-              </button>
-            </div>
+            <MultiDayContinue jobId={job.id} onUpdate={onUpdate} />
           )}
         </div>
       </div>

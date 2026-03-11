@@ -82,6 +82,7 @@ export default async function TechSchedulePage({ params, searchParams }) {
     <TechDailySchedule
       techId={techId}
       techName={technician.firstName}
+      techAllowTexting={technician.allowTexting}
       jobs={jobs}
       pricingRules={pricingRules}
       initialDate={dateParam}
