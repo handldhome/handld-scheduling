@@ -92,6 +92,38 @@ const getSteps = (job, lang) => {
     steps.splice(3, 0, complexityStep)
   }
 
+  // Insert service form step for Home Health Check / Home TuneUp
+  const FORM_SERVICES = {
+    'Home Health Check': {
+      title: lang === 'es' ? 'Formulario de Inspección del Hogar' : 'Home Health Check Form',
+      instructions: lang === 'es'
+        ? 'Completa el formulario de inspección del hogar con el cliente.'
+        : 'Complete the Home Health Check inspection form with the customer.',
+      url: 'https://handldhome.com/health-check-form'
+    },
+    'Home TuneUp': {
+      title: lang === 'es' ? 'Formulario de Puesta a Punto del Hogar' : 'Home TuneUp Form',
+      instructions: lang === 'es'
+        ? 'Completa el formulario de puesta a punto del hogar con el cliente.'
+        : 'Complete the Home TuneUp form with the customer.',
+      url: 'https://handldhome.com/tuneup-form'
+    }
+  }
+  const formConfig = FORM_SERVICES[job.serviceName]
+  if (formConfig) {
+    const formStep = {
+      id: 'service-form',
+      title: formConfig.title,
+      icon: '4',
+      instructions: formConfig.instructions,
+      actionType: 'serviceForm',
+      formUrl: formConfig.url
+    }
+    // Insert after on-site checklist (index 3, or 4 if complexity was inserted)
+    const insertIndex = needsComplexity ? 4 : 3
+    steps.splice(insertIndex, 0, formStep)
+  }
+
   // Renumber icons after any insertions
   return steps.map((step, index) => ({
     ...step,
@@ -142,14 +174,17 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en', pri
   const [selectedComplexity, setSelectedComplexity] = useState(job.confirmedComplexity || job.complexity || null)
   const [isSavingComplexity, setIsSavingComplexity] = useState(false)
 
-  // Track uploaded photos
-  const [beforePhotos, setBeforePhotos] = useState([])
-  const [afterPhotos, setAfterPhotos] = useState([])
+  // Track uploaded photos — initialize from job data, normalize to {url, name} objects
+  const normalizePhotos = (photos) => (photos || []).map((p, i) =>
+    typeof p === 'string' ? { url: p, name: `Photo ${i + 1}` } : p
+  )
+  const [beforePhotos, setBeforePhotos] = useState(() => normalizePhotos(job.beforePhotos))
+  const [afterPhotos, setAfterPhotos] = useState(() => normalizePhotos(job.afterPhotos))
 
   // Track job materials
   const [materials, setMaterials] = useState(job.materials || [])
   const [newMaterial, setNewMaterial] = useState({ vendor: '', amount: '', description: '' })
-  const [materialReceipts, setMaterialReceipts] = useState([])
+  const [materialReceipts, setMaterialReceipts] = useState(() => normalizePhotos(job.materialReceipts))
   const [isSavingMaterials, setIsSavingMaterials] = useState(false)
   const [isUploadingReceipt, setIsUploadingReceipt] = useState(false)
   const materialReceiptRef = useRef(null)
@@ -686,6 +721,51 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en', pri
                         }}
                       >
                         {step.confirmText}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Service Form Link (Home Health Check / Home TuneUp) */}
+                  {step.actionType === 'serviceForm' && (
+                    <div style={{ marginBottom: '16px' }}>
+                      <a
+                        href={step.formUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px',
+                          width: '100%',
+                          padding: '14px',
+                          backgroundColor: '#2A54A1',
+                          color: 'white',
+                          textDecoration: 'none',
+                          borderRadius: '8px',
+                          fontSize: '16px',
+                          fontWeight: '600',
+                          marginBottom: '12px'
+                        }}
+                      >
+                        <span style={{ fontSize: '20px' }}>📋</span>
+                        {lang === 'es' ? 'Abrir Formulario' : 'Open Form'}
+                      </a>
+                      <button
+                        onClick={() => completeWorkflowStep('service-form')}
+                        style={{
+                          width: '100%',
+                          padding: '14px',
+                          fontSize: '16px',
+                          fontWeight: '700',
+                          border: 'none',
+                          borderRadius: '8px',
+                          backgroundColor: '#059669',
+                          color: 'white',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {lang === 'es' ? 'Formulario Completado' : 'Form Completed'}
                       </button>
                     </div>
                   )}
