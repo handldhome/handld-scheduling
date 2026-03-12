@@ -313,10 +313,11 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
     })
   }, [currentWeekStart])
 
-  // Filter jobs based on selected technicians
+  // Filter jobs based on selected technicians, exclude archived
   const filteredJobs = useMemo(() => {
-    if (selectedTechIds.length === 0) return jobs // Show all if no filter
-    return jobs.filter(job => {
+    const activeJobs = jobs.filter(job => job.status !== 'Archived')
+    if (selectedTechIds.length === 0) return activeJobs
+    return activeJobs.filter(job => {
       if (!job.assignedTech || !Array.isArray(job.assignedTech)) return false
       return job.assignedTech.some(techId => selectedTechIds.includes(techId))
     })

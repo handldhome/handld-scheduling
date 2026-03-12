@@ -11,6 +11,7 @@ const STATUS_COLORS = {
   'Needs Review': { bg: '#FEE2E2', text: '#991B1B' }, // Red
   'Cancelled': { bg: '#F3F4F6', text: '#6B7280' },    // Gray
   'In Progress': { bg: '#E0E7FF', text: '#3730A3' },  // Indigo
+  'Archived': { bg: '#F3F4F6', text: '#9CA3AF' },     // Light Gray
 }
 
 const getStatusColors = (status) => {
@@ -41,6 +42,11 @@ export default function JobsList({ jobs, technicians }) {
       }
 
       // Status filter
+      if (filter === 'archived') {
+        return job.status === 'Archived'
+      }
+      // Hide archived jobs from all other views
+      if (job.status === 'Archived') return false
       if (filter === 'unscheduled') {
         return !job.assignedTech || job.assignedTech.length === 0
       }
@@ -68,10 +74,12 @@ export default function JobsList({ jobs, technicians }) {
     })
   }, [jobs, dateFrom, dateTo])
 
-  const unscheduledCount = jobsInRange.filter(j => !j.assignedTech || j.assignedTech.length === 0).length
-  const needsReviewCount = jobsInRange.filter(j => j.status === 'Needs Review').length
-  const scheduledCount = jobsInRange.filter(j => j.status === 'Scheduled').length
-  const completedCount = jobsInRange.filter(j => j.status === 'Completed').length
+  const activeJobsInRange = jobsInRange.filter(j => j.status !== 'Archived')
+  const unscheduledCount = activeJobsInRange.filter(j => !j.assignedTech || j.assignedTech.length === 0).length
+  const needsReviewCount = activeJobsInRange.filter(j => j.status === 'Needs Review').length
+  const scheduledCount = activeJobsInRange.filter(j => j.status === 'Scheduled').length
+  const completedCount = activeJobsInRange.filter(j => j.status === 'Completed').length
+  const archivedCount = jobsInRange.filter(j => j.status === 'Archived').length
 
   // Calculate total time from clock in/out
   const calculateTotalTime = (clockIn, clockOut) => {
@@ -111,6 +119,22 @@ export default function JobsList({ jobs, technicians }) {
       const tech = technicians.find(t => t.id === id)
       return tech ? `${tech.firstName} ${tech.lastName}` : 'Unknown'
     }).join(', ')
+  }
+
+  const handleArchive = async (job) => {
+    if (!confirm(`Archive "${job.serviceName}"? It will be hidden from all views but kept in the database.`)) return
+    try {
+      const response = await fetch(`/api/jobs/${job.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'Archived' })
+      })
+      if (!response.ok) throw new Error('Failed to archive job')
+      window.location.reload()
+    } catch (error) {
+      console.error('Error archiving job:', error)
+      alert('Failed to archive job. Please try again.')
+    }
   }
 
   const handleAssignTech = async (job, techId) => {
@@ -257,6 +281,14 @@ export default function JobsList({ jobs, technicians }) {
         >
           Completed ({completedCount})
         </button>
+        {archivedCount > 0 && (
+          <button
+            onClick={() => setFilter('archived')}
+            style={filterButtonStyle(filter === 'archived')}
+          >
+            Archived ({archivedCount})
+          </button>
+        )}
       </div>
 
       {/* Jobs List */}
@@ -695,6 +727,53 @@ export default function JobsList({ jobs, technicians }) {
                         </div>
                       </div>
                     )}
+
+                    {/* Archive Button */}
+                    <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #E5E7EB' }}>
+                      {job.status === 'Archived' ? (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            fetch(`/api/jobs/${job.id}`, {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ status: 'Planned' })
+                            }).then(() => window.location.reload())
+                          }}
+                          style={{
+                            padding: '8px 16px',
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            border: '1px solid #2A54A1',
+                            borderRadius: '8px',
+                            backgroundColor: 'white',
+                            color: '#2A54A1',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Restore Job
+                        </button>
+                      ) : (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleArchive(job)
+                          }}
+                          style={{
+                            padding: '8px 16px',
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            border: '1px solid #E5E7EB',
+                            borderRadius: '8px',
+                            backgroundColor: 'white',
+                            color: '#9CA3AF',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Archive
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
