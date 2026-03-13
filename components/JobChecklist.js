@@ -93,20 +93,38 @@ const getSteps = (job, lang) => {
   }
 
   // Insert service form step for Home Health Check / Home TuneUp
+  const buildFormUrl = (baseUrl, params) => {
+    const url = new URL(baseUrl)
+    Object.entries(params).forEach(([key, val]) => {
+      if (val) url.searchParams.set(key, val)
+    })
+    return url.toString()
+  }
+
   const FORM_SERVICES = {
     'Home Health Check': {
       title: lang === 'es' ? 'Formulario de Inspección del Hogar' : 'Home Health Check Form',
       instructions: lang === 'es'
         ? 'Completa el formulario de inspección del hogar con el cliente.'
         : 'Complete the Home Health Check inspection form with the customer.',
-      url: 'https://handldhome.com/health-check-form'
+      url: buildFormUrl('https://tuneup.handldhome.com/health-check/submit', {
+        customerName: job.customerName,
+        address: job.address,
+        customerPhone: job.phone,
+        techName: job.assignedTechName,
+      })
     },
     'Home TuneUp': {
       title: lang === 'es' ? 'Formulario de Puesta a Punto del Hogar' : 'Home TuneUp Form',
       instructions: lang === 'es'
         ? 'Completa el formulario de puesta a punto del hogar con el cliente.'
         : 'Complete the Home TuneUp form with the customer.',
-      url: 'https://handldhome.com/tuneup-form'
+      url: buildFormUrl('https://tuneup.handldhome.com', {
+        customerName: job.customerName,
+        address: job.address,
+        city: job.city,
+        techName: job.assignedTechName,
+      })
     }
   }
   const formConfig = FORM_SERVICES[job.serviceName]
