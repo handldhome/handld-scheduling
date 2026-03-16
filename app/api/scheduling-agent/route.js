@@ -8,8 +8,13 @@ export const revalidate = 0
  * GET /api/scheduling-agent
  * Run the scheduling agent, save suggestions to jobs, and return results
  */
-export async function GET() {
+export async function GET(request) {
   try {
+    // Parse optimization strategies from query params
+    const { searchParams } = new URL(request.url)
+    const strategiesParam = searchParams.get('strategies')
+    const strategies = strategiesParam ? strategiesParam.split(',').filter(Boolean) : []
+
     // Fetch all required data
     const [jobs, technicians, availability, pricingRules] = await Promise.all([
       getAllJobs(),
@@ -42,12 +47,13 @@ export async function GET() {
     console.log('Availability records:', availability.length)
     console.log('=== END DEBUG ===')
 
-    // Generate suggestions
+    // Generate suggestions with optimization preferences
     const suggestions = generateSchedulingSuggestions(
       jobs,
       technicians,
       availability,
-      pricingRules
+      pricingRules,
+      { strategies }
     )
 
     // Save suggestions directly to job records
@@ -123,7 +129,7 @@ export async function GET() {
 export async function POST(request) {
   try {
     const body = await request.json()
-    const { action, suggestions, jobIds } = body
+    const { action, suggestions, jobIds, strategies } = body
 
     if (action === 'save') {
       // Save all suggestions to job records
@@ -138,7 +144,8 @@ export async function POST(request) {
         jobs,
         technicians,
         availability,
-        pricingRules
+        pricingRules,
+        { strategies: strategies || [] }
       )
 
       const results = await saveSuggestionsToJobs(newSuggestions, updateJob)

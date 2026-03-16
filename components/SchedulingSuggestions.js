@@ -11,6 +11,33 @@ const REJECTION_REASONS = [
   'Other'
 ]
 
+const STRATEGY_OPTIONS = [
+  {
+    id: 'minimize_driving',
+    icon: '🗺️',
+    title: 'Minimize Driving',
+    description: 'Cluster jobs geographically per tech per day'
+  },
+  {
+    id: 'balance_workload',
+    icon: '⚖️',
+    title: 'Balance Workload',
+    description: 'Spread jobs evenly across technicians'
+  },
+  {
+    id: 'maximize_skill',
+    icon: '⭐',
+    title: 'Maximize Skill Match',
+    description: 'Assign highest-rated tech for each service'
+  },
+  {
+    id: 'fill_days',
+    icon: '📦',
+    title: 'Fill Days Completely',
+    description: 'Pack fewer techs with more jobs per day'
+  }
+]
+
 export default function SchedulingSuggestions({ onComplete }) {
   const [isRunning, setIsRunning] = useState(false)
   const [suggestions, setSuggestions] = useState(null)
@@ -21,13 +48,25 @@ export default function SchedulingSuggestions({ onComplete }) {
   const [showRejectModal, setShowRejectModal] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
   const [error, setError] = useState(null)
+  const [selectedStrategies, setSelectedStrategies] = useState([])
+
+  const toggleStrategy = (strategyId) => {
+    setSelectedStrategies(prev =>
+      prev.includes(strategyId)
+        ? prev.filter(s => s !== strategyId)
+        : [...prev, strategyId]
+    )
+  }
 
   const runScheduler = async () => {
     setIsRunning(true)
     setError(null)
 
     try {
-      const response = await fetch('/api/scheduling-agent')
+      const params = selectedStrategies.length > 0
+        ? `?strategies=${selectedStrategies.join(',')}`
+        : ''
+      const response = await fetch(`/api/scheduling-agent${params}`)
       const data = await response.json()
 
       if (!response.ok) {
@@ -176,6 +215,66 @@ export default function SchedulingSuggestions({ onComplete }) {
         }}>
           Automatically suggest technician assignments for unscheduled jobs based on skills, availability, and workload.
         </p>
+
+        {/* Optimization Strategy Picker */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gap: '10px',
+          marginBottom: '20px',
+          textAlign: 'left'
+        }}>
+          {STRATEGY_OPTIONS.map(strategy => {
+            const isActive = selectedStrategies.includes(strategy.id)
+            return (
+              <button
+                key={strategy.id}
+                onClick={() => toggleStrategy(strategy.id)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '10px',
+                  padding: '12px',
+                  borderRadius: '10px',
+                  border: `2px solid ${isActive ? '#2A54A1' : '#E5E7EB'}`,
+                  backgroundColor: isActive ? '#EFF6FF' : 'white',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                  textAlign: 'left'
+                }}
+              >
+                <span style={{ fontSize: '20px', flexShrink: 0 }}>{strategy.icon}</span>
+                <div>
+                  <div style={{
+                    fontSize: '13px',
+                    fontWeight: '700',
+                    color: isActive ? '#2A54A1' : '#1F2937',
+                    marginBottom: '2px'
+                  }}>
+                    {strategy.title}
+                  </div>
+                  <div style={{
+                    fontSize: '11px',
+                    color: isActive ? '#2A54A1' : '#9CA3AF',
+                    lineHeight: '1.3'
+                  }}>
+                    {strategy.description}
+                  </div>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+
+        {selectedStrategies.length > 0 && (
+          <p style={{
+            fontSize: '12px',
+            color: '#6B7280',
+            marginBottom: '16px'
+          }}>
+            {selectedStrategies.length} optimization{selectedStrategies.length > 1 ? 's' : ''} selected — scoring will be adjusted accordingly
+          </p>
+        )}
 
         {error && (
           <div style={{
