@@ -249,6 +249,25 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [handleKeyDown])
 
+  // Sync form data when job prop updates (e.g. after save triggers parent refresh)
+  useEffect(() => {
+    setFormData({
+      assignedTech: job.assignedTech || [],
+      time: job.time || '',
+      endTime: job.endTime || '',
+      confirmed: job.confirmed || false,
+      date: job.date ? format(parseISO(job.date), 'yyyy-MM-dd') : '',
+      equipment: job.equipment || [],
+      vibe: job.vibe || '',
+      pets: job.pets || '',
+      gateCode: job.gateCode || '',
+      electricWater: job.electricWater || '',
+      otherNotes: job.otherNotes || '',
+      addOns: job.addOns || [],
+      allowTechTexting: job.allowTechTexting || false
+    })
+  }, [job])
+
   // Fetch equipment options on mount
   useEffect(() => {
     const fetchEquipmentOptions = async () => {
