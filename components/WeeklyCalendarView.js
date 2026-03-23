@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { format, addDays, startOfWeek, addWeeks, subWeeks, parseISO, isToday } from 'date-fns'
+import { normalizeAddress } from '@/lib/utils'
 import JobEditModal from './JobEditModal'
 
 // Color palette for dynamic service assignment
@@ -620,6 +621,7 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
         flexWrap: 'wrap'
       }}>
         <button
+          type="button"
           onClick={() => setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}
           style={{
             padding: isMobile ? '6px 10px' : '8px 16px',
@@ -636,6 +638,7 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
         </button>
         <div style={{ display: 'flex', gap: '4px' }}>
           <button
+            type="button"
             onClick={() => setCurrentWeekStart(subWeeks(currentWeekStart, 1))}
             style={{
               padding: isMobile ? '6px 10px' : '8px 12px',
@@ -651,6 +654,7 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
             &lt;
           </button>
           <button
+            type="button"
             onClick={() => setCurrentWeekStart(addWeeks(currentWeekStart, 1))}
             style={{
               padding: isMobile ? '6px 10px' : '8px 12px',
@@ -673,6 +677,7 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
         {/* Technician Filter */}
         <div style={{ position: 'relative', marginLeft: isMobile ? '0' : '16px' }}>
           <button
+            type="button"
             onClick={() => setShowTechFilter(!showTechFilter)}
             style={{
               padding: isMobile ? '6px 10px' : '8px 16px',
@@ -712,6 +717,7 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
               padding: '8px 0'
             }}>
               <button
+                type="button"
                 onClick={() => {
                   setSelectedTechIds([])
                   setShowTechFilter(false)
@@ -735,6 +741,7 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
                 const isSelected = selectedTechIds.includes(tech.id)
                 return (
                   <button
+                    type="button"
                     key={tech.id}
                     onClick={() => {
                       if (isSelected) {
@@ -782,6 +789,7 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
 
         {/* Unscheduled toggle */}
         <button
+          type="button"
           onClick={() => setShowUnscheduledPanel(!showUnscheduledPanel)}
           style={{
             marginLeft: 'auto',
@@ -820,6 +828,7 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
             {selectedJobIds.size} job{selectedJobIds.size !== 1 ? 's' : ''} selected
           </span>
           <button
+            type="button"
             onClick={() => setSelectedJobIds(new Set())}
             style={{
               padding: '6px 12px',
@@ -838,6 +847,7 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
           {/* Show Accept Suggestions if any selected jobs have suggestions */}
           {jobs.some(job => selectedJobIds.has(job.id) && job.suggestedDate && job.suggestedTime) && (
             <button
+              type="button"
               onClick={handleBulkAcceptSuggestions}
               disabled={isBulkUpdating}
               style={{
@@ -855,6 +865,7 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
             </button>
           )}
           <button
+            type="button"
             onClick={handleBulkUnschedule}
             disabled={isBulkUpdating}
             style={{
@@ -1162,7 +1173,7 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
                             {job.serviceDetail ? `${job.serviceName}: ${job.serviceDetail}` : job.serviceName}
                           </div>
                           <div
-                            title={job.address}
+                            title={normalizeAddress(job.address)}
                             style={{
                               color: '#6B7280',
                               fontSize: '9px',
@@ -1172,7 +1183,7 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
                               lineHeight: '1.2'
                             }}
                           >
-                            {job.address || job.customerName}
+                            {normalizeAddress(job.address) || job.customerName}
                           </div>
                           <div style={{
                             display: 'flex',
@@ -1289,7 +1300,7 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
                             {job.serviceDetail ? `${job.serviceName}: ${job.serviceDetail}` : job.serviceName}
                           </div>
                           <div
-                            title={Array.isArray(job.address) ? job.address[0] : job.address}
+                            title={normalizeAddress(Array.isArray(job.address) ? job.address[0] : job.address)}
                             style={{
                               color: '#6B7280',
                               fontSize: '9px',
@@ -1299,7 +1310,7 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
                               lineHeight: '1.2'
                             }}
                           >
-                            {Array.isArray(job.address) ? job.address[0] : job.address || job.customerName}
+                            {normalizeAddress(Array.isArray(job.address) ? job.address[0] : job.address) || job.customerName}
                           </div>
                           <div style={{ color: '#7C3AED', fontSize: '9px', fontWeight: '600', lineHeight: '1.2' }}>
                             {job.suggestedTech}
@@ -1399,7 +1410,7 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
                       fontWeight: '500',
                       marginBottom: '2px'
                     }}>
-                      📍 {job.address || 'No address'}
+                      📍 {normalizeAddress(job.address) || 'No address'}
                     </div>
                     <div style={{
                       color: '#6B7280',

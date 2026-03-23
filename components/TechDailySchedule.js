@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { format, parseISO, addDays, subDays, startOfWeek, endOfWeek, isToday, isTomorrow, isSameDay } from 'date-fns'
+import { normalizeAddress } from '@/lib/utils'
 import JobChecklist from './JobChecklist'
 import { t } from '@/lib/translations'
 
@@ -210,7 +211,7 @@ function JobCard({ job, index, isExpanded, onToggle, onJobUpdate, techName, tech
               marginBottom: '4px'
             }}
           >
-            {job.address}{job.city ? `, ${job.city}` : ''} ↗
+            {normalizeAddress(job.address)}{job.city ? `, ${normalizeAddress(job.city)}` : ''} ↗
           </a>
         ) : (
           <p style={{
@@ -719,6 +720,7 @@ export default function TechDailySchedule({ techId, techName, techAllowTexting =
         }}>
           {/* Language Toggle Button */}
           <button
+            type="button"
             onClick={toggleLanguage}
             style={{
               position: 'absolute',
@@ -784,6 +786,7 @@ export default function TechDailySchedule({ techId, techName, techAllowTexting =
           gap: '8px'
         }}>
           <button
+            type="button"
             onClick={() => setViewMode('week')}
             style={{
               flex: 1,
@@ -801,6 +804,7 @@ export default function TechDailySchedule({ techId, techName, techAllowTexting =
             Week View
           </button>
           <button
+            type="button"
             onClick={() => setViewMode('day')}
             style={{
               flex: 1,
@@ -835,6 +839,7 @@ export default function TechDailySchedule({ techId, techName, techAllowTexting =
           }}>
             {/* Previous Button */}
             <button
+              type="button"
               onClick={viewMode === 'week' ? goToPreviousWeek : goToPreviousDay}
               style={{
                 width: '48px',
@@ -868,6 +873,7 @@ export default function TechDailySchedule({ techId, techName, techAllowTexting =
               </div>
               {!isTodaySelected && (
                 <button
+                  type="button"
                   onClick={goToToday}
                   style={{
                     padding: '6px 12px',
@@ -887,6 +893,7 @@ export default function TechDailySchedule({ techId, techName, techAllowTexting =
 
             {/* Next Button */}
             <button
+              type="button"
               onClick={viewMode === 'week' ? goToNextWeek : goToNextDay}
               style={{
                 width: '48px',
@@ -1015,7 +1022,7 @@ export default function TechDailySchedule({ techId, techName, techAllowTexting =
                                   overflow: 'hidden',
                                   textOverflow: 'ellipsis'
                                 }}>
-                                  {job.address || 'No address'}
+                                  {normalizeAddress(job.address) || 'No address'}
                                 </div>
                               </div>
                               <div style={{

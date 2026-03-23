@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { format, addDays, subDays, parseISO, isWithinInterval, startOfDay } from 'date-fns'
+import { normalizeAddress } from '@/lib/utils'
 
 // Status color mapping
 const STATUS_COLORS = {
@@ -225,6 +226,7 @@ export default function JobsList({ jobs, technicians }) {
           }}
         />
         <button
+          type="button"
           onClick={() => {
             setDateFrom(format(subDays(today, 1), 'yyyy-MM-dd'))
             setDateTo(format(addDays(today, 14), 'yyyy-MM-dd'))
@@ -252,30 +254,35 @@ export default function JobsList({ jobs, technicians }) {
         flexWrap: 'wrap'
       }}>
         <button
+          type="button"
           onClick={() => setFilter('all')}
           style={filterButtonStyle(filter === 'all')}
         >
           All Jobs ({jobs.length})
         </button>
         <button
+          type="button"
           onClick={() => setFilter('unscheduled')}
           style={filterButtonStyle(filter === 'unscheduled')}
         >
           Unscheduled ({unscheduledCount})
         </button>
         <button
+          type="button"
           onClick={() => setFilter('needs-review')}
           style={filterButtonStyle(filter === 'needs-review')}
         >
           Needs Review ({needsReviewCount})
         </button>
         <button
+          type="button"
           onClick={() => setFilter('scheduled')}
           style={filterButtonStyle(filter === 'scheduled')}
         >
           Scheduled ({scheduledCount})
         </button>
         <button
+          type="button"
           onClick={() => setFilter('completed')}
           style={filterButtonStyle(filter === 'completed')}
         >
@@ -283,6 +290,7 @@ export default function JobsList({ jobs, technicians }) {
         </button>
         {archivedCount > 0 && (
           <button
+            type="button"
             onClick={() => setFilter('archived')}
             style={filterButtonStyle(filter === 'archived')}
           >
@@ -395,7 +403,7 @@ export default function JobsList({ jobs, technicians }) {
                         color: '#374151',
                         marginTop: '4px'
                       }}>
-                        📍 {job.address}{job.city ? `, ${job.city}` : ''}
+                        📍 {normalizeAddress(job.address)}{job.city ? `, ${normalizeAddress(job.city)}` : ''}
                       </div>
                     </div>
                     <div style={{
@@ -411,6 +419,7 @@ export default function JobsList({ jobs, technicians }) {
                     </div>
                   </div>
                   <button
+                    type="button"
                     style={{
                       background: 'none',
                       border: 'none',
@@ -682,6 +691,7 @@ export default function JobsList({ jobs, technicians }) {
                         </div>
                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                           <button
+                            type="button"
                             onClick={(e) => {
                               e.stopPropagation()
                               handleAssignTech(job, null)
@@ -703,6 +713,7 @@ export default function JobsList({ jobs, technicians }) {
                             const isAssigned = job.assignedTech?.includes(tech.id)
                             return (
                               <button
+                                type="button"
                                 key={tech.id}
                                 onClick={(e) => {
                                   e.stopPropagation()
@@ -732,6 +743,7 @@ export default function JobsList({ jobs, technicians }) {
                     <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #E5E7EB' }}>
                       {job.status === 'Archived' ? (
                         <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation()
                             fetch(`/api/jobs/${job.id}`, {
@@ -755,6 +767,7 @@ export default function JobsList({ jobs, technicians }) {
                         </button>
                       ) : (
                         <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation()
                             handleArchive(job)

@@ -28,6 +28,7 @@ export default function TechAvailabilityClient({ techId, techName }) {
       }}>
         {/* Language Toggle Button */}
         <button
+          type="button"
           onClick={toggleLanguage}
           style={{
             position: 'absolute',

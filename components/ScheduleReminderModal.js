@@ -155,6 +155,7 @@ export default function ScheduleReminderModal({ technicians, jobs, onClose }) {
             </p>
           </div>
           <button
+            type="button"
             onClick={onClose}
             style={{
               background: 'none',
@@ -239,6 +240,7 @@ export default function ScheduleReminderModal({ technicians, jobs, onClose }) {
               {techsWithJobs.length > 0 && (
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button
+                    type="button"
                     onClick={selectAll}
                     style={{
                       padding: '4px 10px',
@@ -253,6 +255,7 @@ export default function ScheduleReminderModal({ technicians, jobs, onClose }) {
                     Select All
                   </button>
                   <button
+                    type="button"
                     onClick={selectNone}
                     style={{
                       padding: '4px 10px',
@@ -376,6 +379,7 @@ export default function ScheduleReminderModal({ technicians, jobs, onClose }) {
             justifyContent: 'flex-end'
           }}>
             <button
+              type="button"
               onClick={onClose}
               style={{
                 padding: '12px 24px',
@@ -391,6 +395,7 @@ export default function ScheduleReminderModal({ technicians, jobs, onClose }) {
               Cancel
             </button>
             <button
+              type="button"
               onClick={handleSend}
               disabled={isSending || selectedTechs.length === 0}
               style={{

@@ -167,6 +167,7 @@ export default function TextTechsModal({ technicians, onClose }) {
             Text Technician(s)
           </h2>
           <button
+            type="button"
             onClick={onClose}
             style={{
               background: 'none',
@@ -187,6 +188,7 @@ export default function TextTechsModal({ technicians, onClose }) {
           {!messageType && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
               <button
+                type="button"
                 onClick={setupAvailabilityReminder}
                 style={{
                   width: '100%',
@@ -212,6 +214,7 @@ export default function TextTechsModal({ technicians, onClose }) {
               </button>
 
               <button
+                type="button"
                 onClick={setupOnboardingForm}
                 style={{
                   width: '100%',
@@ -261,6 +264,7 @@ export default function TextTechsModal({ technicians, onClose }) {
                   {messageType === 'availability' ? '📅 Availability Reminder Mode' : '📝 Onboarding Form Mode'}
                 </span>
                 <button
+                  type="button"
                   onClick={clearMessageType}
                   style={{
                     background: 'none',
@@ -333,6 +337,7 @@ export default function TextTechsModal({ technicians, onClose }) {
                   }}
                 />
                 <button
+                  type="button"
                   onClick={addNewTech}
                   disabled={!newTechName.trim() || !newTechPhone.trim()}
                   style={{
@@ -373,6 +378,7 @@ export default function TextTechsModal({ technicians, onClose }) {
                         <div style={{ fontSize: '12px', color: '#6B7280' }}>{tech.phone}</div>
                       </div>
                       <button
+                        type="button"
                         onClick={() => removeNewTech(tech.id)}
                         style={{
                           background: 'none',
@@ -408,6 +414,7 @@ export default function TextTechsModal({ technicians, onClose }) {
               </label>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button
+                  type="button"
                   onClick={selectAll}
                   style={{
                     padding: '4px 10px',
@@ -422,6 +429,7 @@ export default function TextTechsModal({ technicians, onClose }) {
                   Select All
                 </button>
                 <button
+                  type="button"
                   onClick={selectNone}
                   style={{
                     padding: '4px 10px',
@@ -561,6 +569,7 @@ export default function TextTechsModal({ technicians, onClose }) {
             justifyContent: 'flex-end'
           }}>
             <button
+              type="button"
               onClick={onClose}
               style={{
                 padding: '12px 24px',
@@ -576,6 +585,7 @@ export default function TextTechsModal({ technicians, onClose }) {
               Cancel
             </button>
             <button
+              type="button"
               onClick={handleSend}
               disabled={isSending || totalRecipients === 0 || !message.trim()}
               style={{

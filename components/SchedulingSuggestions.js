@@ -228,6 +228,7 @@ export default function SchedulingSuggestions({ onComplete }) {
             const isActive = selectedStrategies.includes(strategy.id)
             return (
               <button
+                type="button"
                 key={strategy.id}
                 onClick={() => toggleStrategy(strategy.id)}
                 style={{
@@ -290,6 +291,7 @@ export default function SchedulingSuggestions({ onComplete }) {
         )}
 
         <button
+          type="button"
           onClick={runScheduler}
           disabled={isRunning}
           style={{
@@ -375,6 +377,7 @@ export default function SchedulingSuggestions({ onComplete }) {
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           <button
+            type="button"
             onClick={runScheduler}
             disabled={isRunning}
             style={{
@@ -391,6 +394,7 @@ export default function SchedulingSuggestions({ onComplete }) {
             {isRunning ? 'Refreshing...' : 'Refresh'}
           </button>
           <button
+            type="button"
             onClick={() => setSuggestions(null)}
             style={{
               padding: '8px 16px',
@@ -434,6 +438,7 @@ export default function SchedulingSuggestions({ onComplete }) {
             {selectedJobs.size} selected
           </span>
           <button
+            type="button"
             onClick={selectAllWithSuggestions}
             style={{
               padding: '6px 12px',
@@ -451,6 +456,7 @@ export default function SchedulingSuggestions({ onComplete }) {
           {selectedJobs.size > 0 && (
             <>
               <button
+                type="button"
                 onClick={clearSelection}
                 style={{
                   padding: '6px 12px',
@@ -467,6 +473,7 @@ export default function SchedulingSuggestions({ onComplete }) {
               </button>
               <div style={{ flex: 1 }} />
               <button
+                type="button"
                 onClick={applySelectedSuggestions}
                 disabled={isApplying}
                 style={{
@@ -483,6 +490,7 @@ export default function SchedulingSuggestions({ onComplete }) {
                 {isApplying ? 'Applying...' : `Accept ${selectedJobs.size} Suggestions`}
               </button>
               <button
+                type="button"
                 onClick={() => setShowRejectModal(true)}
                 disabled={isApplying}
                 style={{
@@ -721,6 +729,7 @@ export default function SchedulingSuggestions({ onComplete }) {
               justifyContent: 'flex-end'
             }}>
               <button
+                type="button"
                 onClick={() => {
                   setShowRejectModal(false)
                   setRejectReason('')
@@ -739,6 +748,7 @@ export default function SchedulingSuggestions({ onComplete }) {
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={rejectSelectedSuggestions}
                 disabled={isApplying || !rejectReason}
                 style={{

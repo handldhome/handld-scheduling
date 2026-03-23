@@ -210,6 +210,7 @@ export default function AdminDashboardClient({ technicians, availability, jobs }
           }}>
             {tabs.map(tab => (
               <button
+                type="button"
                 key={tab.id}
                 onClick={() => handleTabChange(tab.id)}
                 style={tabButtonStyle(activeTab === tab.id)}
@@ -229,6 +230,7 @@ export default function AdminDashboardClient({ technicians, availability, jobs }
           }}>
             {activeTab === 'jobs' && (
               <button
+                type="button"
                 onClick={() => setShowAddJobModal(true)}
                 style={actionButtonStyle}
               >
@@ -238,6 +240,7 @@ export default function AdminDashboardClient({ technicians, availability, jobs }
 
             {activeTab === 'availability' && (
               <button
+                type="button"
                 onClick={() => setShowTextTechsModal(true)}
                 style={actionButtonStyle}
               >
@@ -247,6 +250,7 @@ export default function AdminDashboardClient({ technicians, availability, jobs }
 
             {activeTab === 'tech-schedules' && (
               <button
+                type="button"
                 onClick={() => setShowScheduleReminderModal(true)}
                 style={{
                   ...actionButtonStyle,
@@ -263,6 +267,7 @@ export default function AdminDashboardClient({ technicians, availability, jobs }
 
             {activeTab === 'schedule' && (
               <button
+                type="button"
                 onClick={runAIScheduler}
                 disabled={isRunningAI}
                 style={{

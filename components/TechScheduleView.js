@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { format, addDays, subDays, parseISO, isToday, isTomorrow, isYesterday } from 'date-fns'
+import { normalizeAddress } from '@/lib/utils'
 import JobChecklist from './JobChecklist'
 
 // Color palette for services (same as WeeklyCalendarView)
@@ -251,6 +252,7 @@ export default function TechScheduleView({ jobs, technicians }) {
         border: '1px solid #E5E7EB'
       }}>
         <button
+          type="button"
           onClick={goToPreviousDay}
           style={{
             width: '48px',
@@ -307,6 +309,7 @@ export default function TechScheduleView({ jobs, technicians }) {
           </div>
           {!isToday(parseISO(selectedDate)) && (
             <button
+              type="button"
               onClick={goToToday}
               style={{
                 marginTop: '8px',
@@ -326,6 +329,7 @@ export default function TechScheduleView({ jobs, technicians }) {
         </div>
 
         <button
+          type="button"
           onClick={goToNextDay}
           style={{
             width: '48px',
@@ -371,7 +375,7 @@ export default function TechScheduleView({ jobs, technicians }) {
         {techJobs.map((job, index) => {
           const colors = getServiceColor(job.serviceName)
           const isExpanded = expandedJobId === job.id
-          const address = Array.isArray(job.address) ? job.address[0] : job.address
+          const address = normalizeAddress(Array.isArray(job.address) ? job.address[0] : job.address)
 
           return (
             <div

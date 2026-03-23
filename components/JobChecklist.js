@@ -595,6 +595,7 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en', pri
             >
               {/* Step Header */}
               <button
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation()
                   if (canAccess) setExpandedStep(isExpanded ? null : step.id)
@@ -725,6 +726,7 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en', pri
                         {job.address}{job.city ? `, ${job.city}` : ''}
                       </p>
                       <button
+                        type="button"
                         onClick={() => completeWorkflowStep('navigate')}
                         style={{
                           width: '100%',
@@ -770,6 +772,7 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en', pri
                         {lang === 'es' ? 'Abrir Formulario' : 'Open Form'}
                       </a>
                       <button
+                        type="button"
                         onClick={() => completeWorkflowStep('service-form')}
                         style={{
                           width: '100%',
@@ -791,6 +794,7 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en', pri
                   {/* Clock In Step */}
                   {step.actionType === 'clockIn' && !job.clockIn && (
                     <button
+                      type="button"
                       onClick={handleClockIn}
                       disabled={isClockingIn}
                       style={{
@@ -873,6 +877,7 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en', pri
 
                             return (
                               <button
+                                type="button"
                                 key={key}
                                 onClick={() => setSelectedComplexity(key)}
                                 style={{
@@ -911,6 +916,7 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en', pri
 
                       {/* Confirm button */}
                       <button
+                        type="button"
                         onClick={handleConfirmComplexity}
                         disabled={!selectedComplexity || isSavingComplexity}
                         style={{
@@ -983,6 +989,7 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en', pri
                   {/* Confirm button for checklist steps */}
                   {step.actionType === 'confirm' && step.checklistItems && (
                     <button
+                      type="button"
                       onClick={() => {
                         if (isConfirmed) {
                           completeWorkflowStep(step.id)
@@ -1042,6 +1049,7 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en', pri
                         style={{ display: 'none' }}
                       />
                       <button
+                        type="button"
                         onClick={() => beforePhotoRef.current?.click()}
                         disabled={isUploadingBefore}
                         style={{
@@ -1105,6 +1113,7 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en', pri
                         style={{ display: 'none' }}
                       />
                       <button
+                        type="button"
                         onClick={() => afterPhotoRef.current?.click()}
                         disabled={isUploadingAfter}
                         style={{
@@ -1134,6 +1143,7 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en', pri
                   {/* Clock Out Button */}
                   {step.actionType === 'clockOut' && !job.clockOut && (
                     <button
+                      type="button"
                       onClick={handleClockOut}
                       disabled={isClockingOut}
                       style={{
@@ -1245,6 +1255,7 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en', pri
                     ${material.amount.toFixed(2)}
                   </div>
                   <button
+                    type="button"
                     onClick={() => handleRemoveMaterial(material.id)}
                     style={{
                       background: 'none',
@@ -1352,6 +1363,7 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en', pri
             </div>
 
             <button
+              type="button"
               onClick={handleAddMaterial}
               disabled={!newMaterial.vendor.trim() || !newMaterial.amount}
               style={{
@@ -1424,6 +1436,7 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en', pri
               style={{ display: 'none' }}
             />
             <button
+              type="button"
               onClick={() => materialReceiptRef.current?.click()}
               disabled={isUploadingReceipt}
               style={{
@@ -1451,6 +1464,7 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en', pri
 
           {/* Save Materials Button */}
           <button
+            type="button"
             onClick={handleSaveMaterials}
             disabled={isSavingMaterials || !materialsChanged}
             style={{

@@ -105,6 +105,7 @@ export default function JobsCalendar({ jobs, technicians }) {
         alignItems: 'center'
       }}>
         <button
+          type="button"
           onClick={() => setShowUnassignedOnly(!showUnassignedOnly)}
           style={{
             padding: '8px 16px',

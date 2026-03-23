@@ -293,6 +293,7 @@ export default function AddJobModal({ jobs = [], onClose, onJobAdded }) {
             </p>
           </div>
           <button
+            type="button"
             onClick={onClose}
             disabled={isSubmitting}
             style={{

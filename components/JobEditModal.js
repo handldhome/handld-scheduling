@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { format, parseISO } from 'date-fns'
+import { normalizeAddress } from '@/lib/utils'
 
 // Color palette for dynamic service assignment
 const COLOR_PALETTE = [
@@ -39,11 +40,13 @@ const getServiceColor = (serviceName) => {
   return COLOR_PALETTE[index]
 }
 
-// Time slots from 7AM to 8PM
+// Time slots from 7AM to 8PM (half-hour increments)
 const TIME_SLOTS = [
-  '07:00', '08:00', '09:00', '10:00', '11:00',
-  '12:00', '13:00', '14:00', '15:00', '16:00', '17:00',
-  '18:00', '19:00', '20:00'
+  '07:00', '07:30', '08:00', '08:30', '09:00', '09:30',
+  '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
+  '13:00', '13:30', '14:00', '14:30', '15:00', '15:30',
+  '16:00', '16:30', '17:00', '17:30', '18:00', '18:30',
+  '19:00', '19:30', '20:00'
 ]
 
 const formatTimeDisplay = (time24) => {
@@ -53,6 +56,36 @@ const formatTimeDisplay = (time24) => {
   const suffix = h >= 12 ? 'PM' : 'AM'
   const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h
   return `${h12}:${minutes} ${suffix}`
+}
+
+// Normalize a time value to match a TIME_SLOTS entry.
+// Handles 24h ("09:00"), 12h ("9:00 AM"), or partial formats.
+const normalizeTimeTo24 = (timeStr) => {
+  if (!timeStr) return ''
+  const str = timeStr.trim()
+  // Already in HH:MM 24h format?
+  if (/^\d{2}:\d{2}$/.test(str) && TIME_SLOTS.includes(str)) return str
+  // 12-hour format: "9:00 AM", "02:30 PM", etc.
+  const match12 = str.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i)
+  if (match12) {
+    let hour = parseInt(match12[1])
+    const min = match12[2]
+    const isPM = match12[3].toUpperCase() === 'PM'
+    if (isPM && hour !== 12) hour += 12
+    if (!isPM && hour === 12) hour = 0
+    const normalized = `${String(hour).padStart(2, '0')}:${min}`
+    if (TIME_SLOTS.includes(normalized)) return normalized
+    // Round to nearest half-hour
+    const rounded = parseInt(min) < 15 ? '00' : parseInt(min) < 45 ? '30' : '00'
+    const roundedHour = parseInt(min) >= 45 ? hour + 1 : hour
+    return `${String(roundedHour).padStart(2, '0')}:${rounded}`
+  }
+  // Partial 24h format like "9:00"
+  const match24 = str.match(/^(\d{1,2}):(\d{2})$/)
+  if (match24) {
+    return `${String(parseInt(match24[1])).padStart(2, '0')}:${match24[2]}`
+  }
+  return str
 }
 
 function MultiDayContinue({ jobId, onUpdate }) {
@@ -149,6 +182,7 @@ function MultiDayContinue({ jobId, onUpdate }) {
           const isSelected = selectedDates.includes(opt.value)
           return (
             <button
+              type="button"
               key={opt.value}
               onClick={() => toggleDate(opt.value)}
               disabled={isCreating}
@@ -173,6 +207,7 @@ function MultiDayContinue({ jobId, onUpdate }) {
 
       {/* Create Button */}
       <button
+        type="button"
         onClick={handleCreate}
         disabled={selectedDates.length === 0 || isCreating}
         style={{
@@ -216,22 +251,30 @@ function MultiDayContinue({ jobId, onUpdate }) {
 export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
   const [isUpdating, setIsUpdating] = useState(false)
   const [error, setError] = useState(null)
-  const [formData, setFormData] = useState({
-    assignedTech: job.assignedTech || [],
-    time: job.time || '',
-    endTime: job.endTime || '',
-    confirmed: job.confirmed || false,
-    date: job.date ? format(parseISO(job.date), 'yyyy-MM-dd') : '',
-    equipment: job.equipment || [],
-    // Editable job details
-    vibe: job.vibe || '',
-    pets: job.pets || '',
-    gateCode: job.gateCode || '',
-    electricWater: job.electricWater || '',
-    otherNotes: job.otherNotes || '',
-    // Add-ons / Change Orders
-    addOns: job.addOns || [],
-    allowTechTexting: job.allowTechTexting || false
+  const [formData, setFormData] = useState(() => {
+    // Pre-fill date/time from AI suggestions when job has no existing schedule
+    const initialDate = job.date
+      ? format(parseISO(job.date), 'yyyy-MM-dd')
+      : job.suggestedDate || ''
+    const initialTime = normalizeTimeTo24(job.time || job.suggestedTime || '')
+
+    return {
+      assignedTech: job.assignedTech || [],
+      time: initialTime,
+      endTime: job.endTime || '',
+      confirmed: job.confirmed || false,
+      date: initialDate,
+      equipment: job.equipment || [],
+      // Editable job details
+      vibe: job.vibe || '',
+      pets: job.pets || '',
+      gateCode: job.gateCode || '',
+      electricWater: job.electricWater || '',
+      otherNotes: job.otherNotes || '',
+      // Add-ons / Change Orders
+      addOns: job.addOns || [],
+      allowTechTexting: job.allowTechTexting || false
+    }
   })
   const [newAddOn, setNewAddOn] = useState({ description: '', price: '' })
   const [equipmentOptions, setEquipmentOptions] = useState([])
@@ -251,12 +294,17 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
 
   // Sync form data when job prop updates (e.g. after save triggers parent refresh)
   useEffect(() => {
+    const syncDate = job.date
+      ? format(parseISO(job.date), 'yyyy-MM-dd')
+      : job.suggestedDate || ''
+    const syncTime = normalizeTimeTo24(job.time || job.suggestedTime || '')
+
     setFormData({
       assignedTech: job.assignedTech || [],
-      time: job.time || '',
+      time: syncTime,
       endTime: job.endTime || '',
       confirmed: job.confirmed || false,
-      date: job.date ? format(parseISO(job.date), 'yyyy-MM-dd') : '',
+      date: syncDate,
       equipment: job.equipment || [],
       vibe: job.vibe || '',
       pets: job.pets || '',
@@ -672,7 +720,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
                   textDecoration: 'none'
                 }}
               >
-                📍 {job.address}{job.city ? `, ${job.city}` : ''} ↗
+                📍 {normalizeAddress(job.address)}{job.city ? `, ${normalizeAddress(job.city)}` : ''} ↗
               </a>
             )}
             <p style={{
@@ -695,6 +743,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {hasChanges && (
               <button
+                type="button"
                 onClick={handleSaveAllChanges}
                 disabled={isUpdating}
                 style={{
@@ -713,6 +762,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
               </button>
             )}
             <button
+              type="button"
               onClick={onClose}
               style={{
                 background: 'none',
@@ -801,6 +851,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
               </div>
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button
+                  type="button"
                   onClick={async () => {
                     setIsUpdating(true)
                     try {
@@ -858,6 +909,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
                   {isUpdating ? 'Accepting...' : 'Accept Suggestion'}
                 </button>
                 <button
+                  type="button"
                   onClick={async () => {
                     setIsUpdating(true)
                     try {
@@ -910,6 +962,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
               Confirmation Status
             </label>
             <button
+              type="button"
               onClick={handleConfirmToggle}
               disabled={isUpdating}
               style={{
@@ -1005,6 +1058,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
               />
               {(job.date || job.time) && (
                 <button
+                  type="button"
                   onClick={() => {
                     setFormData(prev => ({ ...prev, date: '', time: '' }))
                     handleUpdate({
@@ -1140,6 +1194,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
             </label>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               <button
+                type="button"
                 onClick={() => handleTechAssign(null)}
                 disabled={isUpdating}
                 style={{
@@ -1160,6 +1215,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
                 const isAssigned = formData.assignedTech.includes(tech.id)
                 return (
                   <button
+                    type="button"
                     key={tech.id}
                     onClick={() => handleTechAssign(tech.id)}
                     disabled={isUpdating}
@@ -1204,6 +1260,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
                   const isSelected = formData.equipment.includes(option.name)
                   return (
                     <button
+                      type="button"
                       key={option.id || option.name}
                       onClick={() => handleEquipmentToggle(option.name)}
                       disabled={isUpdating}
@@ -1452,6 +1509,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
                       ${addOn.price.toFixed(2)}
                     </div>
                     <button
+                      type="button"
                       onClick={() => handleRemoveAddOn(addOn.id)}
                       style={{
                         background: 'none',
@@ -1532,6 +1590,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
                 />
               </div>
               <button
+                type="button"
                 onClick={handleAddAddOn}
                 disabled={!newAddOn.description.trim() || !newAddOn.price}
                 style={{
