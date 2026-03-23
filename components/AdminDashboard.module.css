@@ -1,0 +1,79 @@
+/* Admin Dashboard - extracted static styles */
+
+.pageWrapper {
+  min-height: 100vh;
+  background: radial-gradient(1200px 600px at 70% -10%, #ffffff 0%, #FFF5E1 100%);
+}
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.header {
+  background-color: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  display: flex;
+  align-items: center;
+}
+
+.headerTitle {
+  color: #2A54A1;
+  margin: 0;
+  font-weight: 800;
+}
+
+.commandCenterLink {
+  margin-left: auto;
+  background-color: #374151;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.tabBar {
+  background-color: white;
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.tabScroller {
+  display: flex;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.tabScroller::-webkit-scrollbar {
+  display: none;
+}
+
+.actionButton {
+  background-color: #2A54A1;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  white-space: nowrap;
+}
+
+.actionButton:hover {
+  opacity: 0.9;
+}
+
+.contentArea {
+  background-color: white;
+  border-radius: 0 0 16px 16px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}

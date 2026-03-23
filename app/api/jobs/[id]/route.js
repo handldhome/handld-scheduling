@@ -1,4 +1,5 @@
 import { updateJob } from '@/lib/db'
+import { revalidateTag } from 'next/cache'
 
 export const revalidate = 0
 
@@ -8,6 +9,8 @@ export async function PATCH(request, { params }) {
     const updates = await request.json()
 
     const result = await updateJob(id, updates)
+
+    revalidateTag('jobs')
 
     return Response.json({
       success: true,

@@ -841,6 +841,7 @@ export default function TechDailySchedule({ techId, techName, techAllowTexting =
             <button
               type="button"
               onClick={viewMode === 'week' ? goToPreviousWeek : goToPreviousDay}
+              aria-label={viewMode === 'week' ? 'Previous week' : 'Previous day'}
               style={{
                 width: '48px',
                 height: '48px',
@@ -895,6 +896,7 @@ export default function TechDailySchedule({ techId, techName, techAllowTexting =
             <button
               type="button"
               onClick={viewMode === 'week' ? goToNextWeek : goToNextDay}
+              aria-label={viewMode === 'week' ? 'Next week' : 'Next day'}
               style={{
                 width: '48px',
                 height: '48px',

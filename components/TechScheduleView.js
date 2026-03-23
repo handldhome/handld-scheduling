@@ -254,6 +254,7 @@ export default function TechScheduleView({ jobs, technicians }) {
         <button
           type="button"
           onClick={goToPreviousDay}
+          aria-label="Previous day"
           style={{
             width: '48px',
             height: '48px',
@@ -331,6 +332,7 @@ export default function TechScheduleView({ jobs, technicians }) {
         <button
           type="button"
           onClick={goToNextDay}
+          aria-label="Next day"
           style={{
             width: '48px',
             height: '48px',

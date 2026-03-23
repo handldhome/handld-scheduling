@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { format, addDays, parseISO } from 'date-fns'
 
 export default function ScheduleReminderModal({ technicians, jobs, onClose }) {
@@ -11,6 +11,41 @@ export default function ScheduleReminderModal({ technicians, jobs, onClose }) {
     const tomorrow = addDays(new Date(), 1)
     return format(tomorrow, 'yyyy-MM-dd')
   })
+
+  const modalRef = useRef(null)
+  const previousFocusRef = useRef(null)
+
+  // Focus trap
+  useEffect(() => {
+    previousFocusRef.current = document.activeElement
+    const focusableSelector = 'button, input, select, textarea, [href]'
+    const modal = modalRef.current
+    if (modal) {
+      const firstFocusable = modal.querySelector(focusableSelector)
+      if (firstFocusable) firstFocusable.focus()
+    }
+
+    const handleTab = (e) => {
+      if (e.key !== 'Tab' || !modal) return
+      const focusableElements = modal.querySelectorAll(focusableSelector)
+      if (focusableElements.length === 0) return
+      const first = focusableElements[0]
+      const last = focusableElements[focusableElements.length - 1]
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+
+    document.addEventListener('keydown', handleTab)
+    return () => {
+      document.removeEventListener('keydown', handleTab)
+      if (previousFocusRef.current) previousFocusRef.current.focus()
+    }
+  }, [])
 
   // Calculate jobs per tech for the target date
   const getJobsForDate = () => {
@@ -119,7 +154,12 @@ export default function ScheduleReminderModal({ technicians, jobs, onClose }) {
       zIndex: 1000,
       padding: '20px'
     }}>
-      <div style={{
+      <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="schedule-reminder-modal-title"
+        style={{
         backgroundColor: 'white',
         borderRadius: '16px',
         maxWidth: '500px',
@@ -138,7 +178,7 @@ export default function ScheduleReminderModal({ technicians, jobs, onClose }) {
           backgroundColor: '#ECFDF5'
         }}>
           <div>
-            <h2 style={{
+            <h2 id="schedule-reminder-modal-title" style={{
               margin: 0,
               fontSize: '20px',
               fontWeight: '700',
@@ -157,6 +197,7 @@ export default function ScheduleReminderModal({ technicians, jobs, onClose }) {
           <button
             type="button"
             onClick={onClose}
+            aria-label="Close"
             style={{
               background: 'none',
               border: 'none',

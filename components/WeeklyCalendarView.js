@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { format, addDays, startOfWeek, addWeeks, subWeeks, parseISO, isToday } from 'date-fns'
 import { normalizeAddress } from '@/lib/utils'
+import calStyles from './WeeklyCalendarView.module.css'
 import JobEditModal from './JobEditModal'
 
 // Color palette for dynamic service assignment
@@ -105,6 +106,12 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
   )
   const [selectedJob, setSelectedJob] = useState(null)
   const [showUnscheduledPanel, setShowUnscheduledPanel] = useState(false) // Default closed
+  const [panelCollapsed, setPanelCollapsed] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('handld_unscheduled_collapsed') === 'true'
+    }
+    return false
+  })
   const [draggedJob, setDraggedJob] = useState(null)
   const [dropTarget, setDropTarget] = useState(null)
   const [selectedTechIds, setSelectedTechIds] = useState([]) // Empty = all technicians
@@ -113,6 +120,14 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
   const [isBulkUpdating, setIsBulkUpdating] = useState(false)
   const [weather, setWeather] = useState({}) // Weather data keyed by date
   const [isMobile, setIsMobile] = useState(false)
+
+  const togglePanelCollapsed = () => {
+    setPanelCollapsed(prev => {
+      const next = !prev
+      localStorage.setItem('handld_unscheduled_collapsed', String(next))
+      return next
+    })
+  }
 
   // Detect mobile viewport
   useEffect(() => {
@@ -639,6 +654,7 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
         <div style={{ display: 'flex', gap: '4px' }}>
           <button
             type="button"
+            aria-label="Previous week"
             onClick={() => setCurrentWeekStart(subWeeks(currentWeekStart, 1))}
             style={{
               padding: isMobile ? '6px 10px' : '8px 12px',
@@ -655,6 +671,7 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
           </button>
           <button
             type="button"
+            aria-label="Next week"
             onClick={() => setCurrentWeekStart(addWeeks(currentWeekStart, 1))}
             style={{
               padding: isMobile ? '6px 10px' : '8px 12px',
@@ -790,6 +807,7 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
         {/* Unscheduled toggle */}
         <button
           type="button"
+          aria-label="Toggle unscheduled jobs panel"
           onClick={() => setShowUnscheduledPanel(!showUnscheduledPanel)}
           style={{
             marginLeft: 'auto',
@@ -1329,24 +1347,41 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
         {/* Unscheduled Jobs Panel */}
         {showUnscheduledPanel && unscheduledJobs.length > 0 && (
           <div style={{
-            width: isMobile ? '100%' : '280px',
+            width: isMobile ? '100%' : panelCollapsed ? 'auto' : '280px',
             border: '1px solid #E5E7EB',
             borderRadius: '8px',
             backgroundColor: 'white',
             overflow: 'hidden',
             maxHeight: isMobile ? '300px' : 'none',
-            overflowY: isMobile ? 'auto' : 'visible'
+            overflowY: isMobile ? 'auto' : 'visible',
+            transition: 'width 0.2s'
           }}>
             <div style={{
               padding: '12px 16px',
               backgroundColor: '#FEF3C7',
-              borderBottom: '1px solid #E5E7EB',
+              borderBottom: panelCollapsed ? 'none' : '1px solid #E5E7EB',
               fontWeight: '700',
               color: '#92400E',
-              fontSize: '14px'
-            }}>
-              Unscheduled Jobs ({unscheduledJobs.length})
+              fontSize: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '8px',
+              cursor: 'pointer',
+              userSelect: 'none'
+            }}
+              onClick={togglePanelCollapsed}
+            >
+              <span>Unscheduled Jobs ({unscheduledJobs.length})</span>
+              <span style={{
+                fontSize: '12px',
+                transition: 'transform 0.2s',
+                transform: panelCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)'
+              }}>
+                ▼
+              </span>
             </div>
+            {!panelCollapsed && (
             <div style={{
               maxHeight: '550px',
               overflowY: 'auto',
@@ -1421,11 +1456,15 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
                     </div>
                     {job.date && (
                       <div style={{
-                        color: '#6B7280',
                         fontSize: '11px',
-                        marginBottom: '4px'
+                        marginBottom: '4px',
+                        ...(parseISO(job.date) < new Date(new Date().toDateString())
+                          ? { color: '#DC2626', fontWeight: '700' }
+                          : { color: '#6B7280' })
                       }}>
-                        {format(parseISO(job.date), 'MMM d, yyyy')}
+                        {parseISO(job.date) < new Date(new Date().toDateString())
+                          ? 'Overdue'
+                          : format(parseISO(job.date), 'MMM d, yyyy')}
                       </div>
                     )}
                     {techName ? (
@@ -1487,64 +1526,44 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
                 )
               })}
             </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* Legend */}
+      {/* Legend - sticky bar */}
       <div style={{
-        marginTop: '16px',
-        padding: '12px 16px',
+        position: 'sticky',
+        bottom: 0,
+        padding: '8px 16px',
         backgroundColor: '#F9FAFB',
-        borderRadius: '8px',
+        borderTop: '1px solid #E5E7EB',
+        borderRadius: '0 0 8px 8px',
         display: 'flex',
-        gap: '24px',
+        gap: '16px',
         flexWrap: 'wrap',
         alignItems: 'center',
-        fontSize: '12px'
+        fontSize: '11px',
+        zIndex: 5
       }}>
         <span style={{ fontWeight: '600', color: '#6B7280' }}>Legend:</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <div style={{
-            width: '40px',
-            height: '16px',
-            borderRadius: '3px',
-            border: '2px dashed #9CA3AF',
-            backgroundColor: '#F3F4F6'
-          }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <div style={{ width: '24px', height: '12px', borderRadius: '2px', border: '2px dashed #9CA3AF', backgroundColor: '#F3F4F6' }} />
           <span style={{ color: '#6B7280' }}>Unconfirmed</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <div style={{
-            width: '40px',
-            height: '16px',
-            borderRadius: '3px',
-            border: '1px solid #9CA3AF',
-            backgroundColor: '#F3F4F6'
-          }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <div style={{ width: '24px', height: '12px', borderRadius: '2px', border: '1px solid #9CA3AF', backgroundColor: '#F3F4F6' }} />
           <span style={{ color: '#6B7280' }}>Confirmed</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <div style={{
-            width: '40px',
-            height: '16px',
-            borderRadius: '3px',
-            border: '2px dashed #7C3AED',
-            backgroundColor: '#FAF5FF'
-          }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <div style={{ width: '24px', height: '12px', borderRadius: '2px', border: '2px dashed #7C3AED', backgroundColor: '#FAF5FF' }} />
           <span style={{ color: '#7C3AED' }}>AI Suggestion</span>
         </div>
         {uniqueServices.map(serviceName => {
           const colors = getServiceColor(serviceName)
           return (
-            <div key={serviceName} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <div style={{
-                width: '12px',
-                height: '12px',
-                borderRadius: '2px',
-                backgroundColor: colors.bg,
-                border: `2px solid ${colors.border}`
-              }} />
+            <div key={serviceName} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <div style={{ width: '10px', height: '10px', borderRadius: '2px', backgroundColor: colors.bg, border: `2px solid ${colors.border}` }} />
               <span style={{ color: '#6B7280' }}>{abbreviateServiceName(serviceName)}</span>
             </div>
           )

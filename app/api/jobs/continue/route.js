@@ -1,5 +1,6 @@
 import { format, addDays, parseISO } from 'date-fns'
 import { getDb } from '@/lib/supabase'
+import { revalidateTag } from 'next/cache'
 
 export async function POST(request) {
   try {
@@ -101,6 +102,8 @@ export async function POST(request) {
         .update({ other_notes: updatedOriginalNotes })
         .eq('id', jobId)
     }
+
+    revalidateTag('jobs')
 
     return Response.json({
       success: true,

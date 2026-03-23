@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { format, parseISO } from 'date-fns'
 import { normalizeAddress } from '@/lib/utils'
+import Toast from './Toast'
 
 // Color palette for dynamic service assignment
 const COLOR_PALETTE = [
@@ -251,6 +252,7 @@ function MultiDayContinue({ jobId, onUpdate }) {
 export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
   const [isUpdating, setIsUpdating] = useState(false)
   const [error, setError] = useState(null)
+  const [toast, setToast] = useState(null)
   const [formData, setFormData] = useState(() => {
     // Pre-fill date/time from AI suggestions when job has no existing schedule
     const initialDate = job.date
@@ -276,9 +278,13 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
       allowTechTexting: job.allowTechTexting || false
     }
   })
+  const [activeTab, setActiveTab] = useState('schedule')
   const [newAddOn, setNewAddOn] = useState({ description: '', price: '' })
   const [equipmentOptions, setEquipmentOptions] = useState([])
   const [loadingEquipment, setLoadingEquipment] = useState(true)
+
+  const modalRef = useRef(null)
+  const previousFocusRef = useRef(null)
 
   // Handle Esc key to close modal
   const handleKeyDown = useCallback((e) => {
@@ -291,6 +297,38 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [handleKeyDown])
+
+  // Focus trap
+  useEffect(() => {
+    previousFocusRef.current = document.activeElement
+    const focusableSelector = 'button, input, select, textarea, [href]'
+    const modal = modalRef.current
+    if (modal) {
+      const firstFocusable = modal.querySelector(focusableSelector)
+      if (firstFocusable) firstFocusable.focus()
+    }
+
+    const handleTab = (e) => {
+      if (e.key !== 'Tab' || !modal) return
+      const focusableElements = modal.querySelectorAll(focusableSelector)
+      if (focusableElements.length === 0) return
+      const first = focusableElements[0]
+      const last = focusableElements[focusableElements.length - 1]
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+
+    document.addEventListener('keydown', handleTab)
+    return () => {
+      document.removeEventListener('keydown', handleTab)
+      if (previousFocusRef.current) previousFocusRef.current.focus()
+    }
+  }, [])
 
   // Sync form data when job prop updates (e.g. after save triggers parent refresh)
   useEffect(() => {
@@ -351,8 +389,10 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
 
       // Call onUpdate to refresh data, but don't close modal
       onUpdate()
+      setToast({ message: 'Job updated', type: 'success' })
     } catch (err) {
       setError(err.message)
+      setToast({ message: err.message || 'Failed to update', type: 'error' })
     } finally {
       setIsUpdating(false)
     }
@@ -594,6 +634,13 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
     formData.otherNotes !== (job.otherNotes || '') ||
     addOnsChanged
 
+  // Memoize tech button list to avoid re-rendering on every keystroke
+  const techButtonList = useMemo(() => technicians.map(tech => ({
+    id: tech.id,
+    label: `${tech.firstName} ${tech.lastName}`,
+    isAssigned: formData.assignedTech.includes(tech.id)
+  })), [technicians, formData.assignedTech])
+
   // Save all changes at once
   const handleSaveAllChanges = async () => {
     setIsUpdating(true)
@@ -674,7 +721,12 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
       zIndex: 1000,
       padding: '20px'
     }}>
-      <div style={{
+      <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="job-edit-modal-title"
+        style={{
         backgroundColor: 'white',
         borderRadius: '16px',
         width: '100%',
@@ -693,7 +745,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
           backgroundColor: colors.bg
         }}>
           <div>
-            <h2 style={{
+            <h2 id="job-edit-modal-title" style={{
               margin: 0,
               fontSize: '20px',
               fontWeight: '700',
@@ -763,6 +815,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
             )}
             <button
               type="button"
+              aria-label="Close"
               onClick={onClose}
               style={{
                 background: 'none',
@@ -949,6 +1002,41 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
             </div>
           )}
 
+          {/* Tab Bar */}
+          <div style={{
+            display: 'flex',
+            borderBottom: '2px solid #E5E7EB',
+            marginBottom: '24px',
+            gap: '0'
+          }}>
+            {[
+              { id: 'schedule', label: 'Schedule' },
+              { id: 'details', label: 'Details' },
+              { id: 'addons', label: 'Add-Ons' }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                style={{
+                  padding: '10px 20px',
+                  fontSize: '14px',
+                  fontWeight: activeTab === tab.id ? '700' : '500',
+                  color: activeTab === tab.id ? '#2A54A1' : '#6B7280',
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  borderBottom: activeTab === tab.id ? '2px solid #2A54A1' : '2px solid transparent',
+                  marginBottom: '-2px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {activeTab === 'schedule' && (<>
           {/* Confirmation Status */}
           <div style={{ marginBottom: '24px' }}>
             <label style={{
@@ -1033,7 +1121,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
 
           {/* Date Selection */}
           <div style={{ marginBottom: '24px' }}>
-            <label style={{
+            <label htmlFor="job-scheduled-date" style={{
               display: 'block',
               fontSize: '12px',
               fontWeight: '600',
@@ -1045,6 +1133,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
             </label>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
               <input
+                id="job-scheduled-date"
                 type="date"
                 value={formData.date}
                 onChange={(e) => handleDateChange(e.target.value)}
@@ -1091,7 +1180,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
 
           {/* Time Selection */}
           <div style={{ marginBottom: '24px' }}>
-            <label style={{
+            <label htmlFor="job-scheduled-time" style={{
               display: 'block',
               fontSize: '12px',
               fontWeight: '600',
@@ -1102,6 +1191,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
               Scheduled Time
             </label>
             <select
+              id="job-scheduled-time"
               value={formData.time}
               onChange={(e) => handleTimeChange(e.target.value)}
               style={{
@@ -1124,7 +1214,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
 
           {/* End Time Selection */}
           <div style={{ marginBottom: '24px' }}>
-            <label style={{
+            <label htmlFor="job-end-time" style={{
               display: 'block',
               fontSize: '12px',
               fontWeight: '600',
@@ -1145,6 +1235,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
               )}
             </label>
             <select
+              id="job-end-time"
               value={formData.endTime}
               onChange={(e) => handleEndTimeChange(e.target.value)}
               disabled={!formData.time}
@@ -1211,9 +1302,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
               >
                 Unassign
               </button>
-              {technicians.map(tech => {
-                const isAssigned = formData.assignedTech.includes(tech.id)
-                return (
+              {techButtonList.map(tech => (
                   <button
                     type="button"
                     key={tech.id}
@@ -1224,20 +1313,22 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
                       fontSize: '14px',
                       fontWeight: '600',
                       border: '1px solid',
-                      borderColor: isAssigned ? '#2A54A1' : '#E5E7EB',
+                      borderColor: tech.isAssigned ? '#2A54A1' : '#E5E7EB',
                       borderRadius: '8px',
-                      backgroundColor: isAssigned ? '#2A54A1' : 'white',
-                      color: isAssigned ? 'white' : '#111827',
+                      backgroundColor: tech.isAssigned ? '#2A54A1' : 'white',
+                      color: tech.isAssigned ? 'white' : '#111827',
                       cursor: isUpdating ? 'not-allowed' : 'pointer'
                     }}
                   >
-                    {tech.firstName} {tech.lastName}
+                    {tech.label}
                   </button>
-                )
-              })}
+              ))}
             </div>
           </div>
 
+          </>)}
+
+          {activeTab === 'details' && (<>
           {/* Equipment */}
           <div style={{ marginBottom: '24px' }}>
             <label style={{
@@ -1370,10 +1461,11 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
               marginBottom: '12px'
             }}>
               <div>
-                <div style={{ fontSize: '11px', color: '#9CA3AF', marginBottom: '4px' }}>
+                <label htmlFor="job-vibe" style={{ fontSize: '11px', color: '#9CA3AF', marginBottom: '4px', display: 'block' }}>
                   Vibe
-                </div>
+                </label>
                 <input
+                  id="job-vibe"
                   type="text"
                   value={formData.vibe}
                   onChange={(e) => handleJobDetailsChange('vibe', e.target.value)}
@@ -1389,10 +1481,11 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
                 />
               </div>
               <div>
-                <div style={{ fontSize: '11px', color: '#9CA3AF', marginBottom: '4px' }}>
+                <label htmlFor="job-pets" style={{ fontSize: '11px', color: '#9CA3AF', marginBottom: '4px', display: 'block' }}>
                   Pets?
-                </div>
+                </label>
                 <input
+                  id="job-pets"
                   type="text"
                   value={formData.pets}
                   onChange={(e) => handleJobDetailsChange('pets', e.target.value)}
@@ -1408,10 +1501,11 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
                 />
               </div>
               <div>
-                <div style={{ fontSize: '11px', color: '#9CA3AF', marginBottom: '4px' }}>
+                <label htmlFor="job-gate-code" style={{ fontSize: '11px', color: '#9CA3AF', marginBottom: '4px', display: 'block' }}>
                   Gate Code / Access
-                </div>
+                </label>
                 <input
+                  id="job-gate-code"
                   type="text"
                   value={formData.gateCode}
                   onChange={(e) => handleJobDetailsChange('gateCode', e.target.value)}
@@ -1427,10 +1521,11 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
                 />
               </div>
               <div>
-                <div style={{ fontSize: '11px', color: '#9CA3AF', marginBottom: '4px' }}>
+                <label htmlFor="job-electric-water" style={{ fontSize: '11px', color: '#9CA3AF', marginBottom: '4px', display: 'block' }}>
                   Electric / Water
-                </div>
+                </label>
                 <input
+                  id="job-electric-water"
                   type="text"
                   value={formData.electricWater}
                   onChange={(e) => handleJobDetailsChange('electricWater', e.target.value)}
@@ -1447,10 +1542,11 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
               </div>
             </div>
             <div style={{ marginBottom: '12px' }}>
-              <div style={{ fontSize: '11px', color: '#9CA3AF', marginBottom: '4px' }}>
+              <label htmlFor="job-other-notes" style={{ fontSize: '11px', color: '#9CA3AF', marginBottom: '4px', display: 'block' }}>
                 Other Notes
-              </div>
+              </label>
               <textarea
+                id="job-other-notes"
                 value={formData.otherNotes}
                 onChange={(e) => handleJobDetailsChange('otherNotes', e.target.value)}
                 placeholder="Any other details the technician should know..."
@@ -1469,6 +1565,9 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
             </div>
           </div>
 
+          </>)}
+
+          {activeTab === 'addons' && (<>
           {/* Add-ons / Change Orders */}
           <div style={{ marginBottom: '24px' }}>
             <label style={{
@@ -1550,10 +1649,11 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
               marginBottom: '12px'
             }}>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '11px', color: '#9CA3AF', marginBottom: '4px' }}>
+                <label htmlFor="job-addon-desc" style={{ fontSize: '11px', color: '#9CA3AF', marginBottom: '4px', display: 'block' }}>
                   Description
-                </div>
+                </label>
                 <input
+                  id="job-addon-desc"
                   type="text"
                   value={newAddOn.description}
                   onChange={(e) => setNewAddOn(prev => ({ ...prev, description: e.target.value }))}
@@ -1569,10 +1669,11 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
                 />
               </div>
               <div style={{ width: '100px' }}>
-                <div style={{ fontSize: '11px', color: '#9CA3AF', marginBottom: '4px' }}>
+                <label htmlFor="job-addon-price" style={{ fontSize: '11px', color: '#9CA3AF', marginBottom: '4px', display: 'block' }}>
                   Price ($)
-                </div>
+                </label>
                 <input
+                  id="job-addon-price"
                   type="number"
                   step="0.01"
                   min="0"
@@ -1643,8 +1744,16 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
           {job.date && (
             <MultiDayContinue jobId={job.id} onUpdate={onUpdate} />
           )}
+          </>)}
         </div>
       </div>
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onDismiss={() => setToast(null)}
+        />
+      )}
     </div>
   )
 }

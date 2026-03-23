@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { format, parseISO } from 'date-fns'
 
 // Rejection reason options (should match Airtable Single Select options)
@@ -49,6 +49,41 @@ export default function SchedulingSuggestions({ onComplete }) {
   const [rejectReason, setRejectReason] = useState('')
   const [error, setError] = useState(null)
   const [selectedStrategies, setSelectedStrategies] = useState([])
+  const rejectModalRef = useRef(null)
+  const previousFocusRef = useRef(null)
+
+  // Focus trap for reject modal
+  useEffect(() => {
+    if (!showRejectModal) return
+    previousFocusRef.current = document.activeElement
+    const focusableSelector = 'button, input, select, textarea, [href]'
+    const modal = rejectModalRef.current
+    if (modal) {
+      const firstFocusable = modal.querySelector(focusableSelector)
+      if (firstFocusable) firstFocusable.focus()
+    }
+
+    const handleTab = (e) => {
+      if (e.key !== 'Tab' || !modal) return
+      const focusableElements = modal.querySelectorAll(focusableSelector)
+      if (focusableElements.length === 0) return
+      const first = focusableElements[0]
+      const last = focusableElements[focusableElements.length - 1]
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+
+    document.addEventListener('keydown', handleTab)
+    return () => {
+      document.removeEventListener('keydown', handleTab)
+      if (previousFocusRef.current) previousFocusRef.current.focus()
+    }
+  }, [showRejectModal])
 
   const toggleStrategy = (strategyId) => {
     setSelectedStrategies(prev =>
@@ -679,14 +714,19 @@ export default function SchedulingSuggestions({ onComplete }) {
           justifyContent: 'center',
           zIndex: 1000
         }}>
-          <div style={{
+          <div
+            ref={rejectModalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="scheduling-reject-modal-title"
+            style={{
             backgroundColor: 'white',
             borderRadius: '12px',
             padding: '24px',
             maxWidth: '400px',
             width: '90%'
           }}>
-            <h4 style={{
+            <h4 id="scheduling-reject-modal-title" style={{
               fontSize: '16px',
               fontWeight: '700',
               color: '#1F2937',

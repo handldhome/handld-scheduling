@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
+import styles from './AdminDashboard.module.css'
 import AvailabilityCalendar from './AvailabilityCalendar'
 import JobsList from './JobsList'
 import AddJobModal from './AddJobModal'
@@ -113,24 +115,12 @@ export default function AdminDashboardClient({ technicians, availability, jobs }
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'radial-gradient(1200px 600px at 70% -10%, #ffffff 0%, #FFF5E1 100%)',
-      padding: isMobile ? '10px' : '20px'
-    }}>
-      <div style={{
-        maxWidth: '1400px',
-        margin: '0 auto'
-      }}>
+    <div className={styles.pageWrapper} style={{ padding: isMobile ? '10px' : '20px' }}>
+      <div className={styles.container}>
         {/* Header */}
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: '16px',
+        <div className={styles.header} style={{
           padding: isMobile ? '12px 16px' : '16px 24px',
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
           marginBottom: isMobile ? '10px' : '20px',
-          display: 'flex',
-          alignItems: 'center',
           gap: isMobile ? '10px' : '16px'
         }}>
           <img
@@ -149,23 +139,13 @@ export default function AdminDashboardClient({ technicians, availability, jobs }
           }}>
             {isMobile ? 'Dashboard' : 'Scheduling Dashboard'}
           </h1>
-          <a
+          <Link
             href="https://commandcenter.handldhome.com/?key=alia"
+            className={styles.commandCenterLink}
             style={{
-              marginLeft: 'auto',
               padding: isMobile ? '8px 12px' : '10px 16px',
-              backgroundColor: '#374151',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
               fontSize: isMobile ? '12px' : '14px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              textDecoration: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+              gap: '8px'
             }}
           >
             <svg
@@ -184,28 +164,19 @@ export default function AdminDashboardClient({ technicians, availability, jobs }
               <rect x="14" y="14" width="7" height="7" />
             </svg>
             {isMobile ? 'Command' : 'Command Center'}
-          </a>
+          </Link>
         </div>
 
         {/* Tabs */}
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: '16px 16px 0 0',
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+        <div className={styles.tabBar} style={{
           display: 'flex',
           flexDirection: isMobile ? 'column' : 'row',
           justifyContent: 'space-between',
           alignItems: isMobile ? 'stretch' : 'center',
-          padding: isMobile ? '0' : '0 20px',
-          borderBottom: '1px solid #E5E7EB'
+          padding: isMobile ? '0' : '0 20px'
         }}>
           {/* Tab buttons - scrollable on mobile */}
-          <div style={{
-            display: 'flex',
-            overflowX: 'auto',
-            WebkitOverflowScrolling: 'touch',
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none',
+          <div className={styles.tabScroller} style={{
             padding: isMobile ? '0 10px' : '0'
           }}>
             {tabs.map(tab => (

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 
 // Available services matching Typeform
 const SERVICES = [
@@ -50,6 +50,41 @@ export default function AddJobModal({ jobs = [], onClose, onJobAdded }) {
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState(null)
+
+  const modalRef = useRef(null)
+  const previousFocusRef = useRef(null)
+
+  // Focus trap
+  useEffect(() => {
+    previousFocusRef.current = document.activeElement
+    const focusableSelector = 'button, input, select, textarea, [href]'
+    const modal = modalRef.current
+    if (modal) {
+      const firstFocusable = modal.querySelector(focusableSelector)
+      if (firstFocusable) firstFocusable.focus()
+    }
+
+    const handleTab = (e) => {
+      if (e.key !== 'Tab' || !modal) return
+      const focusableElements = modal.querySelectorAll(focusableSelector)
+      if (focusableElements.length === 0) return
+      const first = focusableElements[0]
+      const last = focusableElements[focusableElements.length - 1]
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+
+    document.addEventListener('keydown', handleTab)
+    return () => {
+      document.removeEventListener('keydown', handleTab)
+      if (previousFocusRef.current) previousFocusRef.current.focus()
+    }
+  }, [])
 
   // Get unique customers from jobs (by phone number as unique identifier)
   const uniqueCustomers = useMemo(() => {
@@ -258,7 +293,12 @@ export default function AddJobModal({ jobs = [], onClose, onJobAdded }) {
       zIndex: 1000,
       padding: '20px'
     }}>
-      <div style={{
+      <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-job-modal-title"
+        style={{
         backgroundColor: 'white',
         borderRadius: '16px',
         padding: '30px',
@@ -276,7 +316,7 @@ export default function AddJobModal({ jobs = [], onClose, onJobAdded }) {
           marginBottom: '24px'
         }}>
           <div>
-            <h2 style={{
+            <h2 id="add-job-modal-title" style={{
               fontSize: '24px',
               fontWeight: '800',
               color: '#2A54A1',
@@ -296,6 +336,7 @@ export default function AddJobModal({ jobs = [], onClose, onJobAdded }) {
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
+            aria-label="Close"
             style={{
               background: 'none',
               border: 'none',
@@ -384,7 +425,7 @@ export default function AddJobModal({ jobs = [], onClose, onJobAdded }) {
             borderRadius: '12px',
             border: '1px solid #BFDBFE'
           }}>
-            <label style={{
+            <label htmlFor="add-job-customer-search" style={{
               display: 'block',
               fontSize: '14px',
               fontWeight: '600',
@@ -394,6 +435,7 @@ export default function AddJobModal({ jobs = [], onClose, onJobAdded }) {
               Search for existing customer
             </label>
             <input
+              id="add-job-customer-search"
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -743,8 +785,9 @@ export default function AddJobModal({ jobs = [], onClose, onJobAdded }) {
                 </h3>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
                   <div>
-                    <label style={labelStyle}>Stories *</label>
+                    <label htmlFor="add-job-stories" style={labelStyle}>Stories *</label>
                     <select
+                      id="add-job-stories"
                       required={mode === 'new'}
                       value={formData.stories}
                       onChange={(e) => handleChange('stories', e.target.value)}
@@ -757,8 +800,9 @@ export default function AddJobModal({ jobs = [], onClose, onJobAdded }) {
                     </select>
                   </div>
                   <div>
-                    <label style={labelStyle}>Sq. Footage *</label>
+                    <label htmlFor="add-job-sq-footage" style={labelStyle}>Sq. Footage *</label>
                     <select
+                      id="add-job-sq-footage"
                       required={mode === 'new'}
                       value={formData.squareFootage}
                       onChange={(e) => handleChange('squareFootage', e.target.value)}
@@ -772,8 +816,9 @@ export default function AddJobModal({ jobs = [], onClose, onJobAdded }) {
                     </select>
                   </div>
                   <div>
-                    <label style={labelStyle}>Lot Size *</label>
+                    <label htmlFor="add-job-lot-size" style={labelStyle}>Lot Size *</label>
                     <select
+                      id="add-job-lot-size"
                       required={mode === 'new'}
                       value={formData.lotSize}
                       onChange={(e) => handleChange('lotSize', e.target.value)}
@@ -810,8 +855,9 @@ export default function AddJobModal({ jobs = [], onClose, onJobAdded }) {
                 {/* Name */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
                   <div>
-                    <label style={labelStyle}>First Name *</label>
+                    <label htmlFor="add-job-first-name" style={labelStyle}>First Name *</label>
                     <input
+                      id="add-job-first-name"
                       type="text"
                       required
                       value={formData.firstName}
@@ -821,8 +867,9 @@ export default function AddJobModal({ jobs = [], onClose, onJobAdded }) {
                     />
                   </div>
                   <div>
-                    <label style={labelStyle}>Last Name *</label>
+                    <label htmlFor="add-job-last-name" style={labelStyle}>Last Name *</label>
                     <input
+                      id="add-job-last-name"
                       type="text"
                       required
                       value={formData.lastName}
@@ -836,8 +883,9 @@ export default function AddJobModal({ jobs = [], onClose, onJobAdded }) {
                 {/* Phone & Email */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div>
-                    <label style={labelStyle}>Phone *</label>
+                    <label htmlFor="add-job-phone" style={labelStyle}>Phone *</label>
                     <input
+                      id="add-job-phone"
                       type="tel"
                       required
                       value={formData.phone}
@@ -847,8 +895,9 @@ export default function AddJobModal({ jobs = [], onClose, onJobAdded }) {
                     />
                   </div>
                   <div>
-                    <label style={labelStyle}>Email</label>
+                    <label htmlFor="add-job-email" style={labelStyle}>Email</label>
                     <input
+                      id="add-job-email"
                       type="email"
                       value={formData.email}
                       onChange={(e) => handleChange('email', e.target.value)}
@@ -879,8 +928,9 @@ export default function AddJobModal({ jobs = [], onClose, onJobAdded }) {
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
                   <div>
-                    <label style={labelStyle}>City *</label>
+                    <label htmlFor="add-job-city" style={labelStyle}>City *</label>
                     <select
+                      id="add-job-city"
                       required
                       value={formData.city}
                       onChange={(e) => handleChange('city', e.target.value)}
@@ -893,8 +943,9 @@ export default function AddJobModal({ jobs = [], onClose, onJobAdded }) {
                     </select>
                   </div>
                   <div>
-                    <label style={labelStyle}>Zip Code</label>
+                    <label htmlFor="add-job-zip-code" style={labelStyle}>Zip Code</label>
                     <input
+                      id="add-job-zip-code"
                       type="text"
                       value={formData.zipCode}
                       onChange={(e) => handleChange('zipCode', e.target.value)}
@@ -905,8 +956,9 @@ export default function AddJobModal({ jobs = [], onClose, onJobAdded }) {
                 </div>
 
                 <div>
-                  <label style={labelStyle}>Street Address</label>
+                  <label htmlFor="add-job-address" style={labelStyle}>Street Address</label>
                   <input
+                    id="add-job-address"
                     type="text"
                     value={formData.address}
                     onChange={(e) => handleChange('address', e.target.value)}
@@ -919,8 +971,9 @@ export default function AddJobModal({ jobs = [], onClose, onJobAdded }) {
 
             {/* Notes */}
             <div>
-              <label style={labelStyle}>Notes</label>
+              <label htmlFor="add-job-notes" style={labelStyle}>Notes</label>
               <textarea
+                id="add-job-notes"
                 value={formData.notes}
                 onChange={(e) => handleChange('notes', e.target.value)}
                 rows={2}

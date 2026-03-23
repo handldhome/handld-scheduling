@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 const AVAILABILITY_REMINDER_MESSAGE = `Hey! Please submit your availability for next week using the link below. Thanks!`
 const ONBOARDING_MESSAGE = `Welcome to the Handld team! Please complete your onboarding form using the link below. Thanks!`
@@ -11,6 +11,41 @@ export default function TextTechsModal({ technicians, onClose }) {
   const [messageType, setMessageType] = useState(null) // 'availability' | 'onboarding' | null
   const [isSending, setIsSending] = useState(false)
   const [result, setResult] = useState(null)
+
+  const modalRef = useRef(null)
+  const previousFocusRef = useRef(null)
+
+  // Focus trap
+  useEffect(() => {
+    previousFocusRef.current = document.activeElement
+    const focusableSelector = 'button, input, select, textarea, [href]'
+    const modal = modalRef.current
+    if (modal) {
+      const firstFocusable = modal.querySelector(focusableSelector)
+      if (firstFocusable) firstFocusable.focus()
+    }
+
+    const handleTab = (e) => {
+      if (e.key !== 'Tab' || !modal) return
+      const focusableElements = modal.querySelectorAll(focusableSelector)
+      if (focusableElements.length === 0) return
+      const first = focusableElements[0]
+      const last = focusableElements[focusableElements.length - 1]
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+
+    document.addEventListener('keydown', handleTab)
+    return () => {
+      document.removeEventListener('keydown', handleTab)
+      if (previousFocusRef.current) previousFocusRef.current.focus()
+    }
+  }, [])
 
   // New tech form state
   const [showAddNewTech, setShowAddNewTech] = useState(false)
@@ -141,7 +176,12 @@ export default function TextTechsModal({ technicians, onClose }) {
       zIndex: 1000,
       padding: '20px'
     }}>
-      <div style={{
+      <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="text-techs-modal-title"
+        style={{
         backgroundColor: 'white',
         borderRadius: '16px',
         maxWidth: '500px',
@@ -158,7 +198,7 @@ export default function TextTechsModal({ technicians, onClose }) {
           justifyContent: 'space-between',
           alignItems: 'center'
         }}>
-          <h2 style={{
+          <h2 id="text-techs-modal-title" style={{
             margin: 0,
             fontSize: '20px',
             fontWeight: '700',
@@ -169,6 +209,7 @@ export default function TextTechsModal({ technicians, onClose }) {
           <button
             type="button"
             onClick={onClose}
+            aria-label="Close"
             style={{
               background: 'none',
               border: 'none',
@@ -380,6 +421,7 @@ export default function TextTechsModal({ technicians, onClose }) {
                       <button
                         type="button"
                         onClick={() => removeNewTech(tech.id)}
+                        aria-label="Close"
                         style={{
                           background: 'none',
                           border: 'none',

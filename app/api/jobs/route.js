@@ -1,4 +1,5 @@
 import { getAllJobs, createJob } from '@/lib/db'
+import { revalidateTag } from 'next/cache'
 
 // Disable caching
 export const revalidate = 0
@@ -35,6 +36,8 @@ export async function POST(request) {
     }
 
     const result = await createJob(jobData)
+
+    revalidateTag('jobs')
 
     return Response.json({
       success: true,

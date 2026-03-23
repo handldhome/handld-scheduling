@@ -1,5 +1,6 @@
 import { getAllJobs, getAllTechnicians, getAllAvailability, getPricingRules, updateJob } from '@/lib/db'
 import { generateSchedulingSuggestions, saveSuggestionsToJobs } from '@/lib/scheduling-agent'
+import { revalidateTag } from 'next/cache'
 
 // Disable caching
 export const revalidate = 0
@@ -101,6 +102,8 @@ export async function GET(request) {
       })),
       availabilityCount: availability.length
     }
+
+    revalidateTag('jobs')
 
     return Response.json({
       success: true,
