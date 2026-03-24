@@ -1,4 +1,5 @@
 import twilio from 'twilio'
+import { logSms } from '@/lib/db'
 
 const client = twilio(
   process.env.TWILIO_ACCOUNT_SID,
@@ -61,14 +62,18 @@ const formatTime = (timeStr) => {
 }
 
 export async function POST(request) {
+  let job = null
+  let phoneNumber = null
+  let message = ''
   try {
-    const { job } = await request.json()
+    const body = await request.json()
+    job = body.job
 
     if (!job) {
       return Response.json({ error: 'Job data is required' }, { status: 400 })
     }
 
-    const phoneNumber = formatPhoneNumber(job.phone)
+    phoneNumber = formatPhoneNumber(job.phone)
 
     if (!phoneNumber) {
       return Response.json({ error: 'Valid phone number is required' }, { status: 400 })
@@ -87,12 +92,22 @@ export async function POST(request) {
     const date = formatDate(getString(job.date))
     const time = formatTime(getString(job.time))
 
-    const message = `Hi ${firstName}, your ${serviceName} appointment with Handld Home Services is confirmed for ${date} at ${time}. Questions? Text us at (626) 298-7128`
+    message = `Hi ${firstName}, your ${serviceName} appointment with Handld Home Services is confirmed for ${date} at ${time}. Questions? Text us at (626) 298-7128`
 
     const result = await client.messages.create({
       body: message,
       from: process.env.TWILIO_PHONE_NUMBER,
       to: phoneNumber
+    })
+
+    await logSms({
+      jobId: job.id,
+      recipientPhone: phoneNumber,
+      recipientType: 'customer',
+      messageType: 'confirmation',
+      messageBody: message,
+      twilioSid: result.sid,
+      status: 'sent'
     })
 
     return Response.json({
@@ -103,6 +118,15 @@ export async function POST(request) {
 
   } catch (error) {
     console.error('Error sending confirmation SMS:', error)
+    await logSms({
+      jobId: job?.id,
+      recipientPhone: phoneNumber || 'unknown',
+      recipientType: 'customer',
+      messageType: 'confirmation',
+      messageBody: message || '',
+      status: 'failed',
+      errorMessage: error.message
+    })
     return Response.json({
       error: 'Failed to send confirmation text',
       details: error.message

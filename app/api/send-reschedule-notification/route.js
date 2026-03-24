@@ -1,5 +1,5 @@
 import twilio from 'twilio'
-import { getTechnician } from '@/lib/db'
+import { getTechnician, logSms } from '@/lib/db'
 
 const client = twilio(
   process.env.TWILIO_ACCOUNT_SID,
@@ -89,18 +89,38 @@ export async function POST(request) {
 
     // Send reschedule notification to customer
     if (customerPhone) {
+      let customerMessage = ''
       try {
-        const customerMessage = `Hi ${firstName}, your ${serviceName} appointment with Handld Home Services has been rescheduled to ${date} at ${time}. Questions? Text us at (626) 298-7128`
+        customerMessage = `Hi ${firstName}, your ${serviceName} appointment with Handld Home Services has been rescheduled to ${date} at ${time}. Questions? Text us at (626) 298-7128`
 
-        await client.messages.create({
+        const customerResult = await client.messages.create({
           body: customerMessage,
           from: process.env.TWILIO_PHONE_NUMBER,
           to: customerPhone
         })
 
+        await logSms({
+          jobId: job.id,
+          recipientPhone: customerPhone,
+          recipientType: 'customer',
+          messageType: 'reschedule',
+          messageBody: customerMessage,
+          twilioSid: customerResult.sid,
+          status: 'sent'
+        })
+
         results.customer.sent = true
       } catch (error) {
         console.error('Customer reschedule SMS error:', error)
+        await logSms({
+          jobId: job?.id,
+          recipientPhone: customerPhone || 'unknown',
+          recipientType: 'customer',
+          messageType: 'reschedule',
+          messageBody: customerMessage || '',
+          status: 'failed',
+          errorMessage: error.message
+        })
         results.customer.error = error.message
       }
     }
@@ -108,9 +128,11 @@ export async function POST(request) {
     // Send reschedule notification to assigned technicians
     if (techIds && Array.isArray(techIds) && techIds.length > 0) {
       for (const techId of techIds) {
+        let phoneNumber = 'unknown'
+        let techMessage = ''
         try {
           const tech = await getTechnician(techId)
-          const phoneNumber = formatPhoneNumber(tech.phone)
+          phoneNumber = formatPhoneNumber(tech.phone)
 
           if (!phoneNumber) {
             results.techs.failedCount++
@@ -125,12 +147,22 @@ export async function POST(request) {
 
           const scheduleLink = `https://work.handldhome.com/tech/${techId}/schedule?date=${dateForUrl}`
 
-          const techMessage = `Job rescheduled!\n\n${serviceName}\n${date} at ${time}\n${address}\n\nView your schedule:\n${scheduleLink}`
+          techMessage = `Job rescheduled!\n\n${serviceName}\n${date} at ${time}\n${address}\n\nView your schedule:\n${scheduleLink}`
 
-          await client.messages.create({
+          const techResult = await client.messages.create({
             body: techMessage,
             from: process.env.TWILIO_PHONE_NUMBER,
             to: phoneNumber
+          })
+
+          await logSms({
+            jobId: job.id,
+            recipientPhone: phoneNumber,
+            recipientType: 'technician',
+            messageType: 'reschedule',
+            messageBody: techMessage,
+            twilioSid: techResult.sid,
+            status: 'sent'
           })
 
           results.techs.successCount++
@@ -141,6 +173,15 @@ export async function POST(request) {
           })
 
         } catch (error) {
+          await logSms({
+            jobId: job?.id,
+            recipientPhone: phoneNumber || 'unknown',
+            recipientType: 'technician',
+            messageType: 'reschedule',
+            messageBody: techMessage || '',
+            status: 'failed',
+            errorMessage: error.message
+          })
           results.techs.failedCount++
           results.techs.details.push({
             techId,

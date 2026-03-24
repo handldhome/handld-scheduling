@@ -11,8 +11,9 @@ import WeeklyCalendarView from './WeeklyCalendarView'
 import TechScheduleView from './TechScheduleView'
 import TextTechsModal from './TextTechsModal'
 import ScheduleReminderModal from './ScheduleReminderModal'
+import UtilizationDashboard from './UtilizationDashboard'
 
-const VALID_TABS = ['schedule', 'tech-schedules', 'jobs', 'availability']
+const VALID_TABS = ['schedule', 'tech-schedules', 'jobs', 'availability', 'utilization']
 
 export default function AdminDashboardClient({ technicians, availability, jobs }) {
   const searchParams = useSearchParams()
@@ -82,7 +83,8 @@ export default function AdminDashboardClient({ technicians, availability, jobs }
     { id: 'schedule', label: 'Schedule', icon: '📅' },
     { id: 'tech-schedules', label: 'Tech', icon: '👷' },
     { id: 'jobs', label: 'Jobs', icon: '📋' },
-    { id: 'availability', label: 'Availability', icon: '✓' }
+    { id: 'availability', label: 'Availability', icon: '✓' },
+    { id: 'utilization', label: 'Utilization', icon: '📊' }
   ]
 
   const tabButtonStyle = (isActive) => ({
@@ -279,6 +281,14 @@ export default function AdminDashboardClient({ technicians, availability, jobs }
 
           {activeTab === 'availability' && (
             <AvailabilityCalendar
+              technicians={technicians}
+              availability={availability}
+            />
+          )}
+
+          {activeTab === 'utilization' && (
+            <UtilizationDashboard
+              jobs={jobs}
               technicians={technicians}
               availability={availability}
             />

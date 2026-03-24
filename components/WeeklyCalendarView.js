@@ -397,6 +397,41 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
     return Array.from(services).sort()
   }, [jobs])
 
+  // Detect time conflicts: same tech assigned to overlapping jobs
+  const conflictingJobIds = useMemo(() => {
+    const conflicts = new Set()
+    // Group scheduled jobs by tech
+    const jobsByTech = {}
+    Object.values(scheduledJobsByDay).flat().forEach(job => {
+      if (!job.time || !job.assignedTech?.length) return
+      job.assignedTech.forEach(techId => {
+        if (!jobsByTech[techId]) jobsByTech[techId] = []
+        jobsByTech[techId].push(job)
+      })
+    })
+    // Check for overlaps within each tech
+    Object.values(jobsByTech).forEach(techJobs => {
+      for (let i = 0; i < techJobs.length; i++) {
+        for (let k = i + 1; k < techJobs.length; k++) {
+          const a = techJobs[i]
+          const b = techJobs[k]
+          if (a.date !== b.date) continue
+          const aStart = parseInt(a.time.split(':')[0]) + parseInt(a.time.split(':')[1] || '0') / 60
+          const aDur = a.endTime ? (parseInt(a.endTime.split(':')[0]) + parseInt(a.endTime.split(':')[1] || '0') / 60) - aStart : (parseFloat(a.estimatedTime) || 2)
+          const aEnd = aStart + aDur
+          const bStart = parseInt(b.time.split(':')[0]) + parseInt(b.time.split(':')[1] || '0') / 60
+          const bDur = b.endTime ? (parseInt(b.endTime.split(':')[0]) + parseInt(b.endTime.split(':')[1] || '0') / 60) - bStart : (parseFloat(b.estimatedTime) || 2)
+          const bEnd = bStart + bDur
+          if (aStart < bEnd && bStart < aEnd) {
+            conflicts.add(a.id)
+            conflicts.add(b.id)
+          }
+        }
+      }
+    })
+    return conflicts
+  }, [scheduledJobsByDay])
+
   // Get jobs for a specific time slot (only jobs that START in this slot)
   const getJobsForSlot = (date, slotTime) => {
     const dayJobs = scheduledJobsByDay[date] || []
@@ -1112,6 +1147,7 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
                       const colors = getServiceColor(job.serviceName)
                       const techName = getTechName(job.assignedTech)
                       const isUnconfirmed = !job.confirmed
+                      const hasConflict = conflictingJobIds.has(job.id)
                       const isDragging = draggedJob?.id === job.id
                       const isSelected = selectedJobIds.has(job.id)
                       const durationHours = getJobDurationHours(job)
@@ -1154,11 +1190,13 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
                             padding: '3px 4px',
                             borderRadius: '4px',
                             backgroundColor: isSelected ? '#DBEAFE' : colors.bg,
-                            border: isSelected
-                              ? '2px solid #2563EB'
-                              : isUnconfirmed
-                                ? `2px dashed ${colors.border}`
-                                : `1px solid ${colors.border}`,
+                            border: hasConflict
+                              ? '2px solid #DC2626'
+                              : isSelected
+                                ? '2px solid #2563EB'
+                                : isUnconfirmed
+                                  ? `2px dashed ${colors.border}`
+                                  : `1px solid ${colors.border}`,
                             borderLeftWidth: '3px',
                             borderLeftStyle: 'solid',
                             borderLeftColor: isSelected ? '#2563EB' : colors.border,
@@ -1178,8 +1216,23 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
                           onMouseLeave={(e) => {
                             e.currentTarget.style.boxShadow = 'none'
                           }}
-                          title={`Click to edit • Shift+click to select${durationHours > 1 ? ` • Duration: ${durationHours}h` : ''}`}
+                          title={`${hasConflict ? '⚠ TIME CONFLICT — ' : ''}Click to edit • Shift+click to select${durationHours > 1 ? ` • Duration: ${durationHours}h` : ''}`}
                         >
+                          {hasConflict && (
+                            <div style={{
+                              fontSize: '8px',
+                              fontWeight: '800',
+                              color: '#DC2626',
+                              backgroundColor: '#FEE2E2',
+                              padding: '1px 4px',
+                              borderRadius: '2px',
+                              marginBottom: '1px',
+                              lineHeight: '1.3',
+                              display: 'inline-block'
+                            }}>
+                              ⚠ CONFLICT
+                            </div>
+                          )}
                           <div style={{
                             fontWeight: '700',
                             color: colors.text,

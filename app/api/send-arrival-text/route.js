@@ -1,4 +1,5 @@
 import twilio from 'twilio'
+import { logSms } from '@/lib/db'
 
 const client = twilio(
   process.env.TWILIO_ACCOUNT_SID,
@@ -41,14 +42,19 @@ const formatPhoneNumber = (phone) => {
 }
 
 export async function POST(request) {
+  let job = null
+  let phoneNumber = null
+  let message = ''
   try {
-    const { job, techName } = await request.json()
+    const body = await request.json()
+    job = body.job
+    const techName = body.techName
 
     if (!job) {
       return Response.json({ error: 'Job data is required' }, { status: 400 })
     }
 
-    const phoneNumber = formatPhoneNumber(job.phone)
+    phoneNumber = formatPhoneNumber(job.phone)
 
     if (!phoneNumber) {
       return Response.json({ error: 'Valid phone number is required' }, { status: 400 })
@@ -66,12 +72,22 @@ export async function POST(request) {
     const serviceName = getString(job.serviceName) || 'service'
     const techFirstName = techName?.split(' ')[0] || 'Your technician'
 
-    const message = `Hi ${firstName}! ${techFirstName} from Handld has arrived for your ${serviceName} appointment. Questions? Text us at (626) 298-7128`
+    message = `Hi ${firstName}! ${techFirstName} from Handld has arrived for your ${serviceName} appointment. Questions? Text us at (626) 298-7128`
 
     const result = await client.messages.create({
       body: message,
       from: process.env.TWILIO_PHONE_NUMBER,
       to: phoneNumber
+    })
+
+    await logSms({
+      jobId: job.id,
+      recipientPhone: phoneNumber,
+      recipientType: 'customer',
+      messageType: 'arrival',
+      messageBody: message,
+      twilioSid: result.sid,
+      status: 'sent'
     })
 
     return Response.json({
@@ -82,6 +98,15 @@ export async function POST(request) {
 
   } catch (error) {
     console.error('Error sending arrival SMS:', error)
+    await logSms({
+      jobId: job?.id,
+      recipientPhone: phoneNumber || 'unknown',
+      recipientType: 'customer',
+      messageType: 'arrival',
+      messageBody: message || '',
+      status: 'failed',
+      errorMessage: error.message
+    })
     return Response.json({
       error: 'Failed to send arrival text',
       details: error.message

@@ -89,6 +89,31 @@ const normalizeTimeTo24 = (timeStr) => {
   return str
 }
 
+// Service name → tech rating field mapping
+const SERVICE_RATING_FIELDS = {
+  'Window Washing': 'Window Washing Rating',
+  'Window Washing - Interior & Exterior': 'Window Washing Rating',
+  'Window Washing - Exterior': 'Window Washing Rating',
+  'Window Cleaning': 'Window Washing Rating',
+  'Window Cleaning - Interior & Exterior': 'Window Washing Rating',
+  'Window Cleaning - Exterior': 'Window Washing Rating',
+  'Handyman': 'Handyman Rating',
+  'Gutter Cleaning': 'Gutter Cleaning Rating',
+  'Pressure Washing': 'Pressure Washing Rating',
+  'Pressure Washing - Home Exterior': 'Pressure Washing Rating',
+  'Pressure Washing - Driveway & Patio': 'Pressure Washing Rating',
+  'Pest Control': 'Pest Control Rating',
+  'Trash Bin Cleaning': 'Trash Bin Cleaning Rating',
+  'Outdoor Furniture Cleaning': 'Outdoor Furniture Cleaning Rating',
+  'Holiday Lights': 'Holiday Lights Rating',
+  'Holiday Lights Install & Take Down': 'Holiday Lights Rating',
+  'Home TuneUp': 'Home TuneUp Rating',
+  'Plumbing': 'Plumbing Rating',
+  'Plumbing Repairs': 'Plumbing Rating',
+  'Electrical': 'Electrical Rating',
+  'Electrical Repairs': 'Electrical Rating'
+}
+
 function MultiDayContinue({ jobId, onUpdate }) {
   const [selectedDates, setSelectedDates] = useState([])
   const [isCreating, setIsCreating] = useState(false)
@@ -282,6 +307,8 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
   const [newAddOn, setNewAddOn] = useState({ description: '', price: '' })
   const [equipmentOptions, setEquipmentOptions] = useState([])
   const [loadingEquipment, setLoadingEquipment] = useState(true)
+  const [smsLog, setSmsLog] = useState([])
+  const [loadingComms, setLoadingComms] = useState(false)
 
   const modalRef = useRef(null)
   const previousFocusRef = useRef(null)
@@ -371,6 +398,17 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
     }
     fetchEquipmentOptions()
   }, [])
+
+  useEffect(() => {
+    if (activeTab === 'comms' && job.id && smsLog.length === 0) {
+      setLoadingComms(true)
+      fetch(`/api/jobs/${job.id}/sms-log`)
+        .then(res => res.json())
+        .then(data => setSmsLog(data.logs || []))
+        .catch(() => setSmsLog([]))
+        .finally(() => setLoadingComms(false))
+    }
+  }, [activeTab, job.id])
 
   const colors = getServiceColor(job.serviceName)
 
@@ -634,12 +672,20 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
     formData.otherNotes !== (job.otherNotes || '') ||
     addOnsChanged
 
-  // Memoize tech button list to avoid re-rendering on every keystroke
-  const techButtonList = useMemo(() => technicians.map(tech => ({
-    id: tech.id,
-    label: `${tech.firstName} ${tech.lastName}`,
-    isAssigned: formData.assignedTech.includes(tech.id)
-  })), [technicians, formData.assignedTech])
+  // Memoize tech button list with skill ratings for the current job's service
+  const techButtonList = useMemo(() => {
+    const ratingField = SERVICE_RATING_FIELDS[job.serviceName]
+    return technicians.map(tech => {
+      const rating = ratingField ? (tech[ratingField] || 0) : null
+      return {
+        id: tech.id,
+        label: `${tech.firstName} ${tech.lastName}`,
+        isAssigned: formData.assignedTech.includes(tech.id),
+        rating,
+        isUnrated: ratingField && (!rating || rating === 0)
+      }
+    })
+  }, [technicians, formData.assignedTech, job.serviceName])
 
   // Save all changes at once
   const handleSaveAllChanges = async () => {
@@ -1012,7 +1058,8 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
             {[
               { id: 'schedule', label: 'Schedule' },
               { id: 'details', label: 'Details' },
-              { id: 'addons', label: 'Add-Ons' }
+              { id: 'addons', label: 'Add-Ons' },
+              { id: 'comms', label: 'Comms' }
             ].map(tab => (
               <button
                 key={tab.id}
@@ -1308,19 +1355,44 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
                     key={tech.id}
                     onClick={() => handleTechAssign(tech.id)}
                     disabled={isUpdating}
+                    title={tech.rating ? `${job.serviceName}: ${tech.rating}/5` : tech.isUnrated ? `Not rated for ${job.serviceName}` : ''}
                     style={{
                       padding: '10px 14px',
                       fontSize: '14px',
                       fontWeight: '600',
-                      border: '1px solid',
-                      borderColor: tech.isAssigned ? '#2A54A1' : '#E5E7EB',
+                      border: tech.isUnrated && !tech.isAssigned ? '2px dashed #F59E0B' : '1px solid',
+                      borderColor: tech.isAssigned ? '#2A54A1' : tech.isUnrated ? '#F59E0B' : '#E5E7EB',
                       borderRadius: '8px',
-                      backgroundColor: tech.isAssigned ? '#2A54A1' : 'white',
+                      backgroundColor: tech.isAssigned ? '#2A54A1' : tech.isUnrated ? '#FFFBEB' : 'white',
                       color: tech.isAssigned ? 'white' : '#111827',
-                      cursor: isUpdating ? 'not-allowed' : 'pointer'
+                      cursor: isUpdating ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
                     }}
                   >
                     {tech.label}
+                    {tech.rating > 0 && (
+                      <span style={{
+                        fontSize: '11px',
+                        fontWeight: '700',
+                        padding: '1px 5px',
+                        borderRadius: '4px',
+                        backgroundColor: tech.isAssigned ? 'rgba(255,255,255,0.2)' : tech.rating >= 4 ? '#D1FAE5' : tech.rating >= 2 ? '#FEF3C7' : '#FEE2E2',
+                        color: tech.isAssigned ? 'white' : tech.rating >= 4 ? '#065F46' : tech.rating >= 2 ? '#92400E' : '#991B1B'
+                      }}>
+                        ★{tech.rating}
+                      </span>
+                    )}
+                    {tech.isUnrated && (
+                      <span style={{
+                        fontSize: '11px',
+                        fontWeight: '700',
+                        color: tech.isAssigned ? 'rgba(255,255,255,0.7)' : '#F59E0B'
+                      }}>
+                        ⚠
+                      </span>
+                    )}
                   </button>
               ))}
             </div>
@@ -1744,6 +1816,104 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
           {job.date && (
             <MultiDayContinue jobId={job.id} onUpdate={onUpdate} />
           )}
+          </>)}
+
+          {activeTab === 'comms' && (<>
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '12px',
+              fontWeight: '600',
+              color: '#6B7280',
+              marginBottom: '12px',
+              textTransform: 'uppercase'
+            }}>
+              Communication History
+            </label>
+            {loadingComms ? (
+              <div style={{ textAlign: 'center', padding: '20px', color: '#6B7280', fontSize: '14px' }}>
+                Loading...
+              </div>
+            ) : smsLog.length === 0 ? (
+              <div style={{
+                textAlign: 'center',
+                padding: '24px',
+                color: '#9CA3AF',
+                fontSize: '14px',
+                backgroundColor: '#F9FAFB',
+                borderRadius: '8px'
+              }}>
+                No messages sent for this job yet
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {smsLog.map(entry => (
+                  <div key={entry.id} style={{
+                    padding: '12px 16px',
+                    backgroundColor: entry.status === 'failed' ? '#FEF2F2' : '#F9FAFB',
+                    border: `1px solid ${entry.status === 'failed' ? '#FECACA' : '#E5E7EB'}`,
+                    borderRadius: '8px'
+                  }}>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '6px'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{
+                          fontSize: '11px',
+                          fontWeight: '700',
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          backgroundColor: entry.recipientType === 'customer' ? '#DBEAFE' : '#D1FAE5',
+                          color: entry.recipientType === 'customer' ? '#1E40AF' : '#065F46',
+                          textTransform: 'uppercase'
+                        }}>
+                          {entry.recipientType}
+                        </span>
+                        <span style={{
+                          fontSize: '11px',
+                          fontWeight: '600',
+                          color: '#6B7280',
+                          textTransform: 'capitalize'
+                        }}>
+                          {entry.messageType}
+                        </span>
+                      </div>
+                      <span style={{ fontSize: '11px', color: '#9CA3AF' }}>
+                        {new Date(entry.sentAt).toLocaleString()}
+                      </span>
+                    </div>
+                    <div style={{
+                      fontSize: '13px',
+                      color: '#374151',
+                      lineHeight: '1.5',
+                      whiteSpace: 'pre-wrap'
+                    }}>
+                      {entry.messageBody}
+                    </div>
+                    {entry.status === 'failed' && (
+                      <div style={{
+                        marginTop: '6px',
+                        fontSize: '11px',
+                        color: '#DC2626'
+                      }}>
+                        Failed: {entry.errorMessage}
+                      </div>
+                    )}
+                    <div style={{
+                      marginTop: '4px',
+                      fontSize: '10px',
+                      color: '#9CA3AF'
+                    }}>
+                      To: {entry.recipientPhone}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           </>)}
         </div>
       </div>
