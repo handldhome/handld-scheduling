@@ -114,11 +114,13 @@ export async function GET(request) {
       return (tech[ratingField] || 0) > 0
     })
 
-    // Generate windows for next 14 days
+    // Generate windows — startDays (default 2 = 48h out) through maxDays (default 14)
+    const startDays = parseInt(searchParams.get('startDays') || '2') || 2
+    const maxDays = parseInt(searchParams.get('maxDays') || '14') || 14
     const today = new Date()
     const windows = []
 
-    for (let i = 1; i <= 14; i++) {
+    for (let i = startDays; i <= maxDays; i++) {
       const date = new Date(today)
       date.setDate(today.getDate() + i)
       const dateStr = date.toISOString().split('T')[0]
@@ -176,21 +178,19 @@ export async function GET(request) {
         }
       }
 
-      // Only include days that have at least one available slot
-      if (slots.AM.available || slots.PM.available) {
-        windows.push({
-          date: dateStr,
-          dayName,
-          monthDay,
-          dayOfWeek,
-          slots
-        })
-      }
+      // Always include the day so unavailable slots show as greyed out
+      windows.push({
+        date: dateStr,
+        dayName,
+        monthDay,
+        dayOfWeek,
+        slots
+      })
     }
 
     // Add scarcity context
     const totalSlots = windows.reduce((s, w) => s + (w.slots.AM.available ? 1 : 0) + (w.slots.PM.available ? 1 : 0), 0)
-    const maxSlots = 14 * 2 // 14 days × 2 periods
+    const maxSlots = windows.length * 2
 
     return NextResponse.json({
       windows,
