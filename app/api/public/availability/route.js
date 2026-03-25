@@ -104,13 +104,15 @@ export async function GET(request) {
     // Estimate total duration for the requested services
     const totalDuration = services.reduce((sum, svc) => sum + getTimeEstimate(svc, pricingRules), 0) || 2
 
-    // Find techs qualified for the requested services
-    const qualifiedTechs = activeTechs.filter(tech => {
+    // For customer-facing availability, include ALL active techs.
+    // Skill-based assignment happens later when the dispatcher reviews the job.
+    // We track qualified count separately for the meta response.
+    const qualifiedTechs = activeTechs
+    const qualifiedForService = activeTechs.filter(tech => {
       if (services.length === 0) return true
-      // Tech is qualified if they have a rating > 0 for at least the primary service
       const primaryService = services[0]
       const ratingField = SERVICE_RATING_FIELDS[primaryService]
-      if (!ratingField) return true // Unknown service = any tech
+      if (!ratingField) return true
       return (tech[ratingField] || 0) > 0
     })
 
@@ -200,7 +202,8 @@ export async function GET(request) {
       meta: {
         totalAvailableSlots: totalSlots,
         percentBooked: Math.round((1 - totalSlots / maxSlots) * 100),
-        qualifiedTechCount: qualifiedTechs.length,
+        qualifiedTechCount: qualifiedForService.length,
+        totalTechCount: activeTechs.length,
         estimatedDuration: totalDuration
       }
     }, { headers: corsHeaders })
