@@ -104,16 +104,17 @@ export async function GET(request) {
     // Estimate total duration for the requested services
     const totalDuration = services.reduce((sum, svc) => sum + getTimeEstimate(svc, pricingRules), 0) || 2
 
-    // For customer-facing availability, include ALL active techs.
-    // Skill-based assignment happens later when the dispatcher reviews the job.
-    // We track qualified count separately for the meta response.
-    const qualifiedTechs = activeTechs
-    const qualifiedForService = activeTechs.filter(tech => {
+    // For customer-facing availability, count techs with a rating of 3+ for the service.
+    // This excludes low-rated techs you'd prefer not to assign, while still
+    // including anyone reasonably capable. Techs with no rating field for the
+    // service (unknown service) are included by default.
+    const MIN_RATING = 3
+    const qualifiedTechs = activeTechs.filter(tech => {
       if (services.length === 0) return true
       const primaryService = services[0]
       const ratingField = SERVICE_RATING_FIELDS[primaryService]
-      if (!ratingField) return true
-      return (tech[ratingField] || 0) > 0
+      if (!ratingField) return true // Unknown service = any tech
+      return (tech[ratingField] || 0) >= MIN_RATING
     })
 
     // Generate windows — startDays (default 2 = 48h out) through maxDays (default 14)
@@ -202,7 +203,7 @@ export async function GET(request) {
       meta: {
         totalAvailableSlots: totalSlots,
         percentBooked: Math.round((1 - totalSlots / maxSlots) * 100),
-        qualifiedTechCount: qualifiedForService.length,
+        qualifiedTechCount: qualifiedTechs.length,
         totalTechCount: activeTechs.length,
         estimatedDuration: totalDuration
       }
