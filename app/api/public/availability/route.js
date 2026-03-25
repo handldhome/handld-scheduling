@@ -142,12 +142,15 @@ export async function GET(request) {
 
         for (const tech of qualifiedTechs) {
           // Check if tech has availability for this date+period
+          // If no record exists, assume available on weekdays (techs only submit 1-2 weeks out)
           const avail = availability.find(a =>
             a.technicianId === tech.id &&
             a.date === dateStr &&
             a.timePeriod === period
           )
-          if (!avail || !avail.available) continue
+          if (avail && !avail.available) continue // Explicitly marked unavailable
+          // No record + weekend (Saturday) = skip unless they opted in
+          if (!avail && dayOfWeek === 6) continue
 
           // Check how many hours are already booked for this tech on this date in this period
           const techDayJobs = jobs.filter(j =>
