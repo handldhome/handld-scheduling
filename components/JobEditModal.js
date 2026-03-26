@@ -1123,6 +1123,26 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
                 Job will display with dashed border until confirmed
               </p>
             )}
+            {/* Tech confirmation status */}
+            {job.techConfirmationDeadline && (
+              <div style={{
+                marginTop: '12px',
+                padding: '10px 14px',
+                borderRadius: '8px',
+                fontSize: '13px',
+                backgroundColor: job.techConfirmedAt ? '#D1FAE5' : job.techDeclinedAt ? '#FEE2E2' : '#FEF3C7',
+                color: job.techConfirmedAt ? '#065F46' : job.techDeclinedAt ? '#991B1B' : '#92400E',
+                border: `1px solid ${job.techConfirmedAt ? '#86EFAC' : job.techDeclinedAt ? '#FECACA' : '#FDE68A'}`
+              }}>
+                {job.techConfirmedAt ? (
+                  <span>✓ Tech confirmed at {new Date(job.techConfirmedAt).toLocaleString()}</span>
+                ) : job.techDeclinedAt ? (
+                  <span>✕ Tech declined{job.techDeclineReason ? `: ${job.techDeclineReason}` : ''} — needs reassignment</span>
+                ) : (
+                  <span>⏳ Awaiting tech confirmation (deadline: {new Date(job.techConfirmationDeadline).toLocaleString()})</span>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Allow Tech Texting */}

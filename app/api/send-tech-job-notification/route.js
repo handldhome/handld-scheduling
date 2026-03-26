@@ -1,5 +1,7 @@
 import twilio from 'twilio'
-import { getTechnician } from '@/lib/db'
+import crypto from 'crypto'
+import { getTechnician, logSms } from '@/lib/db'
+import { getDb } from '@/lib/supabase'
 
 const client = twilio(
   process.env.TWILIO_ACCOUNT_SID,
@@ -90,6 +92,24 @@ export async function POST(request) {
       details: []
     }
 
+    // Calculate confirmation deadline:
+    // Min 2 hours from now, max 3 days before appointment
+    const now = new Date()
+    const jobDate = job.date ? new Date(getString(job.date) + 'T12:00:00') : null
+    let deadline = null
+    if (jobDate) {
+      const threeDaysBefore = new Date(jobDate)
+      threeDaysBefore.setDate(threeDaysBefore.getDate() - 3)
+      threeDaysBefore.setHours(17, 0, 0, 0) // 5pm, 3 days before
+
+      const twoHoursFromNow = new Date(now.getTime() + 2 * 60 * 60 * 1000)
+
+      // Use the later of: 2 hours from now, or 5pm 3 days before the job
+      deadline = twoHoursFromNow > threeDaysBefore ? twoHoursFromNow : threeDaysBefore
+    }
+
+    const db = getDb()
+
     for (const techId of techIds) {
       try {
         const tech = await getTechnician(techId)
@@ -106,14 +126,41 @@ export async function POST(request) {
           continue
         }
 
-        const scheduleLink = `https://work.handldhome.com/tech/${techId}/schedule?date=${dateForUrl}`
+        // Generate unique confirmation token and store on the job
+        const confirmToken = crypto.randomBytes(16).toString('hex')
+        await db
+          .from('jobs')
+          .update({
+            tech_confirmation_token: confirmToken,
+            tech_confirmation_deadline: deadline ? deadline.toISOString() : null,
+            tech_confirmed_at: null,
+            tech_declined_at: null,
+            tech_decline_reason: null
+          })
+          .eq('id', job.id)
 
-        const message = `New job confirmed!\n\n${serviceName}\n${date} at ${time}\n${address}\n\nView your schedule:\n${scheduleLink}`
+        const confirmLink = `https://work.handldhome.com/confirm/${confirmToken}`
+
+        const deadlineText = deadline
+          ? `\n\n⏰ Please confirm by ${deadline.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`
+          : ''
+
+        const message = `New job assigned!\n\n${serviceName}\n${date} at ${time}\n${address}${deadlineText}\n\nConfirm you'll be there:\n${confirmLink}`
 
         const result = await client.messages.create({
           body: message,
           from: process.env.TWILIO_PHONE_NUMBER,
           to: phoneNumber
+        })
+
+        await logSms({
+          jobId: job.id,
+          recipientPhone: phoneNumber,
+          recipientType: 'technician',
+          messageType: 'job_confirmation_request',
+          messageBody: message,
+          twilioSid: result.sid,
+          status: 'sent'
         })
 
         results.successCount++

@@ -49,6 +49,10 @@ export function middleware(request) {
       if (url.pathname === '/') {
         return new NextResponse('Tech ID required. Use: work.handldhome.com/tech/[techId]/schedule', { status: 400 })
       }
+      // Allow /confirm/[token] paths through (tech job confirmation)
+      if (url.pathname.startsWith('/confirm/')) {
+        return NextResponse.next()
+      }
       // Allow /tech/[techId]/schedule paths through
       if (url.pathname.startsWith('/tech/') && url.pathname.includes('/schedule')) {
         return NextResponse.next()
