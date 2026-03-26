@@ -3,6 +3,8 @@ import { logSms } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import twilio from 'twilio'
 
+const ADMIN_PHONE = '+16263900189'
+
 const formatPhoneNumber = (phone) => {
   if (!phone) return null
   const phoneStr = Array.isArray(phone) ? phone[0] : String(phone)
@@ -194,6 +196,16 @@ export async function POST(request, { params }) {
           technician_id: null
         })
         .eq('id', job.id)
+
+      // Notify admin that tech declined
+      try {
+        const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
+        const dateDisplay = new Date(job.target_date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+        const adminMsg = `⚠️ ${techName} declined a job:\n\n${job.service}\n${dateDisplay} at ${formatTime(job.scheduled_time)}\n${job.quote_request?.address || ''}\n\nReason: ${reason || 'None given'}\n\nThis job needs to be reassigned.`
+        await client.messages.create({ body: adminMsg, from: process.env.TWILIO_PHONE_NUMBER, to: ADMIN_PHONE })
+      } catch (adminSmsErr) {
+        console.error('Admin decline notification error:', adminSmsErr)
+      }
 
       return NextResponse.json({ success: true, action: 'declined' })
     }

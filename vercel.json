@@ -11,6 +11,10 @@
     {
       "path": "/api/send-availability-reminder?reminderOnly=true",
       "schedule": "0 23 * * 2"
+    },
+    {
+      "path": "/api/cron/check-tech-confirmations",
+      "schedule": "0 */2 * * *"
     }
   ]
 }
