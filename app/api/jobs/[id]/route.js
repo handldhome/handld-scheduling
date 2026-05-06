@@ -1,5 +1,5 @@
 import { updateJob } from '@/lib/db'
-import { revalidateTag } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 
 export const revalidate = 0
 
@@ -10,6 +10,10 @@ export async function PATCH(request, { params }) {
 
     const result = await updateJob(id, updates)
 
+    // revalidateTag('jobs') is a no-op here because getAllJobs() uses the
+    // Supabase client (not Next's tagged fetch). revalidatePath actually
+    // busts the ISR cache on /admin so the next reload sees fresh data.
+    revalidatePath('/admin')
     revalidateTag('jobs')
 
     return Response.json({

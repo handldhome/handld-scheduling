@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { format, addDays, startOfWeek, addWeeks, subWeeks, parseISO, isToday } from 'date-fns'
 import { normalizeAddress } from '@/lib/utils'
 import calStyles from './WeeklyCalendarView.module.css'
@@ -101,6 +102,7 @@ const getWeatherEmoji = (iconCode) => {
 }
 
 export default function WeeklyCalendarView({ jobs, technicians, availability = [] }) {
+  const router = useRouter()
   const [currentWeekStart, setCurrentWeekStart] = useState(() =>
     startOfWeek(new Date(), { weekStartsOn: 1 })
   )
@@ -153,7 +155,8 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
     }
   }, [])
 
-  // Restore selected job after reload (to keep modal open)
+  // Restore selected job after a hard reload (legacy path) and also keep
+  // the open modal in sync with fresh server data after router.refresh().
   useEffect(() => {
     const savedJobId = sessionStorage.getItem('selectedJobId')
     if (savedJobId && jobs.length > 0) {
@@ -161,6 +164,13 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
       const job = jobs.find(j => j.id === savedJobId)
       if (job) {
         setSelectedJob(job)
+        return
+      }
+    }
+    if (selectedJob) {
+      const fresh = jobs.find(j => j.id === selectedJob.id)
+      if (fresh && fresh !== selectedJob) {
+        setSelectedJob(fresh)
       }
     }
   }, [jobs])
@@ -185,10 +195,12 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
     fetchWeather()
   }, [])
 
-  // Save current week before reload to preserve view
+  // Soft refresh: re-runs the server component (fetches fresh jobs) without
+  // unmounting the client tree. The open modal stays mounted and just
+  // re-renders with new props — no flash, no formData reset, no reliance on
+  // sessionStorage to re-open the modal.
   const reloadPreservingWeek = () => {
-    sessionStorage.setItem('calendarWeekStart', format(currentWeekStart, 'yyyy-MM-dd'))
-    window.location.reload()
+    router.refresh()
   }
 
   // Toggle job selection for bulk operations
@@ -334,7 +346,9 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
     const activeJobs = jobs.filter(job => job.status !== 'Archived')
     if (selectedTechIds.length === 0) return activeJobs
     return activeJobs.filter(job => {
-      if (!job.assignedTech || !Array.isArray(job.assignedTech)) return false
+      // Keep unassigned jobs visible regardless of tech filter — they belong
+      // in the Unscheduled panel, not on any individual tech's calendar.
+      if (!job.assignedTech || !Array.isArray(job.assignedTech) || job.assignedTech.length === 0) return true
       return job.assignedTech.some(techId => selectedTechIds.includes(techId))
     })
   }, [jobs, selectedTechIds])
@@ -1628,11 +1642,11 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
         <JobEditModal
           job={selectedJob}
           technicians={technicians}
+          availability={availability}
           onClose={() => setSelectedJob(null)}
           onUpdate={() => {
-            // Refresh the page data but keep modal open
-            // Store the current job ID to re-select after reload
-            sessionStorage.setItem('selectedJobId', selectedJob.id)
+            // Soft refresh: server component re-fetches, modal stays mounted,
+            // and the useEffect on `jobs` syncs `selectedJob` to the fresh row.
             reloadPreservingWeek()
           }}
         />

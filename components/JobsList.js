@@ -19,7 +19,20 @@ const getStatusColors = (status) => {
   return STATUS_COLORS[status] || { bg: '#F3F4F6', text: '#6B7280' }
 }
 
-export default function JobsList({ jobs, technicians }) {
+export default function JobsList({ jobs, technicians, availability = [] }) {
+  // Resolve a tech's availability for a job's scheduled slot.
+  // Returns 'available' | 'unavailable' | 'unknown' (no record submitted).
+  const getTechAvailStatus = (techId, job) => {
+    if (!job.date || !job.time) return 'unknown'
+    const hour = parseInt(String(job.time).split(':')[0])
+    const period = hour < 12 ? 'AM' : 'PM'
+    const jobDate = format(parseISO(job.date), 'yyyy-MM-dd')
+    const avail = availability.find(a =>
+      a.technicianId === techId && a.date === jobDate && a.timePeriod === period
+    )
+    if (!avail) return 'unknown'
+    return avail.available ? 'available' : 'unavailable'
+  }
   const [filter, setFilter] = useState('all') // 'all', 'unscheduled', 'needs-review', 'scheduled', 'completed'
   const [expandedJob, setExpandedJob] = useState(null)
 
@@ -147,9 +160,26 @@ export default function JobsList({ jobs, technicians }) {
       } else {
         // Toggle tech in/out of array
         const current = job.assignedTech || []
-        newAssigned = current.includes(techId)
-          ? current.filter(id => id !== techId)
-          : [...current, techId]
+        const isAdding = !current.includes(techId)
+
+        // Confirm before assigning a tech who is unavailable or has no
+        // submitted availability for the job's slot. Admin override is
+        // intentional.
+        if (isAdding) {
+          const status = getTechAvailStatus(techId, job)
+          if (status !== 'available') {
+            const tech = technicians.find(t => t.id === techId)
+            const name = tech ? `${tech.firstName} ${tech.lastName}`.trim() : 'This technician'
+            const message = status === 'unavailable'
+              ? `${name} marked themselves UNAVAILABLE for this slot. Override and assign anyway?`
+              : `${name} hasn't submitted availability for this slot. Assign anyway?`
+            if (!window.confirm(message)) return
+          }
+        }
+
+        newAssigned = isAdding
+          ? [...current, techId]
+          : current.filter(id => id !== techId)
       }
 
       const response = await fetch(`/api/jobs/${job.id}`, {
@@ -711,10 +741,17 @@ export default function JobsList({ jobs, technicians }) {
                           </button>
                           {technicians.map(tech => {
                             const isAssigned = job.assignedTech?.includes(tech.id)
+                            const availStatus = getTechAvailStatus(tech.id, job)
+                            const availTitle = availStatus === 'available'
+                              ? 'Available for this slot'
+                              : availStatus === 'unavailable'
+                              ? 'Marked UNAVAILABLE for this slot — admin override required'
+                              : 'No availability submitted for this slot'
                             return (
                               <button
                                 type="button"
                                 key={tech.id}
+                                title={availTitle}
                                 onClick={(e) => {
                                   e.stopPropagation()
                                   handleAssignTech(job, tech.id)
@@ -728,9 +765,18 @@ export default function JobsList({ jobs, technicians }) {
                                   borderRadius: '8px',
                                   backgroundColor: isAssigned ? '#2A54A1' : 'white',
                                   color: isAssigned ? 'white' : '#111827',
-                                  cursor: 'pointer'
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  opacity: availStatus === 'unavailable' && !isAssigned ? 0.6 : 1
                                 }}
                               >
+                                <span style={{ fontSize: '11px', lineHeight: 1 }}>
+                                  {availStatus === 'available' ? '🟢'
+                                    : availStatus === 'unavailable' ? '🔴'
+                                    : '⚪'}
+                                </span>
                                 {tech.firstName} {tech.lastName}
                               </button>
                             )

@@ -179,7 +179,7 @@ function MultiDayContinue({ jobId, onUpdate }) {
       borderRadius: '12px',
       border: '1px solid #F59E0B'
     }}>
-      <label style={{
+      <div style={{
         display: 'block',
         fontSize: '12px',
         fontWeight: '600',
@@ -188,7 +188,7 @@ function MultiDayContinue({ jobId, onUpdate }) {
         textTransform: 'uppercase'
       }}>
         Multi-Day Job
-      </label>
+      </div>
       <p style={{
         fontSize: '13px',
         color: '#78350F',
@@ -274,7 +274,7 @@ function MultiDayContinue({ jobId, onUpdate }) {
   )
 }
 
-export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
+export default function JobEditModal({ job, technicians, availability = [], onClose, onUpdate }) {
   const [isUpdating, setIsUpdating] = useState(false)
   const [error, setError] = useState(null)
   const [toast, setToast] = useState(null)
@@ -436,22 +436,51 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
     }
   }
 
+  // Resolve a tech's availability for the slot currently in formData.
+  // Returns 'available' | 'unavailable' | 'unknown' (no record submitted).
+  const getTechAvailStatus = (techId) => {
+    if (!formData.date || !formData.time) return 'unknown'
+    const hour = parseInt(formData.time.split(':')[0])
+    const period = hour < 12 ? 'AM' : 'PM'
+    const avail = availability.find(a =>
+      a.technicianId === techId && a.date === formData.date && a.timePeriod === period
+    )
+    if (!avail) return 'unknown'
+    return avail.available ? 'available' : 'unavailable'
+  }
+
   const handleTechAssign = (techId) => {
     if (!techId) {
       // Unassign all
       setFormData(prev => ({ ...prev, assignedTech: [] }))
       handleUpdate({ assignedTech: [] })
-    } else {
-      // Toggle tech in/out of array
-      setFormData(prev => {
-        const current = prev.assignedTech || []
-        const newAssigned = current.includes(techId)
-          ? current.filter(id => id !== techId)
-          : [...current, techId]
-        handleUpdate({ assignedTech: newAssigned })
-        return { ...prev, assignedTech: newAssigned }
-      })
+      return
     }
+
+    // Confirm before assigning a tech who is unavailable or has no submitted
+    // availability for this slot. Admin override is intentional.
+    const isAdding = !formData.assignedTech.includes(techId)
+    if (isAdding) {
+      const status = getTechAvailStatus(techId)
+      if (status !== 'available') {
+        const tech = technicians.find(t => t.id === techId)
+        const name = tech ? `${tech.firstName} ${tech.lastName}`.trim() : 'This technician'
+        const message = status === 'unavailable'
+          ? `${name} marked themselves UNAVAILABLE for this slot. Override and assign anyway?`
+          : `${name} hasn't submitted availability for this slot. Assign anyway?`
+        if (!window.confirm(message)) return
+      }
+    }
+
+    // Toggle tech in/out of array
+    setFormData(prev => {
+      const current = prev.assignedTech || []
+      const newAssigned = current.includes(techId)
+        ? current.filter(id => id !== techId)
+        : [...current, techId]
+      handleUpdate({ assignedTech: newAssigned })
+      return { ...prev, assignedTech: newAssigned }
+    })
   }
 
   const handleTimeChange = (time) => {
@@ -675,17 +704,27 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
   // Memoize tech button list with skill ratings for the current job's service
   const techButtonList = useMemo(() => {
     const ratingField = SERVICE_RATING_FIELDS[job.serviceName]
+    const hour = formData.time ? parseInt(formData.time.split(':')[0]) : null
+    const period = hour == null ? null : (hour < 12 ? 'AM' : 'PM')
     return technicians.map(tech => {
       const rating = ratingField ? (tech[ratingField] || 0) : null
+      let availStatus = 'unknown'
+      if (formData.date && period) {
+        const avail = availability.find(a =>
+          a.technicianId === tech.id && a.date === formData.date && a.timePeriod === period
+        )
+        if (avail) availStatus = avail.available ? 'available' : 'unavailable'
+      }
       return {
         id: tech.id,
         label: `${tech.firstName} ${tech.lastName}`,
         isAssigned: formData.assignedTech.includes(tech.id),
         rating,
-        isUnrated: ratingField && (!rating || rating === 0)
+        isUnrated: ratingField && (!rating || rating === 0),
+        availStatus
       }
     })
-  }, [technicians, formData.assignedTech, job.serviceName])
+  }, [technicians, formData.assignedTech, formData.date, formData.time, job.serviceName, availability])
 
   // Save all changes at once
   const handleSaveAllChanges = async () => {
@@ -1086,7 +1125,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
           {activeTab === 'schedule' && (<>
           {/* Confirmation Status */}
           <div style={{ marginBottom: '24px' }}>
-            <label style={{
+            <div style={{
               display: 'block',
               fontSize: '12px',
               fontWeight: '600',
@@ -1095,7 +1134,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
               textTransform: 'uppercase'
             }}>
               Confirmation Status
-            </label>
+            </div>
             <button
               type="button"
               onClick={handleConfirmToggle}
@@ -1340,7 +1379,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
 
           {/* Technician Assignment */}
           <div style={{ marginBottom: '24px' }}>
-            <label style={{
+            <div style={{
               display: 'block',
               fontSize: '12px',
               fontWeight: '600',
@@ -1349,7 +1388,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
               textTransform: 'uppercase'
             }}>
               Assigned Technician(s)
-            </label>
+            </div>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               <button
                 type="button"
@@ -1369,13 +1408,23 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
               >
                 Unassign
               </button>
-              {techButtonList.map(tech => (
+              {techButtonList.map(tech => {
+                const availTitle = tech.availStatus === 'available'
+                  ? 'Available for this slot'
+                  : tech.availStatus === 'unavailable'
+                  ? 'Marked UNAVAILABLE for this slot — admin override required'
+                  : 'No availability submitted for this slot'
+                const titleParts = []
+                if (tech.rating) titleParts.push(`${job.serviceName}: ${tech.rating}/5`)
+                else if (tech.isUnrated) titleParts.push(`Not rated for ${job.serviceName}`)
+                titleParts.push(availTitle)
+                return (
                   <button
                     type="button"
                     key={tech.id}
                     onClick={() => handleTechAssign(tech.id)}
                     disabled={isUpdating}
-                    title={tech.rating ? `${job.serviceName}: ${tech.rating}/5` : tech.isUnrated ? `Not rated for ${job.serviceName}` : ''}
+                    title={titleParts.join(' • ')}
                     style={{
                       padding: '10px 14px',
                       fontSize: '14px',
@@ -1388,9 +1437,18 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
                       cursor: isUpdating ? 'not-allowed' : 'pointer',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '6px'
+                      gap: '6px',
+                      opacity: tech.availStatus === 'unavailable' && !tech.isAssigned ? 0.6 : 1
                     }}
                   >
+                    <span style={{
+                      fontSize: '12px',
+                      lineHeight: 1
+                    }}>
+                      {tech.availStatus === 'available' ? '🟢'
+                        : tech.availStatus === 'unavailable' ? '🔴'
+                        : '⚪'}
+                    </span>
                     {tech.label}
                     {tech.rating > 0 && (
                       <span style={{
@@ -1414,7 +1472,8 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
                       </span>
                     )}
                   </button>
-              ))}
+                )
+              })}
             </div>
           </div>
 
@@ -1423,7 +1482,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
           {activeTab === 'details' && (<>
           {/* Equipment */}
           <div style={{ marginBottom: '24px' }}>
-            <label style={{
+            <div style={{
               display: 'block',
               fontSize: '12px',
               fontWeight: '600',
@@ -1432,7 +1491,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
               textTransform: 'uppercase'
             }}>
               Required Equipment
-            </label>
+            </div>
             {loadingEquipment ? (
               <div style={{ fontSize: '14px', color: '#6B7280' }}>Loading equipment options...</div>
             ) : equipmentOptions.length === 0 ? (
@@ -1470,7 +1529,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
 
           {/* Customer & Property Details */}
           <div style={{ marginBottom: '24px' }}>
-            <label style={{
+            <div style={{
               display: 'block',
               fontSize: '12px',
               fontWeight: '600',
@@ -1479,7 +1538,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
               textTransform: 'uppercase'
             }}>
               Customer & Property Details
-            </label>
+            </div>
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(2, 1fr)',
@@ -1536,7 +1595,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
 
           {/* Editable Job Details */}
           <div style={{ marginBottom: '24px' }}>
-            <label style={{
+            <div style={{
               display: 'block',
               fontSize: '12px',
               fontWeight: '600',
@@ -1545,7 +1604,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
               textTransform: 'uppercase'
             }}>
               Job Details (Editable)
-            </label>
+            </div>
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(2, 1fr)',
@@ -1662,7 +1721,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
           {activeTab === 'addons' && (<>
           {/* Add-ons / Change Orders */}
           <div style={{ marginBottom: '24px' }}>
-            <label style={{
+            <div style={{
               display: 'block',
               fontSize: '12px',
               fontWeight: '600',
@@ -1671,7 +1730,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
               textTransform: 'uppercase'
             }}>
               Add-ons / Change Orders
-            </label>
+            </div>
 
             {/* Existing Add-ons */}
             {formData.addOns.length > 0 && (
@@ -1808,7 +1867,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
           {/* Notes */}
           {job.notes && (
             <div>
-              <label style={{
+              <div style={{
                 display: 'block',
                 fontSize: '12px',
                 fontWeight: '600',
@@ -1817,7 +1876,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
                 textTransform: 'uppercase'
               }}>
                 Notes
-              </label>
+              </div>
               <div style={{
                 padding: '12px 16px',
                 backgroundColor: '#F9FAFB',
@@ -1840,7 +1899,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
 
           {activeTab === 'comms' && (<>
           <div style={{ marginBottom: '24px' }}>
-            <label style={{
+            <div style={{
               display: 'block',
               fontSize: '12px',
               fontWeight: '600',
@@ -1849,7 +1908,7 @@ export default function JobEditModal({ job, technicians, onClose, onUpdate }) {
               textTransform: 'uppercase'
             }}>
               Communication History
-            </label>
+            </div>
             {loadingComms ? (
               <div style={{ textAlign: 'center', padding: '20px', color: '#6B7280', fontSize: '14px' }}>
                 Loading...

@@ -276,7 +276,7 @@ export default function AdminDashboardClient({ technicians, availability, jobs }
           )}
 
           {activeTab === 'jobs' && (
-            <JobsList jobs={jobs} technicians={technicians} />
+            <JobsList jobs={jobs} technicians={technicians} availability={availability} />
           )}
 
           {activeTab === 'availability' && (
