@@ -43,7 +43,8 @@ const formatDate = (dateStr) => {
   return date.toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'long',
-    day: 'numeric'
+    day: 'numeric',
+    timeZone: 'America/Los_Angeles'
   })
 }
 
@@ -142,7 +143,7 @@ export async function POST(request) {
         const confirmLink = `https://work.handldhome.com/confirm/${confirmToken}`
 
         const deadlineText = deadline
-          ? `\n\n⏰ Please confirm by ${deadline.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`
+          ? `\n\n⏰ Please confirm by ${deadline.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' })}`
           : ''
 
         const message = `New job assigned!\n\n${serviceName}\n${date} at ${time}\n${address}${deadlineText}\n\nConfirm you'll be there:\n${confirmLink}`

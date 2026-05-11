@@ -62,11 +62,11 @@ export async function GET(request) {
         ? `${job.technician.first_name} ${job.technician.last_name}`
         : 'Unassigned tech'
       const dateDisplay = job.target_date
-        ? new Date(job.target_date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+        ? new Date(job.target_date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'America/Los_Angeles' })
         : 'TBD'
 
       try {
-        const message = `⏰ ${techName} did NOT confirm:\n\n${job.service}\n${dateDisplay} at ${formatTime(job.scheduled_time)}\n${job.quote_request?.address || ''}\n\nDeadline was ${new Date(job.tech_confirmation_deadline).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' })}.\n\nThis job needs to be reassigned or followed up on.`
+        const message = `⏰ ${techName} did NOT confirm:\n\n${job.service}\n${dateDisplay} at ${formatTime(job.scheduled_time)}\n${job.quote_request?.address || ''}\n\nDeadline was ${new Date(job.tech_confirmation_deadline).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' })}.\n\nThis job needs to be reassigned or followed up on.`
 
         await client.messages.create({
           body: message,

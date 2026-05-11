@@ -147,7 +147,8 @@ export async function POST(request, { params }) {
           const dateDisplay = new Date(job.target_date + 'T12:00:00').toLocaleDateString('en-US', {
             weekday: 'long',
             month: 'long',
-            day: 'numeric'
+            day: 'numeric',
+            timeZone: 'America/Los_Angeles'
           })
           const timeDisplay = formatTime(job.scheduled_time)
 
@@ -200,7 +201,7 @@ export async function POST(request, { params }) {
       // Notify admin that tech declined
       try {
         const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
-        const dateDisplay = new Date(job.target_date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+        const dateDisplay = new Date(job.target_date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'America/Los_Angeles' })
         const adminMsg = `⚠️ ${techName} declined a job:\n\n${job.service}\n${dateDisplay} at ${formatTime(job.scheduled_time)}\n${job.quote_request?.address || ''}\n\nReason: ${reason || 'None given'}\n\nThis job needs to be reassigned.`
         await client.messages.create({ body: adminMsg, from: process.env.TWILIO_PHONE_NUMBER, to: ADMIN_PHONE })
       } catch (adminSmsErr) {

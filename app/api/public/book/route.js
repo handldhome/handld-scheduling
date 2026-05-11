@@ -116,7 +116,8 @@ export async function POST(request) {
     const dateDisplay = new Date(preferredDate + 'T12:00:00').toLocaleDateString('en-US', {
       weekday: 'long',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
+      timeZone: 'America/Los_Angeles'
     })
     const timeDisplay = preferredTime === 'AM' ? 'morning (8am–12pm)' : 'afternoon (1pm–5pm)'
 

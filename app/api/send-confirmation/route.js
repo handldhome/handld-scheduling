@@ -48,7 +48,8 @@ const formatDate = (dateStr) => {
     weekday: 'long',
     month: 'long',
     day: 'numeric',
-    year: 'numeric'
+    year: 'numeric',
+    timeZone: 'America/Los_Angeles'
   })
 }
 

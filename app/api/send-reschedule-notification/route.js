@@ -41,7 +41,8 @@ const formatDate = (dateStr) => {
   return date.toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'long',
-    day: 'numeric'
+    day: 'numeric',
+    timeZone: 'America/Los_Angeles'
   })
 }
 

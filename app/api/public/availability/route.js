@@ -132,8 +132,8 @@ export async function GET(request) {
       // Skip Sundays (day 0)
       if (dayOfWeek === 0) continue
 
-      const dayName = date.toLocaleDateString('en-US', { weekday: 'short' })
-      const monthDay = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      const dayName = date.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'America/Los_Angeles' })
+      const monthDay = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Los_Angeles' })
 
       // Check each period (AM / PM)
       const slots = {}
