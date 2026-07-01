@@ -43,7 +43,10 @@ const formatPhoneNumber = (phone) => {
 
 const formatDate = (dateStr) => {
   if (!dateStr) return 'TBD'
-  const date = new Date(dateStr)
+  // Date-only strings ("YYYY-MM-DD") parse as UTC midnight; rendering them in
+  // a US timezone would shift to the previous day. Anchor to local noon so the
+  // calendar day is preserved across America/Los_Angeles.
+  const date = new Date(/^\d{4}-\d{2}-\d{2}$/.test(dateStr) ? `${dateStr}T12:00:00` : dateStr)
   return date.toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'long',

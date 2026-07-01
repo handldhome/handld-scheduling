@@ -37,7 +37,9 @@ const formatPhoneNumber = (phone) => {
 
 const formatDate = (dateStr) => {
   if (!dateStr) return 'TBD'
-  const date = new Date(dateStr)
+  // Anchor date-only strings to local noon so America/Los_Angeles rendering
+  // doesn't roll back to the previous calendar day.
+  const date = new Date(/^\d{4}-\d{2}-\d{2}$/.test(dateStr) ? `${dateStr}T12:00:00` : dateStr)
   return date.toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'long',
