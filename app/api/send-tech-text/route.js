@@ -9,7 +9,7 @@ const client = twilio(
 const formatPhoneNumber = (phone) => {
   if (!phone) return null
 
-  // Handle if phone is an array (from Airtable linked records)
+  // Handle if phone is an array (from legacy linked records)
   let phoneStr = phone
   if (Array.isArray(phone)) {
     phoneStr = phone[0]
@@ -120,7 +120,7 @@ export async function POST(request) {
       }
     }
 
-    // Send text to new technicians (not yet in Airtable)
+    // Send text to new technicians (not yet in the database)
     for (const newTech of newTechs) {
       try {
         const phoneNumber = formatPhoneNumber(newTech.phone)

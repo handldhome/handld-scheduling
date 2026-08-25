@@ -9,7 +9,7 @@ export default async function AvailabilityPage({ params }) {
   let errorMessage = null
 
   try {
-    // Call Airtable directly instead of through API route
+    // Query the database directly instead of through an API route
     technician = await getTechnician(techId)
 
     if (!technician.active) {

@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { format, parseISO } from 'date-fns'
 
-// Rejection reason options (should match Airtable Single Select options)
+// Rejection reason options (should match the job rejection_reason values)
 const REJECTION_REASONS = [
   'Wrong tech match',
   'Customer preference',

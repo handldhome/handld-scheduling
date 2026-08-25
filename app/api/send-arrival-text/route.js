@@ -9,7 +9,7 @@ const client = twilio(
 const formatPhoneNumber = (phone) => {
   if (!phone) return null
 
-  // Handle if phone is an array (from Airtable linked records)
+  // Handle if phone is an array (from legacy linked records)
   let phoneStr = phone
   if (Array.isArray(phone)) {
     phoneStr = phone[0]
@@ -60,7 +60,7 @@ export async function POST(request) {
       return Response.json({ error: 'Valid phone number is required' }, { status: 400 })
     }
 
-    // Helper to safely get string from potentially array values (Airtable)
+    // Helper to safely get string from potentially array values
     const getString = (val) => {
       if (!val) return null
       if (Array.isArray(val)) return val[0]

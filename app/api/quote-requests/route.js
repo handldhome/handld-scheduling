@@ -25,7 +25,7 @@ export async function POST(request) {
       {
         error: 'Failed to create quote request',
         details: error.message,
-        airtableError: error.error || null,
+        dbError: error.error || null,
         statusCode: error.statusCode || null
       },
       { status: 500 }

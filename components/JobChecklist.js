@@ -476,7 +476,7 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en', pri
     setMaterials(prev => prev.filter(m => m.id !== materialId))
   }
 
-  // Handle saving materials to Airtable
+  // Handle saving materials
   const handleSaveMaterials = async () => {
     setIsSavingMaterials(true)
     try {

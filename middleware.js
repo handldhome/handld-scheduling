@@ -37,7 +37,7 @@ export function middleware(request) {
       if (url.pathname.startsWith('/tech/') && url.pathname.includes('/availability')) {
         return NextResponse.next()
       }
-      // Rewrite other paths to include /tech prefix if it looks like a tech ID (Airtable or UUID)
+      // Rewrite other paths to include /tech prefix if it looks like a tech ID (legacy id or UUID)
       if (url.pathname.match(/^\/rec[A-Za-z0-9]+$/) || url.pathname.match(/^\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
         url.pathname = `/tech${url.pathname}/availability`
         return NextResponse.rewrite(url)
@@ -57,7 +57,7 @@ export function middleware(request) {
       if (url.pathname.startsWith('/tech/') && url.pathname.includes('/schedule')) {
         return NextResponse.next()
       }
-      // Rewrite other paths to include /tech prefix if it looks like a tech ID (Airtable or UUID)
+      // Rewrite other paths to include /tech prefix if it looks like a tech ID (legacy id or UUID)
       if (url.pathname.match(/^\/rec[A-Za-z0-9]+$/) || url.pathname.match(/^\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
         url.pathname = `/tech${url.pathname}/schedule`
         return NextResponse.rewrite(url)

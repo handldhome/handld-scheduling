@@ -49,7 +49,7 @@ export async function POST(request) {
       {
         error: 'Failed to create job',
         details: error.message,
-        airtableError: error.error || null,
+        dbError: error.error || null,
         statusCode: error.statusCode || null
       },
       { status: 500 }

@@ -58,7 +58,7 @@ export async function GET(request) {
     )
 
     // Save suggestions directly to job records
-    // Use null instead of '' for single select fields to avoid Airtable errors
+    // Use null instead of '' for optional single-value fields
     const saveResults = []
     for (const suggestion of suggestions) {
       try {
