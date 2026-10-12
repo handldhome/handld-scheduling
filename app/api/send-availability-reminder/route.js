@@ -1,5 +1,5 @@
 import twilio from 'twilio'
-import { getAllTechnicians, getAllAvailability } from '@/lib/db'
+import { getAllTechnicians, getAllAvailability, isSettingEnabled, logSms } from '@/lib/db'
 import { format, addDays, parseISO } from 'date-fns'
 
 const client = twilio(
@@ -38,6 +38,16 @@ const formatPhoneNumber = (phone) => {
 
 export async function POST(request) {
   try {
+    // Automated sends can be switched off from the admin dashboard (Texts tab)
+    // via handld.app_settings — no deploy needed.
+    if (!(await isSettingEnabled('availability_texts'))) {
+      return Response.json({
+        success: true,
+        skipped: true,
+        message: 'Availability texts are turned off (Texts tab in the admin dashboard).'
+      })
+    }
+
     // Parse request body
     let reminderOnly = false // If true, only send to techs who haven't submitted
 
@@ -150,6 +160,15 @@ export async function POST(request) {
           messageId: result.sid
         })
 
+        await logSms({
+          recipientPhone: phoneNumber,
+          recipientType: 'technician',
+          messageType: reminderOnly ? 'availability_reminder' : 'availability_request',
+          messageBody: fullMessage,
+          twilioSid: result.sid,
+          status: 'sent'
+        })
+
       } catch (error) {
         results.failedCount++
         results.details.push({
@@ -157,6 +176,15 @@ export async function POST(request) {
           name: `${tech.firstName} ${tech.lastName}`,
           success: false,
           error: error.message
+        })
+
+        await logSms({
+          recipientPhone: phoneNumber,
+          recipientType: 'technician',
+          messageType: reminderOnly ? 'availability_reminder' : 'availability_request',
+          messageBody: `${messageText}\n\nhttps://availability.handldhome.com/tech/${tech.id}/availability`,
+          status: 'failed',
+          errorMessage: error.message
         })
       }
     }
@@ -182,6 +210,7 @@ export async function GET(request) {
   // Check if this is a reminder-only request (Tuesday)
   const url = new URL(request.url)
   const reminderOnly = url.searchParams.get('reminderOnly') === 'true'
+
 
   // Create a mock request with the reminderOnly flag
   const mockRequest = {

@@ -12,8 +12,9 @@ import TechScheduleView from './TechScheduleView'
 import TextTechsModal from './TextTechsModal'
 import ScheduleReminderModal from './ScheduleReminderModal'
 import UtilizationDashboard from './UtilizationDashboard'
+import TextsPanel from './TextsPanel'
 
-const VALID_TABS = ['schedule', 'tech-schedules', 'jobs', 'availability', 'utilization']
+const VALID_TABS = ['schedule', 'tech-schedules', 'jobs', 'availability', 'utilization', 'texts']
 
 export default function AdminDashboardClient({ technicians, availability, jobs }) {
   const searchParams = useSearchParams()
@@ -84,7 +85,8 @@ export default function AdminDashboardClient({ technicians, availability, jobs }
     { id: 'tech-schedules', label: 'Tech', icon: '👷' },
     { id: 'jobs', label: 'Jobs', icon: '📋' },
     { id: 'availability', label: 'Availability', icon: '✓' },
-    { id: 'utilization', label: 'Utilization', icon: '📊' }
+    { id: 'utilization', label: 'Utilization', icon: '📊' },
+    { id: 'texts', label: 'Texts', icon: '💬' }
   ]
 
   const tabButtonStyle = (isActive) => ({
@@ -293,6 +295,8 @@ export default function AdminDashboardClient({ technicians, availability, jobs }
               availability={availability}
             />
           )}
+
+          {activeTab === 'texts' && <TextsPanel />}
         </div>
       </div>
 
