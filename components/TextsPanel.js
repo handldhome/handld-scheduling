@@ -16,6 +16,8 @@ export default function TextsPanel() {
 
   const [enabled, setEnabled] = useState(null)
   const [recentTexts, setRecentTexts] = useState([])
+  const [techs, setTechs] = useState([])
+  const [savingTechId, setSavingTechId] = useState(null)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState(null)
 
@@ -29,6 +31,7 @@ export default function TextsPanel() {
       if (!response.ok) throw new Error(data.error || 'Failed to load')
       setEnabled(data.availabilityTextsEnabled)
       setRecentTexts(data.recentTexts)
+      setTechs(data.techs)
       setError(null)
     } catch (err) {
       setError(err.message)
@@ -53,6 +56,25 @@ export default function TextsPanel() {
       setError(err.message)
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  const toggleTech = async (tech) => {
+    setSavingTechId(tech.id)
+    try {
+      const response = await fetch('/api/admin/sms-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
+        body: JSON.stringify({ techId: tech.id, availabilityTextsEnabled: !tech.availabilityTextsEnabled })
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Failed to save')
+      setTechs(prev => prev.map(t => t.id === tech.id ? { ...t, availabilityTextsEnabled: data.availabilityTextsEnabled } : t))
+      setError(null)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSavingTechId(null)
     }
   }
 
@@ -95,6 +117,62 @@ export default function TextsPanel() {
             {enabled === null ? '…' : isSaving ? 'Saving…' : enabled ? 'ON' : 'OFF'}
           </button>
         </div>
+
+        {techs.length > 0 && (
+          <div style={{ marginTop: '20px', borderTop: '1px solid #F3F4F6', paddingTop: '16px' }}>
+            <div style={{ fontWeight: '700', color: '#111827', marginBottom: '4px' }}>By technician</div>
+            <div style={{ fontSize: '14px', color: '#6B7280', marginBottom: '12px' }}>
+              {enabled === false
+                ? 'All availability texts are off right now — these only matter when the main switch is ON.'
+                : 'Turn off availability texts for individual techs.'}
+            </div>
+            {techs.map(tech => {
+              const isSavingTech = savingTechId === tech.id
+              return (
+                <div
+                  key={tech.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    padding: '8px 0',
+                    borderTop: '1px solid #F9FAFB',
+                    opacity: enabled === false ? 0.5 : 1
+                  }}
+                >
+                  <div>
+                    <span style={{ fontWeight: '600', color: '#111827' }}>{tech.name}</span>
+                    <span style={{ fontSize: '13px', color: '#9CA3AF', marginLeft: '8px' }}>
+                      {tech.phone || 'no phone on file'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={tech.availabilityTextsEnabled}
+                    onClick={() => toggleTech(tech)}
+                    disabled={isSavingTech}
+                    style={{
+                      flexShrink: 0,
+                      minWidth: '60px',
+                      padding: '6px 12px',
+                      border: 'none',
+                      borderRadius: '999px',
+                      fontWeight: '800',
+                      fontSize: '12px',
+                      color: 'white',
+                      backgroundColor: tech.availabilityTextsEnabled ? '#059669' : '#DC2626',
+                      cursor: isSavingTech ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    {isSavingTech ? '…' : tech.availabilityTextsEnabled ? 'ON' : 'OFF'}
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        )}
 
         {error && (
           <div style={{ marginTop: '12px', color: '#DC2626', fontSize: '14px' }}>{error}</div>

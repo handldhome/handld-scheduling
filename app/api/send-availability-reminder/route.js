@@ -103,8 +103,10 @@ export async function POST(request) {
       return next7Days.every(date => techDates.has(date))
     }
 
-    // Filter active technicians with phone numbers
-    const activeTechsWithPhone = technicians.filter(tech => tech.active && tech.phone)
+    // Filter active technicians with phone numbers, minus anyone switched off
+    // individually in the admin dashboard's Texts tab
+    const techsOptedOut = technicians.filter(tech => tech.active && !tech.availabilityTextsEnabled)
+    const activeTechsWithPhone = technicians.filter(tech => tech.active && tech.phone && tech.availabilityTextsEnabled)
 
     // Skip techs who have already submitted availability for all of the next 7 days
     const techsWithCompleteCoverage = activeTechsWithPhone.filter(tech => hasComplete7DayCoverage(tech.id))
@@ -119,7 +121,8 @@ export async function POST(request) {
       failedCount: 0,
       skippedCount: 0,
       details: [],
-      skippedForCoverage: techsWithCompleteCoverage.map(t => `${t.firstName} ${t.lastName}`)
+      skippedForCoverage: techsWithCompleteCoverage.map(t => `${t.firstName} ${t.lastName}`),
+      skippedTurnedOff: techsOptedOut.map(t => `${t.firstName} ${t.lastName}`)
     }
 
     // Build message based on type

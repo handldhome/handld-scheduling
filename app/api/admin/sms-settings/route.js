@@ -1,4 +1,4 @@
-import { isSettingEnabled, setSettingEnabled, getRecentSmsLog } from '@/lib/db'
+import { isSettingEnabled, setSettingEnabled, getRecentSmsLog, getAllTechnicians, setTechAvailabilityTexts } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,12 +15,20 @@ export async function GET(request) {
   }
 
   try {
-    const [availabilityTextsEnabled, recentTexts] = await Promise.all([
+    const [availabilityTextsEnabled, recentTexts, technicians] = await Promise.all([
       isSettingEnabled('availability_texts'),
-      getRecentSmsLog(50)
+      getRecentSmsLog(50),
+      getAllTechnicians()
     ])
 
-    return Response.json({ availabilityTextsEnabled, recentTexts })
+    const techs = technicians.map(t => ({
+      id: t.id,
+      name: t.name,
+      phone: t.phone,
+      availabilityTextsEnabled: t.availabilityTextsEnabled
+    }))
+
+    return Response.json({ availabilityTextsEnabled, recentTexts, techs })
   } catch (error) {
     console.error('Error fetching SMS settings:', error)
     return Response.json({ error: 'Failed to fetch SMS settings' }, { status: 500 })
@@ -33,9 +41,15 @@ export async function PUT(request) {
   }
 
   try {
-    const { availabilityTextsEnabled } = await request.json()
+    const { availabilityTextsEnabled, techId } = await request.json()
     if (typeof availabilityTextsEnabled !== 'boolean') {
       return Response.json({ error: 'availabilityTextsEnabled must be true or false' }, { status: 400 })
+    }
+
+    // Per-technician switch
+    if (techId) {
+      const tech = await setTechAvailabilityTexts(techId, availabilityTextsEnabled)
+      return Response.json({ techId: tech.id, availabilityTextsEnabled: tech.availabilityTextsEnabled })
     }
 
     const setting = await setSettingEnabled('availability_texts', availabilityTextsEnabled)
