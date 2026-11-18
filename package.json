@@ -6,11 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "vitest run"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.99.1",
-    "@vercel/blob": "^2.0.0",
+    "@vercel/blob": "^2.9.0",
     "date-fns": "^3.0.0",
     "next": "14.2.18",
     "react": "^18.3.1",
@@ -19,6 +20,7 @@
   },
   "devDependencies": {
     "eslint": "^8.57.0",
-    "eslint-config-next": "14.2.18"
+    "eslint-config-next": "14.2.18",
+    "vitest": "^3.2.7"
   }
 }
