@@ -115,8 +115,7 @@ export default function TechOnboardingPage() {
         })
 
         if (!w9Response.ok) {
-          const w9Error = await w9Response.json()
-          console.error('W9 upload failed:', w9Error)
+          console.error('W9 upload failed:', w9Response.status)
           // Don't fail the whole submission, but log the error
           // The tech record was created, just W9 didn't upload
         }
@@ -634,6 +633,16 @@ export default function TechOnboardingPage() {
             >
               {isSubmitting ? 'Submitting...' : 'Submit'}
             </button>
+
+            <p style={{
+              margin: '12px 0 0',
+              fontSize: '12px',
+              lineHeight: '1.5',
+              color: '#6B7280',
+              textAlign: 'center'
+            }}>
+              By submitting you confirm you are 18 or older, that the information is accurate, and you agree to receive texts from Handld about jobs and scheduling. Msg &amp; data rates may apply. Reply STOP to opt out.
+            </p>
           </div>
         </form>
       </div>
