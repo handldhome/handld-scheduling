@@ -1,6 +1,9 @@
 import { getSmsLogForJob } from '@/lib/db'
+import { isAdminRequest, unauthorized } from '@/lib/admin-auth'
 
 export async function GET(request, { params }) {
+  if (!isAdminRequest(request)) return unauthorized()
+
   try {
     const { id } = params
     const logs = await getSmsLogForJob(id)

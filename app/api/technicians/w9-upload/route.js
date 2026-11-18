@@ -21,13 +21,19 @@ function sniffContentType(bytes) {
   return null
 }
 
+function w9UnavailableMessage() {
+  const email = process.env.W9_CONTACT_EMAIL
+  return `W-9 upload is temporarily unavailable. Your other details were saved. Please email your W-9 to ${email || 'your Handld contact'}.`
+}
+
 // W-9s contain SSNs/EINs. Never log or return the file, its name or its
 // storage location.
 export async function POST(request) {
+  // Without the private store, refuse. Never fall back to the public store.
   const token = getPrivateBlobToken()
   if (!token) {
     console.error('W9 upload: PRIVATE_BLOB_READ_WRITE_TOKEN is not configured')
-    return Response.json({ error: 'W9 storage is not configured' }, { status: 503 })
+    return Response.json({ error: w9UnavailableMessage(), w9Unavailable: true }, { status: 503 })
   }
 
   try {

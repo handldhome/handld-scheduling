@@ -23,7 +23,8 @@ export default async function TechSchedulePage({ params, searchParams }) {
         getAllJobs(),
         getPricingRules()
       ])
-      jobs = jobsData
+      // Only this tech's jobs reach the browser (the page has no login)
+      jobs = jobsData.filter(j => j.assignedTech.includes(technician.id))
       pricingRules = pricingData
     }
   } catch (error) {

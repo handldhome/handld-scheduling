@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useRef, useEffect } from 'react'
+import { apiFetch } from '@/lib/api-fetch'
 
 // Available services matching Typeform
 const SERVICES = [
@@ -207,7 +208,7 @@ export default function AddJobModal({ jobs = [], onClose, onJobAdded }) {
         )
         const updatedAdditionalServices = [...existingAdditional, ...newServices]
 
-        const response = await fetch(`/api/jobs/${selectedJob.id}`, {
+        const response = await apiFetch(`/api/jobs/${selectedJob.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -225,7 +226,7 @@ export default function AddJobModal({ jobs = [], onClose, onJobAdded }) {
       }
 
       // Otherwise create a new quote request
-      const response = await fetch('/api/quote-requests', {
+      const response = await apiFetch('/api/quote-requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

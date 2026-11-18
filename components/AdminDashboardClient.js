@@ -13,6 +13,7 @@ import TextTechsModal from './TextTechsModal'
 import ScheduleReminderModal from './ScheduleReminderModal'
 import UtilizationDashboard from './UtilizationDashboard'
 import TextsPanel from './TextsPanel'
+import { apiFetch } from '@/lib/api-fetch'
 
 const VALID_TABS = ['schedule', 'tech-schedules', 'jobs', 'availability', 'utilization', 'texts']
 
@@ -64,7 +65,7 @@ export default function AdminDashboardClient({ technicians, availability, jobs }
   const runAIScheduler = async () => {
     setIsRunningAI(true)
     try {
-      const response = await fetch('/api/scheduling-agent')
+      const response = await apiFetch('/api/scheduling-agent')
       const data = await response.json()
 
       if (!response.ok) {

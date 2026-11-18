@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { t } from '@/lib/translations'
+import { apiFetch } from '@/lib/api-fetch'
 
 // Build steps dynamically based on job and language
 const getSteps = (job, lang) => {
@@ -152,7 +153,9 @@ const getSteps = (job, lang) => {
 // Services that require complexity confirmation
 const COMPLEXITY_SERVICES = ['Plumbing Repairs', 'Electrical Repairs']
 
-export default function JobChecklist({ job, techName, onUpdate, lang = 'en', pricingRules = [] }) {
+export default function JobChecklist({ job, techId, techName, onUpdate, lang = 'en', pricingRules = [] }) {
+  // Admin key (from ?key=) or this tech's ID, so the API knows who is asking
+  const jobFetch = (url, options) => apiFetch(url, options, { techId })
   const STEPS = getSteps(job, lang)
   const needsComplexity = COMPLEXITY_SERVICES.includes(job.serviceName)
 
@@ -318,7 +321,7 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en', pri
 
     setIsSavingComplexity(true)
     try {
-      const response = await fetch(`/api/jobs/${job.id}`, {
+      const response = await jobFetch(`/api/jobs/${job.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -342,7 +345,7 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en', pri
     setIsClockingIn(true)
     try {
       // Clock in the job
-      const response = await fetch(`/api/jobs/${job.id}`, {
+      const response = await jobFetch(`/api/jobs/${job.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -359,10 +362,10 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en', pri
       // Send arrival text to customer
       if (job.phone) {
         try {
-          await fetch('/api/send-arrival-text', {
+          await jobFetch('/api/send-arrival-text', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ job, techName })
+            body: JSON.stringify({ jobId: job.id, techName })
           })
         } catch (textError) {
           console.error('Failed to send arrival text:', textError)
@@ -384,7 +387,7 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en', pri
   const handleClockOut = async () => {
     setIsClockingOut(true)
     try {
-      const response = await fetch(`/api/jobs/${job.id}`, {
+      const response = await jobFetch(`/api/jobs/${job.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -420,7 +423,7 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en', pri
         formData.append('photos', files[i])
       }
 
-      const response = await fetch('/api/jobs/photos', {
+      const response = await jobFetch('/api/jobs/photos', {
         method: 'POST',
         body: formData
       })
@@ -480,7 +483,7 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en', pri
   const handleSaveMaterials = async () => {
     setIsSavingMaterials(true)
     try {
-      const response = await fetch(`/api/jobs/${job.id}`, {
+      const response = await jobFetch(`/api/jobs/${job.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ materials })
@@ -510,7 +513,7 @@ export default function JobChecklist({ job, techName, onUpdate, lang = 'en', pri
         formData.append('photos', files[i])
       }
 
-      const response = await fetch('/api/jobs/photos', {
+      const response = await jobFetch('/api/jobs/photos', {
         method: 'POST',
         body: formData
       })

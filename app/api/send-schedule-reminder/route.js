@@ -1,6 +1,7 @@
 import twilio from 'twilio'
 import { getAllJobs, getAllTechnicians } from '@/lib/db'
 import { format, addDays, parseISO } from 'date-fns'
+import { isAdminRequest, isCronRequest, unauthorized } from '@/lib/admin-auth'
 
 const client = twilio(
   process.env.TWILIO_ACCOUNT_SID,
@@ -36,7 +37,7 @@ const formatPhoneNumber = (phone) => {
   return null
 }
 
-export async function POST(request) {
+async function sendReminders(request) {
   try {
     // Parse request body - date is optional, defaults to tomorrow
     let targetDate
@@ -215,14 +216,15 @@ export async function POST(request) {
   }
 }
 
-// GET handler for cron job (Vercel cron uses GET requests)
-export async function GET(request) {
-  // Verify this is a legitimate cron request (optional security)
-  const authHeader = request.headers.get('authorization')
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+// Manual send from the admin dashboard
+export async function POST(request) {
+  if (!isAdminRequest(request)) return unauthorized()
+  return sendReminders(request)
+}
 
-  // Call the POST handler logic
-  return POST(request)
+// GET handler for Vercel cron. Requires CRON_SECRET (fails closed).
+export async function GET(request) {
+  if (!isCronRequest(request)) return unauthorized()
+
+  return sendReminders(request)
 }

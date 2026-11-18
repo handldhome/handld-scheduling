@@ -1,6 +1,6 @@
 import { get } from '@vercel/blob'
 import { getDb } from '@/lib/supabase'
-import { isAdminRequest } from '@/lib/admin-auth'
+import { isAdminRequest, unauthorized } from '@/lib/admin-auth'
 import { W9_CONTENT_TYPES, getPrivateBlobToken, parseW9Note } from '@/lib/w9.mjs'
 
 export const dynamic = 'force-dynamic'
@@ -12,9 +12,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 //   curl -H "x-admin-key: $ADMIN_SECRET_KEY" \
 //     https://schedule.handldhome.com/api/admin/technicians/<techId>/w9 -o w9.pdf
 export async function GET(request, { params }) {
-  if (!isAdminRequest(request)) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  if (!isAdminRequest(request)) return unauthorized()
 
   const token = getPrivateBlobToken()
   if (!token) {

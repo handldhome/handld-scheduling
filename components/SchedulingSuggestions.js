@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { format, parseISO } from 'date-fns'
+import { apiFetch } from '@/lib/api-fetch'
 
 // Rejection reason options (should match the job rejection_reason values)
 const REJECTION_REASONS = [
@@ -101,7 +102,7 @@ export default function SchedulingSuggestions({ onComplete }) {
       const params = selectedStrategies.length > 0
         ? `?strategies=${selectedStrategies.join(',')}`
         : ''
-      const response = await fetch(`/api/scheduling-agent${params}`)
+      const response = await apiFetch(`/api/scheduling-agent${params}`)
       const data = await response.json()
 
       if (!response.ok) {
@@ -151,7 +152,7 @@ export default function SchedulingSuggestions({ onComplete }) {
         selectedJobs.has(s.jobId) && s.suggestedTech
       )
 
-      const response = await fetch('/api/scheduling-agent', {
+      const response = await apiFetch('/api/scheduling-agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -183,7 +184,7 @@ export default function SchedulingSuggestions({ onComplete }) {
     setError(null)
 
     try {
-      const response = await fetch('/api/scheduling-agent', {
+      const response = await apiFetch('/api/scheduling-agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

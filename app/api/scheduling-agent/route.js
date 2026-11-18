@@ -1,6 +1,7 @@
 import { getAllJobs, getAllTechnicians, getAllAvailability, getPricingRules, updateJob } from '@/lib/db'
 import { generateSchedulingSuggestions, saveSuggestionsToJobs } from '@/lib/scheduling-agent'
 import { revalidateTag } from 'next/cache'
+import { isAdminRequest, unauthorized } from '@/lib/admin-auth'
 
 // Disable caching
 export const revalidate = 0
@@ -10,6 +11,8 @@ export const revalidate = 0
  * Run the scheduling agent, save suggestions to jobs, and return results
  */
 export async function GET(request) {
+  if (!isAdminRequest(request)) return unauthorized()
+
   try {
     // Parse optimization strategies from query params
     const { searchParams } = new URL(request.url)
@@ -130,6 +133,8 @@ export async function GET(request) {
  * Actions: 'save' to save suggestions, 'apply' to apply specific suggestions
  */
 export async function POST(request) {
+  if (!isAdminRequest(request)) return unauthorized()
+
   try {
     const body = await request.json()
     const { action, suggestions, jobIds, strategies } = body

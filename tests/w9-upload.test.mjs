@@ -92,9 +92,17 @@ describe('POST /api/technicians/w9-upload', () => {
 
   it('refuses to store anything when private storage is not configured', async () => {
     delete process.env.PRIVATE_BLOB_READ_WRITE_TOKEN
+    process.env.BLOB_READ_WRITE_TOKEN = 'public-token'
+    process.env.W9_CONTACT_EMAIL = 'office@example.com'
     const res = await POST(uploadRequest())
     expect(res.status).toBe(503)
+    const body = await res.json()
+    expect(body.w9Unavailable).toBe(true)
+    expect(body.error).toMatch(/temporarily unavailable.*email your W-9 to office@example\.com/)
     expect(blob.put).not.toHaveBeenCalled()
+    expect(fake.calls.updates).toEqual([])
+    delete process.env.W9_CONTACT_EMAIL
+    delete process.env.BLOB_READ_WRITE_TOKEN
   })
 
   it('rejects files that are not PDF, JPEG or PNG', async () => {

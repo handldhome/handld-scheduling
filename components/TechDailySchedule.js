@@ -5,6 +5,7 @@ import { format, parseISO, addDays, subDays, startOfWeek, endOfWeek, isToday, is
 import { normalizeAddress } from '@/lib/utils'
 import JobChecklist from './JobChecklist'
 import { t } from '@/lib/translations'
+import { apiFetch } from '@/lib/api-fetch'
 
 // Color palette for dynamic service assignment (from WeeklyCalendarView)
 const COLOR_PALETTE = [
@@ -80,7 +81,7 @@ function DetailItem({ label, value }) {
 }
 
 // Job Card Component
-function JobCard({ job, index, isExpanded, onToggle, onJobUpdate, techName, techAllowTexting, lang, pricingRules }) {
+function JobCard({ job, index, isExpanded, onToggle, onJobUpdate, techId, techName, techAllowTexting, lang, pricingRules }) {
   const colors = getServiceColor(job.serviceName)
 
   // Google Maps link
@@ -515,6 +516,7 @@ function JobCard({ job, index, isExpanded, onToggle, onJobUpdate, techName, tech
           {/* Job Checklist - replaces old progress section */}
           <JobChecklist
             job={job}
+            techId={techId}
             techName={techName}
             onUpdate={onJobUpdate}
             lang={lang}
@@ -558,7 +560,7 @@ export default function TechDailySchedule({ techId, techName, techAllowTexting =
   // Function to refresh jobs data
   const refreshJobs = async () => {
     try {
-      const response = await fetch('/api/jobs')
+      const response = await apiFetch('/api/jobs', {}, { techId })
       if (response.ok) {
         const data = await response.json()
         setJobs(data.jobs)
@@ -1099,6 +1101,7 @@ export default function TechDailySchedule({ techId, techName, techAllowTexting =
                     expandedJobId === job.id ? null : job.id
                   )}
                   onJobUpdate={refreshJobs}
+                  techId={techId}
                   techName={techName}
                   techAllowTexting={techAllowTexting}
                   lang={lang}

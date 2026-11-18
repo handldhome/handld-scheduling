@@ -1,6 +1,11 @@
 import { getAllTechnicians, getAllAvailability } from '@/lib/db'
+import { isAdminRequest, unauthorized } from '@/lib/admin-auth'
 
-export async function GET() {
+export const dynamic = 'force-dynamic'
+
+export async function GET(request) {
+  if (!isAdminRequest(request)) return unauthorized()
+
   try {
     const [technicians, availability] = await Promise.all([
       getAllTechnicians(),

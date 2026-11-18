@@ -1,13 +1,7 @@
 import { isSettingEnabled, setSettingEnabled, getRecentSmsLog, getAllTechnicians, setTechAvailabilityTexts } from '@/lib/db'
+import { isAdminRequest as isAuthorized } from '@/lib/admin-auth'
 
 export const dynamic = 'force-dynamic'
-
-// Same key the middleware uses to gate the admin dashboard
-const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY || 'handld-admin-2024'
-
-function isAuthorized(request) {
-  return request.headers.get('x-admin-key') === ADMIN_SECRET_KEY
-}
 
 export async function GET(request) {
   if (!isAuthorized(request)) {

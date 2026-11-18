@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { format, parseISO } from 'date-fns'
 import { normalizeAddress } from '@/lib/utils'
 import Toast from './Toast'
+import { apiFetch } from '@/lib/api-fetch'
 
 // Color palette for dynamic service assignment
 const COLOR_PALETTE = [
@@ -149,7 +150,7 @@ function MultiDayContinue({ jobId, onUpdate }) {
 
     for (const date of selectedDates) {
       try {
-        const response = await fetch('/api/jobs/continue', {
+        const response = await apiFetch('/api/jobs/continue', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ jobId, continueDate: date })
@@ -385,7 +386,7 @@ export default function JobEditModal({ job, technicians, availability = [], onCl
   useEffect(() => {
     const fetchEquipmentOptions = async () => {
       try {
-        const response = await fetch('/api/equipment-options')
+        const response = await apiFetch('/api/equipment-options')
         if (response.ok) {
           const data = await response.json()
           setEquipmentOptions(data.options || [])
@@ -402,7 +403,7 @@ export default function JobEditModal({ job, technicians, availability = [], onCl
   useEffect(() => {
     if (activeTab === 'comms' && job.id && smsLog.length === 0) {
       setLoadingComms(true)
-      fetch(`/api/jobs/${job.id}/sms-log`)
+      apiFetch(`/api/jobs/${job.id}/sms-log`)
         .then(res => res.json())
         .then(data => setSmsLog(data.logs || []))
         .catch(() => setSmsLog([]))
@@ -417,7 +418,7 @@ export default function JobEditModal({ job, technicians, availability = [], onCl
     setError(null)
 
     try {
-      const response = await fetch(`/api/jobs/${job.id}`, {
+      const response = await apiFetch(`/api/jobs/${job.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates)
@@ -493,7 +494,7 @@ export default function JobEditModal({ job, technicians, availability = [], onCl
     // If job is confirmed, send reschedule notification
     if (formData.confirmed || job.confirmed) {
       try {
-        await fetch('/api/send-reschedule-notification', {
+        await apiFetch('/api/send-reschedule-notification', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -553,7 +554,7 @@ export default function JobEditModal({ job, technicians, availability = [], onCl
     // If job is confirmed, send reschedule notification
     if (formData.confirmed || job.confirmed) {
       try {
-        await fetch('/api/send-reschedule-notification', {
+        await apiFetch('/api/send-reschedule-notification', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -578,7 +579,7 @@ export default function JobEditModal({ job, technicians, availability = [], onCl
     // If confirming the job, send confirmation text to customer
     if (newConfirmed && job.phone) {
       try {
-        const smsResponse = await fetch('/api/send-confirmation', {
+        const smsResponse = await apiFetch('/api/send-confirmation', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -606,7 +607,7 @@ export default function JobEditModal({ job, technicians, availability = [], onCl
     const assignedTechIds = job.assignedTech || []
     if (newConfirmed && assignedTechIds.length > 0) {
       try {
-        const techSmsResponse = await fetch('/api/send-tech-job-notification', {
+        const techSmsResponse = await apiFetch('/api/send-tech-job-notification', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -745,7 +746,7 @@ export default function JobEditModal({ job, technicians, availability = [], onCl
         addOns: formData.addOns
       }
 
-      const response = await fetch(`/api/jobs/${job.id}`, {
+      const response = await apiFetch(`/api/jobs/${job.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates)
@@ -759,7 +760,7 @@ export default function JobEditModal({ job, technicians, availability = [], onCl
 
       if ((formData.confirmed || job.confirmed) && (dateChanged || timeChanged)) {
         try {
-          await fetch('/api/send-reschedule-notification', {
+          await apiFetch('/api/send-reschedule-notification', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1011,7 +1012,7 @@ export default function JobEditModal({ job, technicians, availability = [], onCl
                         }
                       }
 
-                      const response = await fetch(`/api/jobs/${job.id}`, {
+                      const response = await apiFetch(`/api/jobs/${job.id}`, {
                         method: 'PATCH',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -1051,7 +1052,7 @@ export default function JobEditModal({ job, technicians, availability = [], onCl
                   onClick={async () => {
                     setIsUpdating(true)
                     try {
-                      const response = await fetch(`/api/jobs/${job.id}`, {
+                      const response = await apiFetch(`/api/jobs/${job.id}`, {
                         method: 'PATCH',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({

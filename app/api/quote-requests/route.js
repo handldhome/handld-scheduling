@@ -1,6 +1,9 @@
 import { createQuoteRequest } from '@/lib/db'
+import { isAdminRequest, unauthorized } from '@/lib/admin-auth'
 
 export async function POST(request) {
+  if (!isAdminRequest(request)) return unauthorized()
+
   try {
     const data = await request.json()
 

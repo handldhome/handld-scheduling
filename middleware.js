@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
+import { isAdminKey } from '@/lib/admin-auth'
 
-// Secret key for admin dashboard access - set in Vercel environment variables
-const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY || 'handld-admin-2024'
+// Admin pages need ?key=<ADMIN_SECRET_KEY> (set in Vercel). No fallback key:
+// if ADMIN_SECRET_KEY is unset, admin pages are closed.
 
 export function middleware(request) {
   const url = request.nextUrl.clone()
@@ -18,7 +19,7 @@ export function middleware(request) {
     // For admin routes, still check the secret key
     if (url.pathname === '/admin' || url.pathname.startsWith('/admin/')) {
       const key = url.searchParams.get('key')
-      if (key !== ADMIN_SECRET_KEY) {
+      if (!isAdminKey(key)) {
         return new NextResponse('Not Found', { status: 404 })
       }
     }
@@ -78,7 +79,7 @@ export function middleware(request) {
       }
       // Check secret key for page access
       const key = url.searchParams.get('key')
-      if (key !== ADMIN_SECRET_KEY) {
+      if (!isAdminKey(key)) {
         return new NextResponse('Not Found', { status: 404 })
       }
       // Rewrite root to /admin
@@ -96,7 +97,7 @@ export function middleware(request) {
       // For main domain or unknown subdomains, require key for admin
       if (url.pathname === '/admin' || url.pathname.startsWith('/admin/')) {
         const key = url.searchParams.get('key')
-        if (key !== ADMIN_SECRET_KEY) {
+        if (!isAdminKey(key)) {
           return new NextResponse('Not Found', { status: 404 })
         }
       }
