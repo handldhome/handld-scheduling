@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { apiFetch } from '@/lib/api-fetch'
 
 const AVAILABILITY_REMINDER_MESSAGE = `Hey! Please submit your availability for next week using the link below. Thanks!`
 const ONBOARDING_MESSAGE = `Welcome to the Handld team! Please complete your onboarding form using the link below. Thanks!`
@@ -121,7 +122,7 @@ export default function TextTechsModal({ technicians, onClose }) {
     setResult(null)
 
     try {
-      const response = await fetch('/api/send-tech-text', {
+      const response = await apiFetch('/api/send-tech-text', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

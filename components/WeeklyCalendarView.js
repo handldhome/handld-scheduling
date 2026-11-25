@@ -6,6 +6,7 @@ import { format, addDays, startOfWeek, addWeeks, subWeeks, parseISO, isToday } f
 import { normalizeAddress } from '@/lib/utils'
 import calStyles from './WeeklyCalendarView.module.css'
 import JobEditModal from './JobEditModal'
+import { apiFetch } from '@/lib/api-fetch'
 
 // Color palette for dynamic service assignment
 const COLOR_PALETTE = [
@@ -179,7 +180,7 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
   useEffect(() => {
     const fetchWeather = async () => {
       try {
-        const response = await fetch('/api/weather')
+        const response = await apiFetch('/api/weather')
         const data = await response.json()
         if (data.forecast && data.forecast.length > 0) {
           const weatherByDate = {}
@@ -222,7 +223,7 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
 
     try {
       const promises = Array.from(selectedJobIds).map(jobId =>
-        fetch(`/api/jobs/${jobId}`, {
+        apiFetch(`/api/jobs/${jobId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -276,7 +277,7 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
           }
         }
 
-        return fetch(`/api/jobs/${job.id}`, {
+        return apiFetch(`/api/jobs/${job.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -306,7 +307,7 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
     if (!draggedJob) return
 
     try {
-      const response = await fetch(`/api/jobs/${draggedJob.id}`, {
+      const response = await apiFetch(`/api/jobs/${draggedJob.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ date, time })
@@ -513,7 +514,7 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
   // Accept an AI suggestion
   const handleAcceptSuggestion = async (job) => {
     try {
-      const response = await fetch('/api/scheduling-agent', {
+      const response = await apiFetch('/api/scheduling-agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -538,7 +539,7 @@ export default function WeeklyCalendarView({ jobs, technicians, availability = [
   // Reject an AI suggestion
   const handleRejectSuggestion = async (job) => {
     try {
-      const response = await fetch('/api/scheduling-agent', {
+      const response = await apiFetch('/api/scheduling-agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

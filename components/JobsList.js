@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import { format, addDays, subDays, parseISO, isWithinInterval, startOfDay } from 'date-fns'
 import { normalizeAddress } from '@/lib/utils'
+import { apiFetch } from '@/lib/api-fetch'
 
 // Status color mapping
 const STATUS_COLORS = {
@@ -138,7 +139,7 @@ export default function JobsList({ jobs, technicians, availability = [] }) {
   const handleArchive = async (job) => {
     if (!confirm(`Archive "${job.serviceName}"? It will be hidden from all views but kept in the database.`)) return
     try {
-      const response = await fetch(`/api/jobs/${job.id}`, {
+      const response = await apiFetch(`/api/jobs/${job.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'Archived' })
@@ -182,7 +183,7 @@ export default function JobsList({ jobs, technicians, availability = [] }) {
           : current.filter(id => id !== techId)
       }
 
-      const response = await fetch(`/api/jobs/${job.id}`, {
+      const response = await apiFetch(`/api/jobs/${job.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ assignedTech: newAssigned })
@@ -792,7 +793,7 @@ export default function JobsList({ jobs, technicians, availability = [] }) {
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation()
-                            fetch(`/api/jobs/${job.id}`, {
+                            apiFetch(`/api/jobs/${job.id}`, {
                               method: 'PATCH',
                               headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify({ status: 'Planned' })

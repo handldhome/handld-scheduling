@@ -1,6 +1,7 @@
 import { getDb } from '@/lib/supabase'
 import { NextResponse } from 'next/server'
 import twilio from 'twilio'
+import { isCronRequest, unauthorized } from '@/lib/admin-auth'
 
 const ADMIN_PHONE = '+16263900189'
 
@@ -22,12 +23,8 @@ const formatTime = (timeStr) => {
  * Set up as a Vercel Cron Job running every hour, or call manually.
  */
 export async function GET(request) {
-  // Optional: verify cron secret
-  const authHeader = request.headers.get('authorization')
-  const cronSecret = process.env.CRON_SECRET
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  // Requires CRON_SECRET (Vercel sends it as a Bearer token); fails closed
+  if (!isCronRequest(request)) return unauthorized()
 
   try {
     const db = getDb()

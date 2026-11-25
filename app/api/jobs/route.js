@@ -1,13 +1,20 @@
 import { getAllJobs, createJob } from '@/lib/db'
 import { revalidateTag } from 'next/cache'
+import { isAdminRequest, unauthorized } from '@/lib/admin-auth'
+import { resolveRequestTech } from '@/lib/tech-auth'
 
 // Disable caching
 export const revalidate = 0
 
-export async function GET() {
+// Admin: every job. Tech page (x-tech-id): only that tech's jobs.
+export async function GET(request) {
+  const admin = isAdminRequest(request)
+  const techId = admin ? null : await resolveRequestTech(request)
+  if (!admin && !techId) return unauthorized()
+
   try {
     const jobs = await getAllJobs()
-    return Response.json({ jobs })
+    return Response.json({ jobs: admin ? jobs : jobs.filter(j => j.assignedTech.includes(techId)) })
   } catch (error) {
     console.error('Error fetching jobs:', error)
     return Response.json(
@@ -18,6 +25,8 @@ export async function GET() {
 }
 
 export async function POST(request) {
+  if (!isAdminRequest(request)) return unauthorized()
+
   try {
     const jobData = await request.json()
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { format, addDays, parseISO } from 'date-fns'
+import { apiFetch } from '@/lib/api-fetch'
 
 export default function ScheduleReminderModal({ technicians, jobs, onClose }) {
   const [selectedTechs, setSelectedTechs] = useState([])
@@ -107,7 +108,7 @@ export default function ScheduleReminderModal({ technicians, jobs, onClose }) {
     setResult(null)
 
     try {
-      const response = await fetch('/api/send-schedule-reminder', {
+      const response = await apiFetch('/api/send-schedule-reminder', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

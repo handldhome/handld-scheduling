@@ -1,17 +1,10 @@
 import { put } from '@vercel/blob'
 import { getDb } from '@/lib/supabase'
+import { authorizeJobAccess } from '@/lib/tech-auth'
+import { unauthorized } from '@/lib/admin-auth'
 
 export async function POST(request) {
   try {
-    // Check for Vercel Blob token
-    if (!process.env.BLOB_READ_WRITE_TOKEN) {
-      console.error('BLOB_READ_WRITE_TOKEN is not configured')
-      return Response.json(
-        { error: 'Photo storage not configured. Please set up Vercel Blob storage.' },
-        { status: 500 }
-      )
-    }
-
     const formData = await request.formData()
     const jobId = formData.get('jobId')
     const type = formData.get('type') // 'before', 'after', or 'receipt'
@@ -21,6 +14,18 @@ export async function POST(request) {
       return Response.json(
         { error: 'Missing required fields: jobId, type, photos' },
         { status: 400 }
+      )
+    }
+
+    // Admin, or the tech the job is assigned to
+    if (!(await authorizeJobAccess(request, jobId)).ok) return unauthorized()
+
+    // Check for Vercel Blob token
+    if (!process.env.BLOB_READ_WRITE_TOKEN) {
+      console.error('BLOB_READ_WRITE_TOKEN is not configured')
+      return Response.json(
+        { error: 'Photo storage not configured. Please set up Vercel Blob storage.' },
+        { status: 500 }
       )
     }
 

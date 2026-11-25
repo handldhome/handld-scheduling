@@ -1,5 +1,6 @@
 import twilio from 'twilio'
 import { logSms } from '@/lib/db'
+import { isAdminRequest, unauthorized } from '@/lib/admin-auth'
 
 const client = twilio(
   process.env.TWILIO_ACCOUNT_SID,
@@ -66,6 +67,8 @@ const formatTime = (timeStr) => {
 }
 
 export async function POST(request) {
+  if (!isAdminRequest(request)) return unauthorized()
+
   let job = null
   let phoneNumber = null
   let message = ''

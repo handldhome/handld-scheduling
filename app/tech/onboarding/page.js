@@ -27,6 +27,7 @@ export default function TechOnboardingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState(null)
+  const [w9Notice, setW9Notice] = useState(null)
 
   // Fetch service and equipment options
   useEffect(() => {
@@ -115,8 +116,9 @@ export default function TechOnboardingPage() {
         })
 
         if (!w9Response.ok) {
-          const w9Error = await w9Response.json()
-          console.error('W9 upload failed:', w9Error)
+          console.error('W9 upload failed:', w9Response.status)
+          const w9Error = await w9Response.json().catch(() => ({}))
+          setW9Notice(w9Error.error || 'Your W-9 did not upload. Please send it to your Handld contact.')
           // Don't fail the whole submission, but log the error
           // The tech record was created, just W9 didn't upload
         }
@@ -187,6 +189,19 @@ export default function TechOnboardingPage() {
           }}>
             Your information has been submitted. Welcome to the Handld team!
           </p>
+          {w9Notice && (
+            <p style={{
+              marginTop: '16px',
+              padding: '12px 16px',
+              borderRadius: '8px',
+              backgroundColor: '#FEF3C7',
+              color: '#92400E',
+              fontSize: '14px',
+              lineHeight: '1.5'
+            }}>
+              {w9Notice}
+            </p>
+          )}
         </div>
       </div>
     )
@@ -634,6 +649,16 @@ export default function TechOnboardingPage() {
             >
               {isSubmitting ? 'Submitting...' : 'Submit'}
             </button>
+
+            <p style={{
+              margin: '12px 0 0',
+              fontSize: '12px',
+              lineHeight: '1.5',
+              color: '#6B7280',
+              textAlign: 'center'
+            }}>
+              By submitting you confirm you are 18 or older, that the information is accurate, and you agree to receive texts from Handld about jobs and scheduling. Msg &amp; data rates may apply. Reply STOP to opt out.
+            </p>
           </div>
         </form>
       </div>

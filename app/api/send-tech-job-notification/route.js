@@ -2,6 +2,7 @@ import twilio from 'twilio'
 import crypto from 'crypto'
 import { getTechnician, logSms } from '@/lib/db'
 import { getDb } from '@/lib/supabase'
+import { isAdminRequest, unauthorized } from '@/lib/admin-auth'
 
 const client = twilio(
   process.env.TWILIO_ACCOUNT_SID,
@@ -66,6 +67,8 @@ const formatTime = (timeStr) => {
 }
 
 export async function POST(request) {
+  if (!isAdminRequest(request)) return unauthorized()
+
   try {
     const { job, techIds } = await request.json()
 

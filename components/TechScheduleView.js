@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { format, addDays, subDays, parseISO, isToday, isTomorrow, isYesterday } from 'date-fns'
 import { normalizeAddress } from '@/lib/utils'
 import JobChecklist from './JobChecklist'
+import { apiFetch } from '@/lib/api-fetch'
 
 // Color palette for services (same as WeeklyCalendarView)
 const COLOR_PALETTE = [
@@ -61,7 +62,7 @@ export default function TechScheduleView({ jobs, technicians }) {
   useEffect(() => {
     const fetchWeather = async () => {
       try {
-        const response = await fetch('/api/weather')
+        const response = await apiFetch('/api/weather')
         const data = await response.json()
         if (data.forecast && data.forecast.length > 0) {
           const weatherByDate = {}
@@ -208,7 +209,7 @@ export default function TechScheduleView({ jobs, technicians }) {
               onChange={async (e) => {
                 const newValue = e.target.checked
                 try {
-                  const res = await fetch(`/api/technicians/${selectedTech.id}`, {
+                  const res = await apiFetch(`/api/technicians/${selectedTech.id}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ allowTexting: newValue })

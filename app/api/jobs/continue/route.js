@@ -1,8 +1,11 @@
 import { format, addDays, parseISO } from 'date-fns'
 import { getDb } from '@/lib/supabase'
 import { revalidateTag } from 'next/cache'
+import { isAdminRequest, unauthorized } from '@/lib/admin-auth'
 
 export async function POST(request) {
+  if (!isAdminRequest(request)) return unauthorized()
+
   try {
     const { jobId, continueDate } = await request.json()
 

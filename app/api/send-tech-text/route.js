@@ -1,5 +1,6 @@
 import twilio from 'twilio'
 import { getTechnician } from '@/lib/db'
+import { isAdminRequest, unauthorized } from '@/lib/admin-auth'
 
 const client = twilio(
   process.env.TWILIO_ACCOUNT_SID,
@@ -42,6 +43,8 @@ const formatPhoneNumber = (phone) => {
 }
 
 export async function POST(request) {
+  if (!isAdminRequest(request)) return unauthorized()
+
   try {
     const {
       techIds = [],

@@ -1,7 +1,10 @@
 import { getTechnician, updateTechnician } from '@/lib/db'
 import { NextResponse } from 'next/server'
+import { isAdminRequest, unauthorized } from '@/lib/admin-auth'
 
 export async function PATCH(request, { params }) {
+  if (!isAdminRequest(request)) return unauthorized()
+
   try {
     const { techId } = params
     const updates = await request.json()

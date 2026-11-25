@@ -1,6 +1,7 @@
 import twilio from 'twilio'
 import { getAllTechnicians, getAllAvailability, isSettingEnabled, logSms } from '@/lib/db'
 import { format, addDays, parseISO } from 'date-fns'
+import { isAdminRequest, isCronRequest, unauthorized } from '@/lib/admin-auth'
 
 const client = twilio(
   process.env.TWILIO_ACCOUNT_SID,
@@ -36,7 +37,7 @@ const formatPhoneNumber = (phone) => {
   return null
 }
 
-export async function POST(request) {
+async function sendReminders(request) {
   try {
     // Automated sends can be switched off from the admin dashboard (Texts tab)
     // via handld.app_settings — no deploy needed.
@@ -208,8 +209,16 @@ export async function POST(request) {
   }
 }
 
-// GET handler for cron job (Vercel cron uses GET requests)
+// Manual send from the admin dashboard
+export async function POST(request) {
+  if (!isAdminRequest(request)) return unauthorized()
+  return sendReminders(request)
+}
+
+// GET handler for Vercel cron. Requires CRON_SECRET (fails closed).
 export async function GET(request) {
+  if (!isCronRequest(request)) return unauthorized()
+
   // Check if this is a reminder-only request (Tuesday)
   const url = new URL(request.url)
   const reminderOnly = url.searchParams.get('reminderOnly') === 'true'
@@ -221,5 +230,5 @@ export async function GET(request) {
     headers: request.headers
   }
 
-  return POST(mockRequest)
+  return sendReminders(mockRequest)
 }
