@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { isOutsideHoursResponse, textingHoursMessage } from '@/lib/texting-hours'
 import { t } from '@/lib/translations'
 import { apiFetch } from '@/lib/api-fetch'
 
@@ -359,14 +360,22 @@ export default function JobChecklist({ job, techId, techName, onUpdate, lang = '
         throw new Error(errorData.details || 'Failed to clock in')
       }
 
-      // Send arrival text to customer
+      // Send arrival text to customer (held outside 8am–9pm Pacific: HTTP 422)
       if (job.phone) {
         try {
-          await jobFetch('/api/send-arrival-text', {
+          const textRes = await jobFetch('/api/send-arrival-text', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ jobId: job.id, techName })
           })
+          const textData = await textRes.json().catch(() => ({}))
+          if (isOutsideHoursResponse(textRes.status, textData)) {
+            alert(`Clocked in, but the customer was NOT texted. ${textingHoursMessage(textData.nextWindow)}`)
+          } else if (textRes.status === 409) {
+            alert('Clocked in, but the customer has opted out of texts.')
+          } else if (!textRes.ok) {
+            console.error('Failed to send arrival text:', textData)
+          }
         } catch (textError) {
           console.error('Failed to send arrival text:', textError)
           // Don't fail the clock-in if text fails

@@ -1,47 +1,12 @@
-import twilio from 'twilio'
 import { getAllJobs, getAllTechnicians } from '@/lib/db'
 import { format, addDays, parseISO } from 'date-fns'
 import { isAdminRequest, isCronRequest, unauthorized } from '@/lib/admin-auth'
-
-const client = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-)
-
-const formatPhoneNumber = (phone) => {
-  if (!phone) return null
-
-  let phoneStr = phone
-  if (Array.isArray(phone)) {
-    phoneStr = phone[0]
-  }
-
-  if (typeof phoneStr !== 'string') {
-    phoneStr = String(phoneStr)
-  }
-
-  const cleaned = phoneStr.replace(/\D/g, '')
-
-  if (cleaned.length === 10) {
-    return `+1${cleaned}`
-  }
-
-  if (cleaned.length === 11 && cleaned.startsWith('1')) {
-    return `+${cleaned}`
-  }
-
-  if (phoneStr.startsWith('+')) {
-    return phoneStr
-  }
-
-  return null
-}
+import { sendSms, normalizeE164, withHandldPrefix, isWithinTextingHours, nextTextingWindow } from '@/lib/sms'
 
 async function sendReminders(request) {
   try {
     // Parse request body - date is optional, defaults to tomorrow
     let targetDate
-    let isManualTrigger = false
     let specificTechIds = null // If provided, only send to these techs
 
     try {
@@ -49,7 +14,6 @@ async function sendReminders(request) {
       if (body.date) {
         targetDate = body.date
       }
-      isManualTrigger = body.manual === true
       if (body.techIds && Array.isArray(body.techIds) && body.techIds.length > 0) {
         specificTechIds = body.techIds
       }
@@ -111,6 +75,8 @@ async function sendReminders(request) {
       successCount: 0,
       failedCount: 0,
       skippedCount: 0,
+      skippedNoConsent: [],
+      skippedOptOut: [],
       details: []
     }
 
@@ -129,26 +95,25 @@ async function sendReminders(request) {
         continue
       }
 
+      const name = `${tech.firstName} ${tech.lastName}`
+
       if (!tech.active) {
         results.skippedCount++
-        results.details.push({
-          techId,
-          name: `${tech.firstName} ${tech.lastName}`,
-          success: false,
-          error: 'Technician not active'
-        })
+        results.details.push({ techId, name, success: false, error: 'Technician not active' })
         continue
       }
 
-      const phoneNumber = formatPhoneNumber(tech.phone)
+      if (!tech.smsConsentAt) {
+        results.skippedCount++
+        results.skippedNoConsent.push({ id: tech.id, name })
+        results.details.push({ techId, name, success: false, error: 'No SMS consent on file' })
+        continue
+      }
+
+      const phoneNumber = normalizeE164(tech.phone)
       if (!phoneNumber) {
         results.skippedCount++
-        results.details.push({
-          techId,
-          name: `${tech.firstName} ${tech.lastName}`,
-          success: false,
-          error: 'Invalid phone number'
-        })
+        results.details.push({ techId, name, success: false, error: 'Invalid phone number' })
         continue
       }
 
@@ -172,31 +137,30 @@ async function sendReminders(request) {
 
         const moreJobsText = jobCount > 3 ? `\n...and ${jobCount - 3} more` : ''
 
-        const message = `Hi ${tech.firstName}! You have ${jobCount} job${jobCount !== 1 ? 's' : ''} scheduled for ${dateDisplay}:\n\n${jobSummary}${moreJobsText}\n\nView full schedule:\n${scheduleLink}`
+        const message = withHandldPrefix(`Hi ${tech.firstName}! You have ${jobCount} job${jobCount !== 1 ? 's' : ''} scheduled for ${dateDisplay}:\n\n${jobSummary}${moreJobsText}\n\nView full schedule:\n${scheduleLink}`)
 
-        const result = await client.messages.create({
+        const r = await sendSms({
+          to: phoneNumber,
           body: message,
-          from: process.env.TWILIO_PHONE_NUMBER,
-          to: phoneNumber
+          recipientType: 'technician',
+          messageType: 'schedule_reminder'
         })
 
-        results.successCount++
-        results.details.push({
-          techId,
-          name: `${tech.firstName} ${tech.lastName}`,
-          jobCount,
-          success: true,
-          messageId: result.sid
-        })
+        if (r.status === 'sent') {
+          results.successCount++
+          results.details.push({ techId, name, jobCount, success: true, messageId: r.sid, logError: r.logError })
+        } else if (r.status === 'skipped_opt_out') {
+          results.skippedCount++
+          results.skippedOptOut.push({ id: tech.id, name })
+          results.details.push({ techId, name, success: false, error: r.error, logError: r.logError })
+        } else {
+          results.failedCount++
+          results.details.push({ techId, name, success: false, error: r.error, logError: r.logError })
+        }
 
       } catch (error) {
         results.failedCount++
-        results.details.push({
-          techId,
-          name: `${tech.firstName} ${tech.lastName}`,
-          success: false,
-          error: error.message
-        })
+        results.details.push({ techId, name, success: false, error: error.message })
       }
     }
 
@@ -223,8 +187,14 @@ export async function POST(request) {
 }
 
 // GET handler for Vercel cron. Requires CRON_SECRET (fails closed).
+// Technician texts are not held to the customer window, but automated sends
+// must never fire between 21:00 and 07:59 PT.
 export async function GET(request) {
   if (!isCronRequest(request)) return unauthorized()
+
+  if (!isWithinTextingHours()) {
+    return Response.json({ success: true, skipped: 'quiet_hours', nextWindow: nextTextingWindow().toISOString() })
+  }
 
   return sendReminders(request)
 }

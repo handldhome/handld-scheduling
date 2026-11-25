@@ -18,7 +18,8 @@ export default function TechOnboardingPage() {
     equipment: [],
     paymentInfo: '',
     licensePlate: '',
-    tshirtSize: ''
+    tshirtSize: '',
+    smsConsent: false
   })
 
   const [serviceOptions, setServiceOptions] = useState([])
@@ -56,9 +57,13 @@ export default function TechOnboardingPage() {
   }, [])
 
   const handleChange = (e) => {
-    const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
+    const { name, value, type, checked } = e.target
+    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }))
   }
+
+  // The phone is required, and a phone is only accepted with SMS consent.
+  const needsConsent = !!formData.phone.trim() && !formData.smsConsent
+  const canSubmit = !isSubmitting && formData.firstName && formData.lastName && formData.phone && !needsConsent
 
   const toggleService = (serviceName) => {
     setFormData(prev => ({
@@ -86,6 +91,10 @@ export default function TechOnboardingPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (needsConsent) {
+      setError('Please tick the box agreeing to receive text messages from Handld. We text job assignments and schedules to this number.')
+      return
+    }
     setIsSubmitting(true)
     setError(null)
 
@@ -316,6 +325,40 @@ export default function TechOnboardingPage() {
                   style={inputStyle}
                 />
               </div>
+            </div>
+
+            {/* SMS consent: unchecked by default, required when a phone is given */}
+            <div style={{ ...sectionStyle, marginTop: '-8px' }}>
+              <label style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '10px',
+                padding: '12px 14px',
+                border: `1px solid ${needsConsent && error ? '#DC2626' : '#D1D5DB'}`,
+                borderRadius: '8px',
+                backgroundColor: '#F9FAFB',
+                cursor: 'pointer'
+              }}>
+                <input
+                  type="checkbox"
+                  name="smsConsent"
+                  checked={formData.smsConsent}
+                  onChange={handleChange}
+                  aria-required={!!formData.phone.trim()}
+                  style={{ marginTop: '3px', width: '18px', height: '18px', flexShrink: 0, accentColor: '#2A54A1' }}
+                />
+                <span style={{ fontSize: '13px', lineHeight: '1.5', color: '#374151' }}>
+                  I agree to receive text messages from Handld at this number about jobs, schedules and availability, such as job assignments, daily schedules and availability requests. Message frequency varies. Msg &amp; data rates may apply. Reply STOP to cancel or HELP for help. See the{' '}
+                  <a href="https://handldhome.com/sms-terms" target="_blank" rel="noopener noreferrer" style={{ color: '#2A54A1' }}>SMS Terms</a>
+                  {' '}and{' '}
+                  <a href="https://handldhome.com/privacy" target="_blank" rel="noopener noreferrer" style={{ color: '#2A54A1' }}>Privacy Policy</a>.
+                </span>
+              </label>
+              {needsConsent && (
+                <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#B45309' }}>
+                  Required: we text job assignments and schedules to the phone number above.
+                </p>
+              )}
             </div>
 
             {/* Address */}
@@ -630,21 +673,17 @@ export default function TechOnboardingPage() {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={isSubmitting || !formData.firstName || !formData.lastName || !formData.phone}
+              disabled={!canSubmit}
               style={{
                 width: '100%',
                 padding: '16px',
                 fontSize: '18px',
                 fontWeight: '700',
-                backgroundColor: isSubmitting || !formData.firstName || !formData.lastName || !formData.phone
-                  ? '#9CA3AF'
-                  : '#2A54A1',
+                backgroundColor: !canSubmit ? '#9CA3AF' : '#2A54A1',
                 color: 'white',
                 border: 'none',
                 borderRadius: '10px',
-                cursor: isSubmitting || !formData.firstName || !formData.lastName || !formData.phone
-                  ? 'not-allowed'
-                  : 'pointer'
+                cursor: !canSubmit ? 'not-allowed' : 'pointer'
               }}
             >
               {isSubmitting ? 'Submitting...' : 'Submit'}
@@ -657,7 +696,7 @@ export default function TechOnboardingPage() {
               color: '#6B7280',
               textAlign: 'center'
             }}>
-              By submitting you confirm you are 18 or older, that the information is accurate, and you agree to receive texts from Handld about jobs and scheduling. Msg &amp; data rates may apply. Reply STOP to opt out.
+              By submitting you confirm you are 18 or older and that the information is accurate.
             </p>
           </div>
         </form>

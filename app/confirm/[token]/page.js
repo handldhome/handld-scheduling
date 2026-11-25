@@ -36,6 +36,7 @@ export default function TechConfirmPage({ params }) {
   const [error, setError] = useState(null)
   const [jobData, setJobData] = useState(null)
   const [result, setResult] = useState(null) // 'confirmed' | 'declined'
+  const [customerText, setCustomerText] = useState(null) // from POST confirm
   const [declineMode, setDeclineMode] = useState(false)
   const [declineReason, setDeclineReason] = useState('')
 
@@ -65,6 +66,7 @@ export default function TechConfirmPage({ params }) {
       })
       const data = await res.json()
       if (data.success) {
+        setCustomerText(data.customerText || null)
         setResult('confirmed')
       } else {
         setError(data.error || 'Failed to confirm')
@@ -125,7 +127,11 @@ export default function TechConfirmPage({ params }) {
           <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: '#D1FAE5', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: '28px' }}>✓</div>
           <h2 style={{ fontSize: '22px', fontWeight: '800', color: '#065F46', marginBottom: '8px' }}>You&apos;re confirmed!</h2>
           <p style={{ fontSize: '14px', color: '#6B7280', marginBottom: '16px' }}>
-            Thanks for confirming. The customer has been notified.
+            {customerText?.status === 'outside_hours'
+              ? 'Thanks for confirming. It is outside texting hours (8am–9pm Pacific), so the customer will be notified by the office in the morning.'
+              : customerText?.status === 'skipped_opt_out'
+                ? 'Thanks for confirming. This customer has opted out of texts; the office will contact them.'
+                : 'Thanks for confirming. The customer has been notified.'}
           </p>
           <div style={{ padding: '12px 16px', backgroundColor: '#F9FAFB', borderRadius: '8px', fontSize: '14px', color: '#374151' }}>
             <strong>{job.serviceName}</strong><br />

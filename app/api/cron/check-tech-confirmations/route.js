@@ -1,9 +1,7 @@
 import { getDb } from '@/lib/supabase'
 import { NextResponse } from 'next/server'
-import twilio from 'twilio'
 import { isCronRequest, unauthorized } from '@/lib/admin-auth'
-
-const ADMIN_PHONE = '+16263900189'
+import { sendOwnerAlert } from '@/lib/sms'
 
 const formatTime = (timeStr) => {
   if (!timeStr) return 'TBD'
@@ -18,7 +16,8 @@ const formatTime = (timeStr) => {
  * GET /api/cron/check-tech-confirmations
  *
  * Checks for jobs where the tech confirmation deadline has passed
- * without a response. Texts the admin for each one.
+ * without a response. Texts the owner (OWNER_ALERT_PHONE) for each one.
+ * Internal alert: no STOP footer and no texting-hours window.
  *
  * Set up as a Vercel Cron Job running every hour, or call manually.
  */
@@ -51,7 +50,6 @@ export async function GET(request) {
       return NextResponse.json({ message: 'No expired confirmations', count: 0 })
     }
 
-    const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
     const results = []
 
     for (const job of expiredJobs) {
@@ -65,11 +63,8 @@ export async function GET(request) {
       try {
         const message = `⏰ ${techName} did NOT confirm:\n\n${job.service}\n${dateDisplay} at ${formatTime(job.scheduled_time)}\n${job.quote_request?.address || ''}\n\nDeadline was ${new Date(job.tech_confirmation_deadline).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' })}.\n\nThis job needs to be reassigned or followed up on.`
 
-        await client.messages.create({
-          body: message,
-          from: process.env.TWILIO_PHONE_NUMBER,
-          to: ADMIN_PHONE
-        })
+        const alert = await sendOwnerAlert({ body: message, messageType: 'owner_alert_no_confirmation', jobId: job.id })
+        if (alert.status !== 'sent') throw new Error(alert.error || `alert ${alert.status}`)
 
         // Clear the token so we don't re-alert on the next cron run
         await db
@@ -77,7 +72,7 @@ export async function GET(request) {
           .update({ tech_confirmation_token: null })
           .eq('id', job.id)
 
-        results.push({ jobId: job.id, techName, notified: true })
+        results.push({ jobId: job.id, techName, notified: true, logError: alert.logError })
       } catch (smsErr) {
         console.error('Admin notification error for job:', job.id, smsErr)
         results.push({ jobId: job.id, techName, notified: false, error: smsErr.message })

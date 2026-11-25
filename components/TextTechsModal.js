@@ -2,9 +2,13 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { apiFetch } from '@/lib/api-fetch'
+import { noConsentMessage, optOutMessage } from '@/lib/texting-hours'
 
 const AVAILABILITY_REMINDER_MESSAGE = `Hey! Please submit your availability for next week using the link below. Thanks!`
 const ONBOARDING_MESSAGE = `Welcome to the Handld team! Please complete your onboarding form using the link below. Thanks!`
+// Numbers not yet in the database only ever receive this exact text (the
+// server ignores anything else for them). Must match lib/sms.js.
+const ONBOARDING_INVITE_BODY = `Handld: you've been invited to join the Handld technician team. Complete onboarding here: https://schedule.handldhome.com/tech/onboarding Reply STOP to opt out.`
 
 export default function TextTechsModal({ technicians, onClose }) {
   const [selectedTechs, setSelectedTechs] = useState([])
@@ -116,7 +120,8 @@ export default function TextTechsModal({ technicians, onClose }) {
     const hasSelectedTechs = selectedTechs.length > 0
     const hasNewTechs = newTechs.length > 0
 
-    if ((!hasSelectedTechs && !hasNewTechs) || !message.trim()) return
+    // A message is only needed for existing techs; new numbers get the fixed invite.
+    if ((!hasSelectedTechs && !hasNewTechs) || (hasSelectedTechs && !message.trim())) return
 
     setIsSending(true)
     setResult(null)
@@ -137,9 +142,16 @@ export default function TextTechsModal({ technicians, onClose }) {
       const data = await response.json()
 
       if (response.ok) {
+        const notes = [
+          noConsentMessage(data.skippedNoConsent),
+          optOutMessage(data.skippedOptOut),
+          data.skippedRateLimited?.length
+            ? `Invite not re-sent (already sent in the last 24h): ${data.skippedRateLimited.map(t => t.name).join(', ')}.`
+            : ''
+        ].filter(Boolean)
         setResult({
           success: true,
-          message: `Sent to ${data.successCount} recipient(s)${data.failedCount > 0 ? `, ${data.failedCount} failed` : ''}`
+          message: `Sent to ${data.successCount} recipient(s)${data.failedCount > 0 ? `, ${data.failedCount} failed` : ''}${notes.length ? '. ' + notes.join(' ') : ''}`
         })
         // Clear form after success
         setMessage('')
@@ -165,6 +177,8 @@ export default function TextTechsModal({ technicians, onClose }) {
 
   const techsWithPhone = technicians.filter(t => t.phone)
   const totalRecipients = selectedTechs.length + newTechs.length
+  const selectedWithoutConsent = technicians.filter(t => selectedTechs.includes(t.id) && !t.smsConsentAt)
+  const canSend = !isSending && totalRecipients > 0 && (selectedTechs.length === 0 || !!message.trim())
 
   return (
     <div style={{
@@ -397,6 +411,14 @@ export default function TextTechsModal({ technicians, onClose }) {
                 </button>
               </div>
 
+              <p style={{ fontSize: '12px', color: '#6B7280', margin: '0 0 12px', lineHeight: 1.5 }}>
+                New numbers receive only this invite (your message below goes to existing techs):
+                <br />
+                <span style={{ color: '#374151' }}>&ldquo;{ONBOARDING_INVITE_BODY}&rdquo;</span>
+                <br />
+                One invite per number per 24 hours.
+              </p>
+
               {/* List of new techs to send to */}
               {newTechs.length > 0 && (
                 <div style={{
@@ -539,6 +561,9 @@ export default function TextTechsModal({ technicians, onClose }) {
                         color: '#6B7280'
                       }}>
                         {tech.phone}
+                        {!tech.smsConsentAt && (
+                          <span style={{ marginLeft: '8px', color: '#B45309', fontWeight: '600' }}>no SMS consent</span>
+                        )}
                       </div>
                     </div>
                   </label>
@@ -552,6 +577,12 @@ export default function TextTechsModal({ technicians, onClose }) {
             }}>
               {totalRecipients} recipient(s) selected
             </div>
+            {selectedWithoutConsent.length > 0 && (
+              <div style={{ fontSize: '12px', color: '#B45309', marginTop: '6px', lineHeight: 1.5 }}>
+                Will be skipped (no SMS consent on file): {selectedWithoutConsent.map(t => `${t.firstName} ${t.lastName}`).join(', ')}.
+                Send them a consent request from the Texts tab.
+              </div>
+            )}
           </div>
 
           {/* Message */}
@@ -630,19 +661,15 @@ export default function TextTechsModal({ technicians, onClose }) {
             <button
               type="button"
               onClick={handleSend}
-              disabled={isSending || totalRecipients === 0 || !message.trim()}
+              disabled={!canSend}
               style={{
                 padding: '12px 24px',
                 fontSize: '14px',
                 fontWeight: '600',
-                backgroundColor: isSending || totalRecipients === 0 || !message.trim()
-                  ? '#9CA3AF'
-                  : '#2A54A1',
+                backgroundColor: !canSend ? '#9CA3AF' : '#2A54A1',
                 border: 'none',
                 borderRadius: '8px',
-                cursor: isSending || totalRecipients === 0 || !message.trim()
-                  ? 'not-allowed'
-                  : 'pointer',
+                cursor: !canSend ? 'not-allowed' : 'pointer',
                 color: 'white'
               }}
             >

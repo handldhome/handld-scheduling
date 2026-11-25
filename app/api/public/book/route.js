@@ -1,8 +1,7 @@
 import { getDb } from '@/lib/supabase'
-import { logSms } from '@/lib/db'
 import { revalidateTag } from 'next/cache'
 import { NextResponse } from 'next/server'
-import twilio from 'twilio'
+import { sendSms, normalizeE164, CUSTOMER_QUESTIONS } from '@/lib/sms'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,16 +11,6 @@ const corsHeaders = {
 
 export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: corsHeaders })
-}
-
-const formatPhoneNumber = (phone) => {
-  if (!phone) return null
-  let phoneStr = Array.isArray(phone) ? phone[0] : String(phone)
-  const cleaned = phoneStr.replace(/\D/g, '')
-  if (cleaned.length === 10) return `+1${cleaned}`
-  if (cleaned.length === 11 && cleaned.startsWith('1')) return `+${cleaned}`
-  if (phoneStr.startsWith('+')) return phoneStr
-  return null
 }
 
 /**
@@ -36,7 +25,8 @@ const formatPhoneNumber = (phone) => {
  * }
  *
  * Creates a job with status "Planned" (Needs Review in the dashboard).
- * Sends confirmation SMS to the customer.
+ * Sends confirmation SMS to the customer. The customer just booked, so this
+ * text is customer-initiated and exempt from the texting-hours window.
  */
 export async function POST(request) {
   try {
@@ -110,7 +100,7 @@ export async function POST(request) {
       .eq('id', quoteRequestId)
 
     // Send confirmation SMS to customer
-    const customerPhone = formatPhoneNumber(quoteRequest.customer?.phone)
+    const customerPhone = normalizeE164(quoteRequest.customer?.phone)
     const firstName = quoteRequest.customer?.first_name || 'there'
 
     const dateDisplay = new Date(preferredDate + 'T12:00:00').toLocaleDateString('en-US', {
@@ -121,42 +111,20 @@ export async function POST(request) {
     })
     const timeDisplay = preferredTime === 'AM' ? 'morning (8am–12pm)' : 'afternoon (1pm–5pm)'
 
+    let sms = null
     if (customerPhone) {
-      try {
-        const client = twilio(
-          process.env.TWILIO_ACCOUNT_SID,
-          process.env.TWILIO_AUTH_TOKEN
-        )
+      const message = `Hi ${firstName}! Your Handld appointment is booked for ${dateDisplay}, ${timeDisplay}. We'll confirm your exact arrival time soon. ${CUSTOMER_QUESTIONS}`
 
-        const message = `Hi ${firstName}! Your Handld appointment is booked for ${dateDisplay}, ${timeDisplay}. We'll confirm your exact arrival time soon. Questions? Text us at (626) 298-7128`
-
-        const result = await client.messages.create({
-          body: message,
-          from: process.env.TWILIO_PHONE_NUMBER,
-          to: customerPhone
-        })
-
-        await logSms({
-          jobId: job.id,
-          recipientPhone: customerPhone,
-          recipientType: 'customer',
-          messageType: 'booking_confirmation',
-          messageBody: message,
-          twilioSid: result.sid,
-          status: 'sent'
-        })
-      } catch (smsError) {
-        console.error('Booking confirmation SMS error:', smsError)
-        await logSms({
-          jobId: job.id,
-          recipientPhone: customerPhone,
-          recipientType: 'customer',
-          messageType: 'booking_confirmation',
-          messageBody: '',
-          status: 'failed',
-          errorMessage: smsError.message
-        })
-      }
+      const r = await sendSms({
+        to: customerPhone,
+        body: message,
+        recipientType: 'customer',
+        messageType: 'booking_confirmation',
+        jobId: job.id,
+        exemptFromQuietHours: true // the customer just booked
+      })
+      sms = { status: r.status, logError: r.logError || undefined }
+      if (r.status === 'failed') console.error('Booking confirmation SMS error:', r.error)
     }
 
     revalidateTag('jobs')
@@ -164,7 +132,8 @@ export async function POST(request) {
     return NextResponse.json({
       success: true,
       jobId: job.id,
-      message: `Appointment booked for ${dateDisplay}, ${timeDisplay}`
+      message: `Appointment booked for ${dateDisplay}, ${timeDisplay}`,
+      sms
     }, { headers: corsHeaders })
 
   } catch (error) {

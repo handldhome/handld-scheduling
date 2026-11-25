@@ -1,40 +1,6 @@
-import twilio from 'twilio'
-import { getTechnician, logSms } from '@/lib/db'
+import { getTechnician } from '@/lib/db'
 import { isAdminRequest, unauthorized } from '@/lib/admin-auth'
-
-const client = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-)
-
-const formatPhoneNumber = (phone) => {
-  if (!phone) return null
-
-  let phoneStr = phone
-  if (Array.isArray(phone)) {
-    phoneStr = phone[0]
-  }
-
-  if (typeof phoneStr !== 'string') {
-    phoneStr = String(phoneStr)
-  }
-
-  const cleaned = phoneStr.replace(/\D/g, '')
-
-  if (cleaned.length === 10) {
-    return `+1${cleaned}`
-  }
-
-  if (cleaned.length === 11 && cleaned.startsWith('1')) {
-    return `+${cleaned}`
-  }
-
-  if (phoneStr.startsWith('+')) {
-    return phoneStr
-  }
-
-  return null
-}
+import { sendSms, normalizeE164, withHandldPrefix, CUSTOMER_QUESTIONS } from '@/lib/sms'
 
 const formatDate = (dateStr) => {
   if (!dateStr) return 'TBD'
@@ -64,6 +30,11 @@ const formatTime = (timeStr) => {
   return `${h12}:${minutes} ${suffix}`
 }
 
+// Reschedule: texts the assigned technicians (consent required, no hours
+// window) and then the customer (texting hours apply). Technicians are sent
+// first so an out-of-hours customer text never blocks them; when the customer
+// text is held the response is 422 outside_texting_hours and still carries
+// the technician results.
 export async function POST(request) {
   if (!isAdminRequest(request)) return unauthorized()
 
@@ -85,116 +56,87 @@ export async function POST(request) {
     const dateForUrl = formatDateForUrl(getString(job.date))
     const time = formatTime(getString(job.time))
     const address = getString(job.address) || 'Address TBD'
-    const customerPhone = formatPhoneNumber(job.phone)
+    const customerPhone = normalizeE164(job.phone)
     const firstName = getString(job.firstName) || getString(job.customerName)?.split(' ')[0] || 'there'
 
     const results = {
       customer: { sent: false },
-      techs: { successCount: 0, failedCount: 0, details: [] }
-    }
-
-    // Send reschedule notification to customer
-    if (customerPhone) {
-      let customerMessage = ''
-      try {
-        customerMessage = `Hi ${firstName}, your ${serviceName} appointment with Handld Home Services has been rescheduled to ${date} at ${time}. Questions? Text us at (626) 298-7128`
-
-        const customerResult = await client.messages.create({
-          body: customerMessage,
-          from: process.env.TWILIO_PHONE_NUMBER,
-          to: customerPhone
-        })
-
-        await logSms({
-          jobId: job.id,
-          recipientPhone: customerPhone,
-          recipientType: 'customer',
-          messageType: 'reschedule',
-          messageBody: customerMessage,
-          twilioSid: customerResult.sid,
-          status: 'sent'
-        })
-
-        results.customer.sent = true
-      } catch (error) {
-        console.error('Customer reschedule SMS error:', error)
-        await logSms({
-          jobId: job?.id,
-          recipientPhone: customerPhone || 'unknown',
-          recipientType: 'customer',
-          messageType: 'reschedule',
-          messageBody: customerMessage || '',
-          status: 'failed',
-          errorMessage: error.message
-        })
-        results.customer.error = error.message
-      }
+      techs: { successCount: 0, failedCount: 0, details: [], skippedNoConsent: [], skippedOptOut: [] }
     }
 
     // Send reschedule notification to assigned technicians
     if (techIds && Array.isArray(techIds) && techIds.length > 0) {
       for (const techId of techIds) {
-        let phoneNumber = 'unknown'
-        let techMessage = ''
         try {
           const tech = await getTechnician(techId)
-          phoneNumber = formatPhoneNumber(tech.phone)
+          const name = `${tech.firstName} ${tech.lastName}`
 
+          if (!tech.smsConsentAt) {
+            results.techs.skippedNoConsent.push({ id: tech.id, name })
+            results.techs.details.push({ techId, name, success: false, error: 'No SMS consent on file' })
+            continue
+          }
+
+          const phoneNumber = normalizeE164(tech.phone)
           if (!phoneNumber) {
             results.techs.failedCount++
-            results.techs.details.push({
-              techId,
-              name: `${tech.firstName} ${tech.lastName}`,
-              success: false,
-              error: 'Invalid phone number'
-            })
+            results.techs.details.push({ techId, name, success: false, error: 'Invalid phone number' })
             continue
           }
 
           const scheduleLink = `https://work.handldhome.com/tech/${techId}/schedule?date=${dateForUrl}`
+          const techMessage = withHandldPrefix(`job rescheduled!\n\n${serviceName}\n${date} at ${time}\n${address}\n\nView your schedule:\n${scheduleLink}`)
 
-          techMessage = `Job rescheduled!\n\n${serviceName}\n${date} at ${time}\n${address}\n\nView your schedule:\n${scheduleLink}`
-
-          const techResult = await client.messages.create({
+          const r = await sendSms({
+            to: phoneNumber,
             body: techMessage,
-            from: process.env.TWILIO_PHONE_NUMBER,
-            to: phoneNumber
-          })
-
-          await logSms({
-            jobId: job.id,
-            recipientPhone: phoneNumber,
             recipientType: 'technician',
             messageType: 'reschedule',
-            messageBody: techMessage,
-            twilioSid: techResult.sid,
-            status: 'sent'
+            jobId: job.id
           })
 
-          results.techs.successCount++
-          results.techs.details.push({
-            techId,
-            name: `${tech.firstName} ${tech.lastName}`,
-            success: true
-          })
-
+          if (r.status === 'sent') {
+            results.techs.successCount++
+            results.techs.details.push({ techId, name, success: true, messageId: r.sid, logError: r.logError })
+          } else if (r.status === 'skipped_opt_out') {
+            results.techs.skippedOptOut.push({ id: tech.id, name })
+            results.techs.details.push({ techId, name, success: false, error: r.error, logError: r.logError })
+          } else {
+            results.techs.failedCount++
+            results.techs.details.push({ techId, name, success: false, error: r.error, logError: r.logError })
+          }
         } catch (error) {
-          await logSms({
-            jobId: job?.id,
-            recipientPhone: phoneNumber || 'unknown',
-            recipientType: 'technician',
-            messageType: 'reschedule',
-            messageBody: techMessage || '',
-            status: 'failed',
-            errorMessage: error.message
-          })
           results.techs.failedCount++
-          results.techs.details.push({
-            techId,
-            success: false,
-            error: error.message
-          })
+          results.techs.details.push({ techId, success: false, error: error.message })
         }
+      }
+    }
+
+    // Send reschedule notification to customer
+    if (customerPhone) {
+      const customerMessage = `Hi ${firstName}, your ${serviceName} appointment with Handld Home Services has been rescheduled to ${date} at ${time}. ${CUSTOMER_QUESTIONS}`
+
+      const r = await sendSms({
+        to: customerPhone,
+        body: customerMessage,
+        recipientType: 'customer',
+        messageType: 'reschedule',
+        jobId: job.id
+      })
+
+      results.customer.logError = r.logError
+      if (r.status === 'sent') {
+        results.customer.sent = true
+        results.customer.messageId = r.sid
+      } else if (r.status === 'outside_hours') {
+        return Response.json({
+          error: 'outside_texting_hours',
+          nextWindow: r.nextWindow,
+          ...results
+        }, { status: 422 })
+      } else {
+        results.customer.error = r.error
+        results.customer.status = r.status
       }
     }
 
