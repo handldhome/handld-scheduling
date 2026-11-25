@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { createFakeDb } from './fake-db.mjs'
 
 // Tech schedule pages have no login; their requests carry x-tech-id and may
@@ -31,7 +31,11 @@ const req = (method, headers, body) =>
 
 beforeEach(() => {
   process.env.ADMIN_SECRET_KEY = 'real-admin-key'
+  // Arrival texts are held outside 8am–9pm Pacific; pin the clock to 10:00 PST.
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-11-25T18:00:00Z'))
   fake = createFakeDb({
+    sms_opt_outs: [],
     technicians: [
       { id: TECH, airtable_id: 'recTECH00000000001', active: true, first_name: 'Sam' },
       { id: OTHER_TECH, airtable_id: null, active: true, first_name: 'Ana' },
@@ -50,6 +54,7 @@ beforeEach(() => {
   db.logSms.mockReset().mockResolvedValue(undefined)
   sms.create.mockReset().mockResolvedValue({ sid: 'SM1' })
 })
+afterEach(() => vi.useRealTimers())
 
 describe('GET /api/jobs', () => {
   it('a tech sees only their own jobs', async () => {
@@ -98,6 +103,16 @@ describe('POST /api/send-arrival-text', () => {
     expect(body).toContain('Hi Pat!')
     expect(body).toContain('Sam from Handld')
     expect(body).not.toMatch(/Evil|Spam/)
+    expect(body).toContain('Call (626) 298-7128 or reply to this text.')
+    expect(body.endsWith(' Reply STOP to opt out.')).toBe(true)
+    expect(body).not.toContain('Text us at')
+  })
+  it('is held outside texting hours (422) and nothing is sent', async () => {
+    vi.setSystemTime(new Date('2026-11-26T05:30:00Z')) // 21:30 PST
+    const res = await arrival.POST(req('POST', { 'x-tech-id': TECH }, { jobId: MINE }))
+    expect(res.status).toBe(422)
+    expect(await res.json()).toMatchObject({ error: 'outside_texting_hours', nextWindow: '2026-11-26T16:00:00.000Z' })
+    expect(sms.create).not.toHaveBeenCalled()
   })
   it("refuses another tech's job", async () => {
     const res = await arrival.POST(req('POST', { 'x-tech-id': TECH }, { jobId: THEIRS }))

@@ -1,41 +1,7 @@
-import twilio from 'twilio'
-import { getAllTechnicians, getAllAvailability, isSettingEnabled, logSms } from '@/lib/db'
+import { getAllTechnicians, getAllAvailability, isSettingEnabled } from '@/lib/db'
 import { format, addDays, parseISO } from 'date-fns'
 import { isAdminRequest, isCronRequest, unauthorized } from '@/lib/admin-auth'
-
-const client = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-)
-
-const formatPhoneNumber = (phone) => {
-  if (!phone) return null
-
-  let phoneStr = phone
-  if (Array.isArray(phone)) {
-    phoneStr = phone[0]
-  }
-
-  if (typeof phoneStr !== 'string') {
-    phoneStr = String(phoneStr)
-  }
-
-  const cleaned = phoneStr.replace(/\D/g, '')
-
-  if (cleaned.length === 10) {
-    return `+1${cleaned}`
-  }
-
-  if (cleaned.length === 11 && cleaned.startsWith('1')) {
-    return `+${cleaned}`
-  }
-
-  if (phoneStr.startsWith('+')) {
-    return phoneStr
-  }
-
-  return null
-}
+import { sendSms, normalizeE164, withHandldPrefix, isWithinTextingHours, nextTextingWindow } from '@/lib/sms'
 
 async function sendReminders(request) {
   try {
@@ -58,11 +24,6 @@ async function sendReminders(request) {
     } catch {
       // No body or invalid JSON - use defaults
     }
-
-    // Get base URL
-    const host = request.headers.get('host')
-    const protocol = request.headers.get('x-forwarded-proto') || 'https'
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `${protocol}://${host}`
 
     // Fetch all technicians and availability
     const [technicians, availability] = await Promise.all([
@@ -105,9 +66,11 @@ async function sendReminders(request) {
     }
 
     // Filter active technicians with phone numbers, minus anyone switched off
-    // individually in the admin dashboard's Texts tab
+    // individually in the admin dashboard's Texts tab, minus anyone who has
+    // not consented to texts yet
     const techsOptedOut = technicians.filter(tech => tech.active && !tech.availabilityTextsEnabled)
-    const activeTechsWithPhone = technicians.filter(tech => tech.active && tech.phone && tech.availabilityTextsEnabled)
+    const techsNoConsent = technicians.filter(tech => tech.active && tech.phone && tech.availabilityTextsEnabled && !tech.smsConsentAt)
+    const activeTechsWithPhone = technicians.filter(tech => tech.active && tech.phone && tech.availabilityTextsEnabled && tech.smsConsentAt)
 
     // Skip techs who have already submitted availability for all of the next 7 days
     const techsWithCompleteCoverage = activeTechsWithPhone.filter(tech => hasComplete7DayCoverage(tech.id))
@@ -123,79 +86,60 @@ async function sendReminders(request) {
       skippedCount: 0,
       details: [],
       skippedForCoverage: techsWithCompleteCoverage.map(t => `${t.firstName} ${t.lastName}`),
-      skippedTurnedOff: techsOptedOut.map(t => `${t.firstName} ${t.lastName}`)
+      skippedTurnedOff: techsOptedOut.map(t => `${t.firstName} ${t.lastName}`),
+      skippedNoConsent: techsNoConsent.map(t => ({ id: t.id, name: `${t.firstName} ${t.lastName}` })),
+      skippedOptOut: []
     }
 
     // Build message based on type
     const messageText = reminderOnly
       ? `Hey! Just a reminder - please submit your availability for the next two weeks. We need this to schedule your jobs. Thanks!`
       : `Hey! Please submit your availability for the next two weeks using the link below. Thanks!`
+    const messageType = reminderOnly ? 'availability_reminder' : 'availability_request'
 
     // Send text to each tech
     for (const tech of techsToText) {
-      const phoneNumber = formatPhoneNumber(tech.phone)
+      const name = `${tech.firstName} ${tech.lastName}`
+      const phoneNumber = normalizeE164(tech.phone)
 
       if (!phoneNumber) {
         results.skippedCount++
-        results.details.push({
-          techId: tech.id,
-          name: `${tech.firstName} ${tech.lastName}`,
-          success: false,
-          error: 'Invalid phone number'
-        })
+        results.details.push({ techId: tech.id, name, success: false, error: 'Invalid phone number' })
         continue
       }
 
       try {
         const availabilityLink = `https://availability.handldhome.com/tech/${tech.id}/availability`
-        const fullMessage = `${messageText}\n\n${availabilityLink}`
+        const fullMessage = withHandldPrefix(`${messageText}\n\n${availabilityLink}`)
 
-        const result = await client.messages.create({
+        const r = await sendSms({
+          to: phoneNumber,
           body: fullMessage,
-          from: process.env.TWILIO_PHONE_NUMBER,
-          to: phoneNumber
-        })
-
-        results.successCount++
-        results.details.push({
-          techId: tech.id,
-          name: `${tech.firstName} ${tech.lastName}`,
-          success: true,
-          messageId: result.sid
-        })
-
-        await logSms({
-          recipientPhone: phoneNumber,
           recipientType: 'technician',
-          messageType: reminderOnly ? 'availability_reminder' : 'availability_request',
-          messageBody: fullMessage,
-          twilioSid: result.sid,
-          status: 'sent'
+          messageType
         })
+
+        if (r.status === 'sent') {
+          results.successCount++
+          results.details.push({ techId: tech.id, name, success: true, messageId: r.sid, logError: r.logError })
+        } else if (r.status === 'skipped_opt_out') {
+          results.skippedCount++
+          results.skippedOptOut.push({ id: tech.id, name })
+          results.details.push({ techId: tech.id, name, success: false, error: r.error, logError: r.logError })
+        } else {
+          results.failedCount++
+          results.details.push({ techId: tech.id, name, success: false, error: r.error, logError: r.logError })
+        }
 
       } catch (error) {
         results.failedCount++
-        results.details.push({
-          techId: tech.id,
-          name: `${tech.firstName} ${tech.lastName}`,
-          success: false,
-          error: error.message
-        })
-
-        await logSms({
-          recipientPhone: phoneNumber,
-          recipientType: 'technician',
-          messageType: reminderOnly ? 'availability_reminder' : 'availability_request',
-          messageBody: `${messageText}\n\nhttps://availability.handldhome.com/tech/${tech.id}/availability`,
-          status: 'failed',
-          errorMessage: error.message
-        })
+        results.details.push({ techId: tech.id, name, success: false, error: error.message })
       }
     }
 
     return Response.json({
       success: true,
-      message: `Availability ${reminderOnly ? 'reminders' : 'requests'} sent to ${results.successCount} tech(s). ${results.techsWithCompleteCoverage} tech(s) skipped (already submitted for next 7 days).`,
+      message: `Availability ${reminderOnly ? 'reminders' : 'requests'} sent to ${results.successCount} tech(s). ${results.techsWithCompleteCoverage} tech(s) skipped (already submitted for next 7 days).${results.skippedNoConsent.length ? ` ${results.skippedNoConsent.length} tech(s) skipped (no SMS consent).` : ''}`,
       ...results
     })
 
@@ -216,13 +160,17 @@ export async function POST(request) {
 }
 
 // GET handler for Vercel cron. Requires CRON_SECRET (fails closed).
+// Automated sends never fire between 21:00 and 07:59 PT.
 export async function GET(request) {
   if (!isCronRequest(request)) return unauthorized()
+
+  if (!isWithinTextingHours()) {
+    return Response.json({ success: true, skipped: 'quiet_hours', nextWindow: nextTextingWindow().toISOString() })
+  }
 
   // Check if this is a reminder-only request (Tuesday)
   const url = new URL(request.url)
   const reminderOnly = url.searchParams.get('reminderOnly') === 'true'
-
 
   // Create a mock request with the reminderOnly flag
   const mockRequest = {

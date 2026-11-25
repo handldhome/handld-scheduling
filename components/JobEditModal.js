@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { format, parseISO } from 'date-fns'
 import { normalizeAddress } from '@/lib/utils'
 import Toast from './Toast'
+import { isOutsideHoursResponse, textingHoursMessage, noConsentMessage, optOutMessage } from '@/lib/texting-hours'
 import { apiFetch } from '@/lib/api-fetch'
 
 // Color palette for dynamic service assignment
@@ -484,6 +485,29 @@ export default function JobEditModal({ job, technicians, availability = [], onCl
     })
   }
 
+  // Reschedule texts go to the assigned techs first, then the customer. The
+  // customer text is held outside 8am–9pm Pacific (HTTP 422); say so plainly.
+  const notifyReschedule = async (jobPayload) => {
+    try {
+      const res = await apiFetch('/api/send-reschedule-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ job: jobPayload, techIds: job.assignedTech || [] })
+      })
+      const data = await res.json().catch(() => ({}))
+      const notes = [noConsentMessage(data.techs?.skippedNoConsent), optOutMessage(data.techs?.skippedOptOut)].filter(Boolean)
+      if (isOutsideHoursResponse(res.status, data)) {
+        alert(`Saved, but the customer was NOT texted about the reschedule.\n\n${textingHoursMessage(data.nextWindow)}${data.techs?.successCount ? '\n\nThe assigned technician(s) were texted.' : ''}${notes.length ? '\n\n' + notes.join('\n') : ''}`)
+      } else if (!res.ok) {
+        alert(`Saved, but the reschedule text failed: ${data.details || data.error || 'Unknown error'}`)
+      } else if (notes.length) {
+        alert(notes.join('\n'))
+      }
+    } catch (err) {
+      console.error('Reschedule notification error:', err)
+    }
+  }
+
   const handleTimeChange = (time) => {
     setFormData(prev => ({ ...prev, time }))
   }
@@ -493,22 +517,7 @@ export default function JobEditModal({ job, technicians, availability = [], onCl
 
     // If job is confirmed, send reschedule notification
     if (formData.confirmed || job.confirmed) {
-      try {
-        await apiFetch('/api/send-reschedule-notification', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            job: {
-              ...job,
-              date: formData.date || job.date,
-              time: formData.time
-            },
-            techIds: job.assignedTech || []
-          })
-        })
-      } catch (err) {
-        console.error('Reschedule notification error:', err)
-      }
+      await notifyReschedule({ ...job, date: formData.date || job.date, time: formData.time })
     }
   }
 
@@ -553,22 +562,7 @@ export default function JobEditModal({ job, technicians, availability = [], onCl
 
     // If job is confirmed, send reschedule notification
     if (formData.confirmed || job.confirmed) {
-      try {
-        await apiFetch('/api/send-reschedule-notification', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            job: {
-              ...job,
-              date: formData.date,
-              time: formData.time || job.time
-            },
-            techIds: job.assignedTech || []
-          })
-        })
-      } catch (err) {
-        console.error('Reschedule notification error:', err)
-      }
+      await notifyReschedule({ ...job, date: formData.date, time: formData.time || job.time })
     }
   }
 
@@ -592,10 +586,16 @@ export default function JobEditModal({ job, technicians, availability = [], onCl
         })
 
         if (!smsResponse.ok) {
-          const smsError = await smsResponse.json()
+          const smsError = await smsResponse.json().catch(() => ({}))
           console.error('SMS error:', smsError)
           // Don't block confirmation if SMS fails, but alert user with details
-          alert(`Job confirmed, but confirmation text failed to send.\n\nError: ${smsError.details || smsError.error || 'Unknown error'}\n\nYou may need to contact the customer manually.`)
+          if (isOutsideHoursResponse(smsResponse.status, smsError)) {
+            alert(`Job confirmed, but the customer was NOT texted.\n\n${textingHoursMessage(smsError.nextWindow)}\n\nUn-confirm and re-confirm the job then, or call the customer.`)
+          } else if (smsResponse.status === 409) {
+            alert(`Job confirmed, but the customer has opted out of texts. Please call them to confirm.`)
+          } else {
+            alert(`Job confirmed, but confirmation text failed to send.\n\nError: ${smsError.details || smsError.error || 'Unknown error'}\n\nYou may need to contact the customer manually.`)
+          }
         }
       } catch (smsErr) {
         console.error('SMS send error:', smsErr)
@@ -620,9 +620,12 @@ export default function JobEditModal({ job, technicians, availability = [], onCl
           })
         })
 
+        const techSmsData = await techSmsResponse.json().catch(() => ({}))
         if (!techSmsResponse.ok) {
-          const techSmsError = await techSmsResponse.json()
-          console.error('Tech SMS error:', techSmsError)
+          console.error('Tech SMS error:', techSmsData)
+        } else {
+          const notes = [noConsentMessage(techSmsData.skippedNoConsent), optOutMessage(techSmsData.skippedOptOut)].filter(Boolean)
+          if (notes.length) alert(`Job confirmed. ${notes.join('\n')}`)
         }
       } catch (techSmsErr) {
         console.error('Tech SMS send error:', techSmsErr)
@@ -759,22 +762,7 @@ export default function JobEditModal({ job, technicians, availability = [], onCl
       const timeChanged = formData.time !== (job.time || '')
 
       if ((formData.confirmed || job.confirmed) && (dateChanged || timeChanged)) {
-        try {
-          await apiFetch('/api/send-reschedule-notification', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              job: {
-                ...job,
-                date: formData.date,
-                time: formData.time
-              },
-              techIds: job.assignedTech || []
-            })
-          })
-        } catch (err) {
-          console.error('Reschedule notification error:', err)
-        }
+        await notifyReschedule({ ...job, date: formData.date, time: formData.time })
       }
 
       onUpdate()

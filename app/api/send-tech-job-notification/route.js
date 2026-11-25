@@ -1,42 +1,8 @@
-import twilio from 'twilio'
 import crypto from 'crypto'
-import { getTechnician, logSms } from '@/lib/db'
+import { getTechnician } from '@/lib/db'
 import { getDb } from '@/lib/supabase'
 import { isAdminRequest, unauthorized } from '@/lib/admin-auth'
-
-const client = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-)
-
-const formatPhoneNumber = (phone) => {
-  if (!phone) return null
-
-  let phoneStr = phone
-  if (Array.isArray(phone)) {
-    phoneStr = phone[0]
-  }
-
-  if (typeof phoneStr !== 'string') {
-    phoneStr = String(phoneStr)
-  }
-
-  const cleaned = phoneStr.replace(/\D/g, '')
-
-  if (cleaned.length === 10) {
-    return `+1${cleaned}`
-  }
-
-  if (cleaned.length === 11 && cleaned.startsWith('1')) {
-    return `+${cleaned}`
-  }
-
-  if (phoneStr.startsWith('+')) {
-    return phoneStr
-  }
-
-  return null
-}
+import { sendSms, normalizeE164, withHandldPrefix } from '@/lib/sms'
 
 const formatDate = (dateStr) => {
   if (!dateStr) return 'TBD'
@@ -95,6 +61,8 @@ export async function POST(request) {
     const results = {
       successCount: 0,
       failedCount: 0,
+      skippedNoConsent: [],
+      skippedOptOut: [],
       details: []
     }
 
@@ -119,16 +87,19 @@ export async function POST(request) {
     for (const techId of techIds) {
       try {
         const tech = await getTechnician(techId)
-        const phoneNumber = formatPhoneNumber(tech.phone)
+        const name = `${tech.firstName} ${tech.lastName}`
+
+        if (!tech.smsConsentAt) {
+          results.skippedNoConsent.push({ id: tech.id, name })
+          results.details.push({ techId, name, success: false, error: 'No SMS consent on file' })
+          continue
+        }
+
+        const phoneNumber = normalizeE164(tech.phone)
 
         if (!phoneNumber) {
           results.failedCount++
-          results.details.push({
-            techId,
-            name: `${tech.firstName} ${tech.lastName}`,
-            success: false,
-            error: 'Invalid phone number'
-          })
+          results.details.push({ techId, name, success: false, error: 'Invalid phone number' })
           continue
         }
 
@@ -151,31 +122,26 @@ export async function POST(request) {
           ? `\n\n⏰ Please confirm by ${deadline.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' })}`
           : ''
 
-        const message = `New job assigned!\n\n${serviceName}\n${date} at ${time}\n${address}${deadlineText}\n\nConfirm you'll be there:\n${confirmLink}`
+        const message = withHandldPrefix(`new job assigned!\n\n${serviceName}\n${date} at ${time}\n${address}${deadlineText}\n\nConfirm you'll be there:\n${confirmLink}`)
 
-        const result = await client.messages.create({
+        const r = await sendSms({
+          to: phoneNumber,
           body: message,
-          from: process.env.TWILIO_PHONE_NUMBER,
-          to: phoneNumber
-        })
-
-        await logSms({
-          jobId: job.id,
-          recipientPhone: phoneNumber,
           recipientType: 'technician',
           messageType: 'job_confirmation_request',
-          messageBody: message,
-          twilioSid: result.sid,
-          status: 'sent'
+          jobId: job.id
         })
 
-        results.successCount++
-        results.details.push({
-          techId,
-          name: `${tech.firstName} ${tech.lastName}`,
-          success: true,
-          messageId: result.sid
-        })
+        if (r.status === 'sent') {
+          results.successCount++
+          results.details.push({ techId, name, success: true, messageId: r.sid, logError: r.logError })
+        } else if (r.status === 'skipped_opt_out') {
+          results.skippedOptOut.push({ id: tech.id, name })
+          results.details.push({ techId, name, success: false, error: r.error, logError: r.logError })
+        } else {
+          results.failedCount++
+          results.details.push({ techId, name, success: false, error: r.error, logError: r.logError })
+        }
 
       } catch (error) {
         results.failedCount++

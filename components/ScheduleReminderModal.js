@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { format, addDays, parseISO } from 'date-fns'
 import { apiFetch } from '@/lib/api-fetch'
+import { noConsentMessage, optOutMessage } from '@/lib/texting-hours'
 
 export default function ScheduleReminderModal({ technicians, jobs, onClose }) {
   const [selectedTechs, setSelectedTechs] = useState([])
@@ -121,9 +122,10 @@ export default function ScheduleReminderModal({ technicians, jobs, onClose }) {
       const data = await response.json()
 
       if (response.ok) {
+        const notes = [noConsentMessage(data.skippedNoConsent), optOutMessage(data.skippedOptOut)].filter(Boolean)
         setResult({
           success: true,
-          message: `Sent ${data.successCount} reminder${data.successCount !== 1 ? 's' : ''}${data.failedCount > 0 ? `, ${data.failedCount} failed` : ''}`
+          message: `Sent ${data.successCount} reminder${data.successCount !== 1 ? 's' : ''}${data.failedCount > 0 ? `, ${data.failedCount} failed` : ''}${notes.length ? '. ' + notes.join(' ') : ''}`
         })
         setSelectedTechs([])
       } else {

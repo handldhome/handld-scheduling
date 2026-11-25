@@ -1,19 +1,6 @@
 import { getDb } from '@/lib/supabase'
-import { logSms } from '@/lib/db'
 import { NextResponse } from 'next/server'
-import twilio from 'twilio'
-
-const ADMIN_PHONE = '+16263900189'
-
-const formatPhoneNumber = (phone) => {
-  if (!phone) return null
-  const phoneStr = Array.isArray(phone) ? phone[0] : String(phone)
-  const cleaned = phoneStr.replace(/\D/g, '')
-  if (cleaned.length === 10) return `+1${cleaned}`
-  if (cleaned.length === 11 && cleaned.startsWith('1')) return `+${cleaned}`
-  if (phoneStr.startsWith('+')) return phoneStr
-  return null
-}
+import { sendSms, sendOwnerAlert, normalizeE164, CUSTOMER_QUESTIONS } from '@/lib/sms'
 
 const formatTime = (timeStr) => {
   if (!timeStr) return 'TBD'
@@ -136,54 +123,37 @@ export async function POST(request, { params }) {
         })
         .eq('id', job.id)
 
-      // Send customer confirmation SMS with tech name
-      const customerPhone = formatPhoneNumber(job.quote_request?.customer?.phone)
+      // Send customer confirmation SMS with tech name. The tech, not the
+      // customer, triggered this, so texting hours apply: outside them the
+      // confirmation still succeeds and the response says the customer text
+      // was held (customerText.status = 'outside_hours').
+      const customerPhone = normalizeE164(job.quote_request?.customer?.phone)
       const customerFirstName = job.quote_request?.customer?.first_name || 'there'
+      let customerText = null
 
       if (customerPhone) {
-        try {
-          const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
+        const dateDisplay = new Date(job.target_date + 'T12:00:00').toLocaleDateString('en-US', {
+          weekday: 'long',
+          month: 'long',
+          day: 'numeric',
+          timeZone: 'America/Los_Angeles'
+        })
+        const timeDisplay = formatTime(job.scheduled_time)
 
-          const dateDisplay = new Date(job.target_date + 'T12:00:00').toLocaleDateString('en-US', {
-            weekday: 'long',
-            month: 'long',
-            day: 'numeric',
-            timeZone: 'America/Los_Angeles'
-          })
-          const timeDisplay = formatTime(job.scheduled_time)
+        const message = `Hi ${customerFirstName}! Great news — your ${job.service} appointment with Handld is confirmed for ${dateDisplay} at ${timeDisplay}. ${techFirstName} will be your technician. You'll get a text when they're on the way. ${CUSTOMER_QUESTIONS}`
 
-          const message = `Hi ${customerFirstName}! Great news — your ${job.service} appointment is confirmed for ${dateDisplay} at ${timeDisplay}. ${techFirstName} will be your technician. You'll get a text when they're on the way. Questions? Text us at (626) 298-7128`
-
-          const result = await client.messages.create({
-            body: message,
-            from: process.env.TWILIO_PHONE_NUMBER,
-            to: customerPhone
-          })
-
-          await logSms({
-            jobId: job.id,
-            recipientPhone: customerPhone,
-            recipientType: 'customer',
-            messageType: 'tech_confirmed',
-            messageBody: message,
-            twilioSid: result.sid,
-            status: 'sent'
-          })
-        } catch (smsErr) {
-          console.error('Customer confirmation SMS error:', smsErr)
-          await logSms({
-            jobId: job.id,
-            recipientPhone: customerPhone,
-            recipientType: 'customer',
-            messageType: 'tech_confirmed',
-            messageBody: '',
-            status: 'failed',
-            errorMessage: smsErr.message
-          })
-        }
+        const r = await sendSms({
+          to: customerPhone,
+          body: message,
+          recipientType: 'customer',
+          messageType: 'tech_confirmed',
+          jobId: job.id
+        })
+        customerText = { status: r.status, nextWindow: r.nextWindow, error: r.error, logError: r.logError }
+        if (r.status === 'failed') console.error('Customer confirmation SMS error:', r.error)
       }
 
-      return NextResponse.json({ success: true, action: 'confirmed' })
+      return NextResponse.json({ success: true, action: 'confirmed', customerText })
 
     } else {
       // Mark job as tech-declined
@@ -198,15 +168,11 @@ export async function POST(request, { params }) {
         })
         .eq('id', job.id)
 
-      // Notify admin that tech declined
-      try {
-        const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
-        const dateDisplay = new Date(job.target_date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'America/Los_Angeles' })
-        const adminMsg = `⚠️ ${techName} declined a job:\n\n${job.service}\n${dateDisplay} at ${formatTime(job.scheduled_time)}\n${job.quote_request?.address || ''}\n\nReason: ${reason || 'None given'}\n\nThis job needs to be reassigned.`
-        await client.messages.create({ body: adminMsg, from: process.env.TWILIO_PHONE_NUMBER, to: ADMIN_PHONE })
-      } catch (adminSmsErr) {
-        console.error('Admin decline notification error:', adminSmsErr)
-      }
+      // Notify the owner that the tech declined (internal alert: no footer, no hours)
+      const dateDisplay = new Date(job.target_date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'America/Los_Angeles' })
+      const adminMsg = `⚠️ ${techName} declined a job:\n\n${job.service}\n${dateDisplay} at ${formatTime(job.scheduled_time)}\n${job.quote_request?.address || ''}\n\nReason: ${reason || 'None given'}\n\nThis job needs to be reassigned.`
+      const alert = await sendOwnerAlert({ body: adminMsg, messageType: 'owner_alert_tech_declined', jobId: job.id })
+      if (alert.status !== 'sent') console.error('Admin decline notification error:', alert.error)
 
       return NextResponse.json({ success: true, action: 'declined' })
     }

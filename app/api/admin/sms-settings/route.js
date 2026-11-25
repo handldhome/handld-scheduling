@@ -19,10 +19,15 @@ export async function GET(request) {
       id: t.id,
       name: t.name,
       phone: t.phone,
-      availabilityTextsEnabled: t.availabilityTextsEnabled
+      availabilityTextsEnabled: t.availabilityTextsEnabled,
+      smsConsentAt: t.smsConsentAt || null
     }))
 
-    return Response.json({ availabilityTextsEnabled, recentTexts, techs })
+    // Active techs who cannot be texted until they consent (Texts tab shows
+    // them with a "Send consent request" button).
+    const needsConsent = techs.filter(t => t.phone && !t.smsConsentAt)
+
+    return Response.json({ availabilityTextsEnabled, recentTexts, techs, needsConsent })
   } catch (error) {
     console.error('Error fetching SMS settings:', error)
     return Response.json({ error: 'Failed to fetch SMS settings' }, { status: 500 })

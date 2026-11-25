@@ -51,9 +51,11 @@ const ADMIN_ONLY = [
   ['POST /api/send-reschedule-notification', '../app/api/send-reschedule-notification/route.js', 'POST', null, {}],
   ['POST /api/send-tech-job-notification', '../app/api/send-tech-job-notification/route.js', 'POST', null, {}],
   ['POST /api/send-tech-text', '../app/api/send-tech-text/route.js', 'POST', null, { techIds: [TECH_ID], message: 'hi' }],
+  ['POST /api/send-consent-request', '../app/api/send-consent-request/route.js', 'POST', null, { techId: TECH_ID }],
   ['POST /api/send-availability-reminder', '../app/api/send-availability-reminder/route.js', 'POST', null, {}],
   ['POST /api/send-schedule-reminder', '../app/api/send-schedule-reminder/route.js', 'POST', null, {}],
-  ['PATCH /api/technicians/[techId]', '../app/api/technicians/[techId]/route.js', 'PATCH', { techId: TECH_ID }, { allowTexting: false }]
+  ['PATCH /api/technicians/[techId]', '../app/api/technicians/[techId]/route.js', 'PATCH', { techId: TECH_ID }, { allowTexting: false }],
+  ['PATCH /api/technicians/[techId] (consent)', '../app/api/technicians/[techId]/route.js', 'PATCH', { techId: TECH_ID }, { smsConsent: true, consentSource: 'verbal' }]
 ]
 
 const CRON = [
